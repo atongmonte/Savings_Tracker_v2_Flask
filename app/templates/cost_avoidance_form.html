@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block title %}Cost Avoidance Initiative - Savings Tracker{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-shield-alt"></i> Cost Avoidance Initiative - Input Form
+            </div>
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-sm btn-light">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-4">Use this form to track a new Cost Avoidance initiative</p>
+            
+            <form id="costAvoidanceForm" method="POST">
+                <!-- Initiative Information -->
+                <div class="form-section">
+                    <h5 class="section-title"><i class="fas fa-info-circle"></i> Initiative Information</h5>
+                    
+                    <!-- Type -->
+                    <div class="mb-3">
+                        <label class="form-label">Type <span class="form-required">*</span></label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="avoidance_type" id="avoidanceTypeCapital" 
+                                   value="Capital" required>
+                            <label class="form-check-label" for="avoidanceTypeCapital">
+                                Capital
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="avoidance_type" id="avoidanceTypeService" 
+                                   value="Service">
+                            <label class="form-check-label" for="avoidanceTypeService">
+                                Service
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="avoidance_type" id="avoidanceTypeValueAnalysis" 
+                                   value="Value Analysis">
+                            <label class="form-check-label" for="avoidanceTypeValueAnalysis">
+                                Value Analysis
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="avoidance_type" id="avoidanceTypePriceParity" 
+                                   value="Price Parity">
+                            <label class="form-check-label" for="avoidanceTypePriceParity">
+                                Price Parity
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="avoidance_type" id="avoidanceTypeNPR" 
+                                   value="Negotiated Price Reduction">
+                            <label class="form-check-label" for="avoidanceTypeNPR">
+                                Negotiated Price Reduction
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Initiative Description -->
+                    <div class="mb-3">
+                        <label class="form-label">Initiative Description <span class="form-required">*</span></label>
+                        <textarea class="form-control" id="description" name="description" rows="4" 
+                                  placeholder="Provide a detailed description of the cost avoidance..." required></textarea>
+                    </div>
+
+                    <!-- Strata Project ID -->
+                    <div class="mb-3">
+                        <label class="form-label">Strata Project ID</label>
+                        <input type="text" class="form-control" id="strataProjectId" name="strata_project_id" 
+                               placeholder="">
+                    </div>
+
+                    <!-- Wave Initiative ID and Contract Category -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Wave Initiative ID (if applicable)</label>
+                            <input type="text" class="form-control" id="waveInitiativeId" name="wave_initiative_id" 
+                                   placeholder="Please enter the wave initiative id if this was logged in wave">
+                            <small class="form-text text-muted">Please enter the wave initiative id if this was logged in wave.</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Contract Category <span class="form-required">*</span></label>
+                            <select class="form-select" id="contractCategory" name="contract_category" required>
+                                <option value="">Please Select</option>
+                                <option value="Administrative And Related Services">Administrative And Related Services</option>
+                                <option value="Capital Equipment">Capital Equipment</option>
+                                <option value="Clinical">Clinical</option>
+                                <option value="Facilities And Construction">Facilities And Construction</option>
+                                <option value="Food Services">Food Services</option>
+                                <option value="Information Technology">Information Technology</option>
+                                <option value="Laboratory">Laboratory</option>
+                                <option value="Medical Devices">Medical Devices</option>
+                                <option value="Pharmaceuticals">Pharmaceuticals</option>
+                                <option value="Professional Services">Professional Services</option>
+                                <option value="Supplies">Supplies</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <small class="form-text text-muted">If you chose "Other", include the appropriate category in the Initiative Description below</small>
+                        </div>
+                    </div>
+
+                    <!-- Contract ID and Contract Source -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Contract ID</label>
+                            <input type="text" class="form-control" id="contractId" name="contract_id" 
+                                   placeholder="Please enter the exact Contract Number as reflected in CCX, without any leading/trailing spaces">
+                            <small class="form-text text-muted">Please enter the exact Contract Number as reflected in CCX, without any leading/trailing spaces</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Contract Source</label>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="radio" name="contract_source" id="contractSourceGPO" 
+                                       value="GPO">
+                                <label class="form-check-label" for="contractSourceGPO">
+                                    GPO
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="contract_source" id="contractSourceLocal" 
+                                       value="Local">
+                                <label class="form-check-label" for="contractSourceLocal">
+                                    Local
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vendor Name -->
+                    <div class="mb-3">
+                        <label class="form-label">Vendor Name <span class="form-required">*</span></label>
+                        <input type="text" class="form-control" id="vendorName" name="vendor_name" 
+                               placeholder="Enter Vendor Name" required>
+                    </div>
+                </div>
+
+                <!-- Avoidance Details -->
+                <div class="form-section">
+                    <h5 class="section-title"><i class="fas fa-chart-line"></i> Cost Avoidance Details</h5>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Purchase Order Number <span class="form-required">*</span></label>
+                        <input type="text" class="form-control" id="poNumber" name="po_number" 
+                               placeholder="Enter PO Number" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Purchase Order Date <span class="form-required">*</span></label>
+                        <input type="date" class="form-control" id="poDate" name="po_date" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Cost Avoidance Date <span class="form-required">*</span></label>
+                        <input type="date" class="form-control" id="avoidanceDate" name="avoidance_date" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Original Quote ($) <span class="form-required">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="originalQuote" name="original_quote" 
+                                       step="0.01" min="0" placeholder="0" required>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">New Quote ($) <span class="form-required">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="newQuote" name="new_quote" 
+                                       step="0.01" min="0" placeholder="0" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Cost Avoidance Amount ($) <span class="form-required">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="avoidanceAmount" name="avoidance_amount" 
+                                   step="0.01" min="0" placeholder="0" required readonly style="background-color: #e9ecef;">
+                        </div>
+                        <small class="form-text text-muted">Auto-Calculated based on (New Quote - Original Quote)</small>
+                    </div>
+                </div>
+
+                <!-- Facility Allocation -->
+                <div class="form-section">
+                    <h5 class="section-title"><i class="fas fa-hospital"></i> Facility Allocation</h5>
+                    
+                    <!-- Allocation Type: always dollar amount -->
+                    <input type="radio" class="d-none" name="allocationType" id="allocationTypeAmount" value="amount" checked>
+                    
+                    <p class="text-muted small" id="allocationInstruction">
+                        Allocate cost avoidance percentage across facilities (must total 100%)
+                    </p>
+                    
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label allocation-label" data-facility="MMC">MMC</label>
+                            <div class="input-group">
+                                <span class="input-group-text allocation-symbol">%</span>
+                                <input type="number" class="form-control facility-allocation" id="mmc" name="mmc" 
+                                       step="0.01" min="0" max="100" value="0" data-facility="MMC">
+                            </div>
+                            <small class="text-muted allocation-calc d-none"></small>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label allocation-label" data-facility="BURKE">BURKE</label>
+                            <div class="input-group">
+                                <span class="input-group-text allocation-symbol">%</span>
+                                <input type="number" class="form-control facility-allocation" id="burke" name="burke" 
+                                       step="0.01" min="0" max="100" value="0" data-facility="BURKE">
+                            </div>
+                            <small class="text-muted allocation-calc d-none"></small>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label allocation-label" data-facility="AECOM">AECOM</label>
+                            <div class="input-group">
+                                <span class="input-group-text allocation-symbol">%</span>
+                                <input type="number" class="form-control facility-allocation" id="aecom" name="aecom" 
+                                       step="0.01" min="0" max="100" value="0" data-facility="AECOM">
+                            </div>
+                            <small class="text-muted allocation-calc d-none"></small>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label allocation-label" data-facility="MMVO">MMVO</label>
+                            <div class="input-group">
+                                <span class="input-group-text allocation-symbol">%</span>
+                                <input type="number" class="form-control facility-allocation" id="mmvo" name="mmvo" 
+                                       step="0.01" min="0" max="100" value="0" data-facility="MMVO">
+                            </div>
+                            <small class="text-muted allocation-calc d-none"></small>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label allocation-label" data-facility="MSSO">MSSO</label>
+                            <div class="input-group">
+                                <span class="input-group-text allocation-symbol">%</span>
+                                <input type="number" class="form-control facility-allocation" id="msso" name="msso" 
+                                       step="0.01" min="0" max="100" value="0" data-facility="MSSO">
+                            </div>
+                            <small class="text-muted allocation-calc d-none"></small>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label allocation-label" data-facility="NYACK">NYACK</label>
+                            <div class="input-group">
+                                <span class="input-group-text allocation-symbol">%</span>
+                                <input type="number" class="form-control facility-allocation" id="nyack" name="nyack" 
+                                       step="0.01" min="0" max="100" value="0" data-facility="NYACK">
+                            </div>
+                            <small class="text-muted allocation-calc d-none"></small>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label allocation-label" data-facility="SLCH">SLCH</label>
+                            <div class="input-group">
+                                <span class="input-group-text allocation-symbol">%</span>
+                                <input type="number" class="form-control facility-allocation" id="slch" name="slch" 
+                                       step="0.01" min="0" max="100" value="0" data-facility="SLCH">
+                            </div>
+                            <small class="text-muted allocation-calc d-none"></small>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label allocation-label" data-facility="WPH">WPH</label>
+                            <div class="input-group">
+                                <span class="input-group-text allocation-symbol">%</span>
+                                <input type="number" class="form-control facility-allocation" id="wph" name="wph" 
+                                       step="0.01" min="0" max="100" value="0" data-facility="WPH">
+                            </div>
+                            <small class="text-muted allocation-calc d-none"></small>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong id="totalAllocationLabel">Total Allocation: <span id="totalAllocation">0</span>%</strong>
+                        <span id="remainingAllocationLabel" class="ms-3"></span>
+                    </div>
+                </div>
+
+                <!-- File Attachments -->
+                <div class="form-section">
+                    <h5 class="section-title"><i class="fas fa-paperclip"></i> File Attachments</h5>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Upload Supporting Documents</label>
+                        <input type="file" class="form-control" id="fileUpload" name="files" multiple 
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.png,.jpg,.jpeg,.gif,.zip">
+                        <small class="form-text text-muted">
+                            Accepted formats: PDF, Word, Excel, PowerPoint, Images, ZIP (Max 500MB total)
+                        </small>
+                    </div>
+                    
+                    <div id="fileList"></div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="d-flex justify-content-between mt-4">
+                    <button type="button" class="btn btn-secondary" onclick="window.history.back()">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Submit for Review
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/cost_avoidance_form.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 52" width="300" height="52">
+  <text
+    x="0" y="30"
+    font-family="'Book Antiqua','Palatino Linotype',Palatino,'Times New Roman',Georgia,serif"
+    font-size="26"
+    font-weight="400"
+    fill="#112B46"
+    letter-spacing="0.3">Montefiore Einstein</text>
+  <rect x="0" y="35.5" width="215" height="1.2" fill="#0072BC" opacity="0.5" rx="1"/>
+  <text
+    x="1" y="49"
+    font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif"
+    font-size="9"
+    font-weight="600"
+    fill="#0072BC"
+    letter-spacing="2.2">SUPPLY CHAIN SERVICES</text>
+</svg>

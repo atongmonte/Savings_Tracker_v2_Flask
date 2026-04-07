@@ -1,0 +1,633 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Savings Tracker{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+<style>
+    /* ── Page hero title (Montefiore Supply Chain style) ── */
+    .page-hero {
+        padding: 1.5rem 0 1.25rem;
+        margin-bottom: 1.75rem;
+        border-bottom: 1px solid #DDE3EA;
+    }
+    .page-hero .hero-eyebrow {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--monte-blue, #0072BC);
+        margin-bottom: 0.4rem;
+    }
+    .page-hero h1 {
+        font-family: 'Source Serif 4', Georgia, serif;
+        font-size: 2.1rem;
+        font-weight: 700;
+        color: var(--monte-navy, #112B46);
+        line-height: 1.15;
+        margin: 0;
+    }
+    .page-hero .hero-rule {
+        display: block;
+        width: 48px;
+        height: 3px;
+        background: var(--monte-blue, #0072BC);
+        border-radius: 2px;
+        margin-top: 0.8rem;
+    }
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+    }
+    th.sortable:hover {
+        background-color: rgba(0, 0, 0, 0.04);
+    }
+    .sort-icon-inactive { opacity: 0.35; }
+
+    /* ── Stats Cards ── */
+    .stats-card {
+        border-top: 3px solid #112B46;
+        transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .stats-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 18px rgba(17,43,70,.10);
+    }
+    .stats-card.savings  { border-top-color: #1A7A4A; }
+    .stats-card.rebate   { border-top-color: #0072BC; }
+    .stats-card.avoidance{ border-top-color: #00A8A8; }
+
+    .stats-icon { font-size: 2rem; opacity: 0.45; }
+    .stats-card h6 {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 600;
+        color: #5E6E82;
+    }
+    .stats-card h3 { font-size: 1.55rem; font-weight: 700; color: #1A2535; }
+
+    /* ── Filter bar ── */
+    .filter-section {
+        background-color: #FFFFFF;
+        padding: 1rem 1.25rem;
+        border-radius: 6px;
+        border: 1px solid #DDE3EA;
+        margin-bottom: 1.25rem;
+    }
+
+    /* ── Status badges ── */
+    .status-badge {
+        padding: 0.22rem 0.75rem;
+        border-radius: 3px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        display: inline-block;
+    }
+    .status-draft      { background-color: #F0F3F6; color: #4A5568; }
+    .status-submitted  { background-color: #EFF5FC; color: #004D80; }
+    .status-approved   { background-color: #F0FBF5; color: #0E4D2D; }
+    .status-pending    { background-color: #FEF9EE; color: #7A4A06; }
+    .status-rejected   { background-color: #FDF3F2; color: #7B2218; }
+
+    /* ── Deleted rows ── */
+    tr.deleted-row td  { color: #9CA3AF; font-style: italic; }
+    tr.deleted-row     { background-color: #FFF5F5 !important; }
+
+    /* ── Modal view mode ── */
+    #actionModal .form-control:disabled,
+    #actionModal .form-control[readonly],
+    #actionModal .form-select:disabled,
+    #actionModal textarea:disabled,
+    #actionModal textarea[readonly] {
+        background-color: #FAFBFC !important;
+        opacity: 1;
+        color: #1A2535;
+    }
+
+    /* ── Year tab pills ── */
+    .year-pill {
+        border: 1px solid var(--border-color);
+        background: #fff;
+        color: var(--text-muted);
+        border-radius: 50px;
+        padding: 0.2rem 0.85rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        line-height: 1.6;
+    }
+    .year-pill:hover   { background: #f0f4ff; border-color: var(--primary-color); color: var(--primary-color); }
+    .year-pill.active  { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
+    .year-pill-group   { display: flex; gap: 0.4rem; align-items: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-chart-line"></i> Saving Tracker</h2>
+            <p class="text-muted">View and manage all savings initiatives</p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="d-flex align-items-center gap-3 mb-2">
+        <small class="text-muted fw-semibold">SUMMARY</small>
+        <div class="year-pill-group">
+            <button class="year-pill" id="year-pill-all"  onclick="setStatsYear(null)">All</button>
+            <button class="year-pill" id="year-pill-2025" onclick="setStatsYear(2025)">2025</button>
+            <button class="year-pill active" id="year-pill-2026" onclick="setStatsYear(2026)">2026</button>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stats-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Total Initiatives</h6>
+                            <h3 class="mb-0" id="totalCount">0</h3>
+                        </div>
+                        <div class="stats-icon text-primary">
+                            <i class="fas fa-list-ul"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card savings">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Cost Savings
+                                <span id="statsYearBadge" class="badge bg-primary ms-1" style="font-size:0.65rem">2026</span>
+                            </h6>
+                            <h3 class="mb-0 text-success" id="savingsAmount">$0</h3>
+                        </div>
+                        <div class="stats-icon text-success">
+                            <i class="fas fa-piggy-bank"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card rebate">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Rebates</h6>
+                            <h3 class="mb-0 text-info" id="rebateAmount">$0</h3>
+                        </div>
+                        <div class="stats-icon text-info">
+                            <i class="fas fa-receipt"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card avoidance">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Cost Avoidance</h6>
+                            <h3 class="mb-0 text-warning" id="avoidanceAmount">$0</h3>
+                        </div>
+                        <div class="stats-icon text-warning">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-section">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label"><i class="fas fa-search"></i> Search</label>
+                <input type="text" class="form-control" id="searchBox" 
+                       placeholder="Search by ID, owner, type, contract, vendor, status...">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label"><i class="fas fa-calendar-alt"></i> Initiative Year</label>
+                <select class="form-select" id="filterYear">
+                    <option value="">All Years</option>
+                    <option value="2023">2023</option>
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label"><i class="fas fa-tasks"></i> Status</label>
+                <select class="form-select" id="filterStatus">
+                    <option value="">All Status</option>
+                    <option value="Pending Review">Pending Review</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end gap-2">
+                <button class="btn btn-primary flex-fill" onclick="applyFilters()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button class="btn btn-outline-danger flex-fill d-none" id="toggleDeletedBtn" onclick="toggleShowDeleted()">
+                    <i class="fas fa-trash-alt"></i> Show Deleted
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Initiatives Table -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-table"></i> All Initiatives
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="initiativesTable">
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="toggleSort('id')" title="Sort by Initiative ID" style="width:90px">
+                                Initiative ID <i id="sort-icon-id" class="fas fa-sort ms-1 text-muted sort-icon-inactive"></i>
+                            </th>
+                            <th>Owner</th>
+                            <th>Type</th>
+                            <th>Contract ID</th>
+                            <th>Contract Category</th>
+                            <th>Vendor Name</th>
+                            <th class="text-end sortable" onclick="toggleSort('amount')" title="Sort by Saving Amount">
+                                Saving Amount <i id="sort-icon-amount" class="fas fa-sort ms-1 text-muted sort-icon-inactive"></i>
+                            </th>
+                            <th class="sortable" onclick="toggleSort('initiative_date')" title="Sort by Initiative Year">
+                                Initiative Year <i id="sort-icon-initdate" class="fas fa-sort ms-1 text-muted sort-icon-inactive"></i>
+                            </th>
+                            <th class="sortable" onclick="toggleSort('updated_at')" title="Sort by Last Updated">
+                                Last Updated <i id="sort-icon-updated" class="fas fa-sort ms-1 text-muted sort-icon-inactive"></i>
+                            </th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="initiativesTableBody">
+                        <tr><td colspan="11" class="text-center text-muted py-4">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Pagination -->
+            <div id="paginationContainer" class="border-top"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Initiative View/Edit Modal -->
+<div class="modal fade" id="actionModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Initiative Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalAlertContainer"></div>
+
+                <!-- Change Summary Confirmation View (shown instead of form before saving) -->
+                <div id="mf_confirmView" class="d-none">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="fas fa-clipboard-check text-primary fs-4 me-2"></i>
+                        <div>
+                            <h6 class="mb-0 fw-bold">Review Your Changes</h6>
+                            <small class="text-muted">Please confirm the changes below before they are saved.</small>
+                        </div>
+                    </div>
+                    <div id="confirmChangesBody"></div>
+                </div>
+
+                <form id="modalForm" novalidate>
+                    <!-- Common Info -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Type</label>
+                            <input type="text" class="form-control modal-field" id="mf_initiative_type" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Status</label>
+                            <input type="text" class="form-control modal-field" id="mf_status" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Created By</label>
+                            <input type="text" class="form-control" id="mf_created_by" readonly>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description <span class="text-danger">*</span></label>
+                        <textarea class="form-control modal-field" id="mf_description" rows="3"></textarea>
+                    </div>
+
+                    <!-- Contract Info -->
+                    <fieldset class="border rounded p-3 mb-3">
+                        <legend class="float-none w-auto px-2 fs-6 fw-bold text-primary">Contract Information</legend>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Contract Category <span class="text-danger">*</span></label>
+                                <select class="form-select modal-field" id="mf_contract_category">
+                                    <option value="">Please Select</option>
+                                    <option>Administrative And Related Services</option>
+                                    <option>Capital Equipment</option>
+                                    <option>Clinical</option>
+                                    <option>Facilities And Construction</option>
+                                    <option>Food Services</option>
+                                    <option>Information Technology</option>
+                                    <option>Laboratory</option>
+                                    <option>Medical Devices</option>
+                                    <option>Pharmaceuticals</option>
+                                    <option>Professional Services</option>
+                                    <option>Supplies</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Contract ID</label>
+                                <input type="text" class="form-control modal-field" id="mf_contract_number">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Contract Source <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control modal-field" id="mf_contract_source" readonly>
+                                <div class="mt-2 d-flex gap-3 modal-radio-group" id="mf_contract_source_radios">
+                                    <div class="form-check">
+                                        <input class="form-check-input modal-field" type="radio" name="mf_contract_source_r" value="GPO" id="mf_cs_gpo">
+                                        <label class="form-check-label" for="mf_cs_gpo">GPO</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input modal-field" type="radio" name="mf_contract_source_r" value="Local" id="mf_cs_local">
+                                        <label class="form-check-label" for="mf_cs_local">Local</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Vendor Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control modal-field" id="mf_vendor_name">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Wave Initiative ID</label>
+                                <input type="text" class="form-control modal-field" id="mf_wave_initiative_id">
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Cost Savings Fields -->
+                    <fieldset class="border rounded p-3 mb-3 d-none" id="mf_section_savings">
+                        <legend class="float-none w-auto px-2 fs-6 fw-bold text-success">Cost Savings Details</legend>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Savings Type <span class="text-danger">*</span></label>
+                                <div class="modal-radio-group" id="mf_savings_type_radios">
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_savings_type" value="Standardization/Conversion"><label class="form-check-label">Standardization/Conversion</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_savings_type" value="Negotiated Price Reduction"><label class="form-check-label">Negotiated Price Reduction</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_savings_type" value="Demand/Utilization Reduction"><label class="form-check-label">Demand/Utilization Reduction</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_savings_type" value="One-time Saving (non-rebate)"><label class="form-check-label">One-time Saving</label></div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">GPO Tier</label>
+                                <input type="text" class="form-control modal-field" id="mf_gpo_tier_cs">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Start Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control modal-field" id="mf_start_date">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">End Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control modal-field" id="mf_end_date">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Baseline Spend <span class="text-danger">*</span></label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control modal-field" id="mf_baseline_spend"></div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Expected Spend <span class="text-danger">*</span></label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control modal-field" id="mf_expected_spend"></div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Annual Savings <span class="text-danger">*</span> <small class="text-muted fst-italic">(auto-calculated)</small></label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control" id="mf_annual_savings" readonly tabindex="-1"></div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Total Savings <span class="text-danger">*</span> <small class="text-muted fst-italic">(auto-calculated)</small></label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control" id="mf_total_savings" readonly tabindex="-1"></div>
+                                <small id="mf_total_savings_hint" class="text-muted d-block mt-1"></small>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Cost Avoidance Fields -->
+                    <fieldset class="border rounded p-3 mb-3 d-none" id="mf_section_avoidance">
+                        <legend class="float-none w-auto px-2 fs-6 fw-bold text-warning">Cost Avoidance Details</legend>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Avoidance Type <span class="text-danger">*</span></label>
+                                <div class="modal-radio-group" id="mf_avoidance_type_radios">
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_avoidance_type" value="Capital"><label class="form-check-label">Capital</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_avoidance_type" value="Service"><label class="form-check-label">Service</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_avoidance_type" value="Value Analysis"><label class="form-check-label">Value Analysis</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_avoidance_type" value="Price Parity"><label class="form-check-label">Price Parity</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_avoidance_type" value="Negotiated Price Reduction"><label class="form-check-label">Negotiated Price Reduction</label></div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Strata Project ID</label>
+                                <input type="text" class="form-control modal-field" id="mf_strata_project_id">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">PO Number <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control modal-field" id="mf_po_number">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">PO Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control modal-field" id="mf_po_date">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Avoidance Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control modal-field" id="mf_avoidance_date">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Original Quote <span class="text-danger">*</span></label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control modal-field" id="mf_original_quote"></div>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">New Quote <span class="text-danger">*</span></label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control modal-field" id="mf_new_quote"></div>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Avoidance Amount <span class="text-danger">*</span> <small class="text-muted fst-italic">(auto-calculated)</small></label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control" id="mf_avoidance_amount" readonly tabindex="-1"></div>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Rebate Fields -->
+                    <fieldset class="border rounded p-3 mb-3 d-none" id="mf_section_rebate">
+                        <legend class="float-none w-auto px-2 fs-6 fw-bold text-info">Rebate Details</legend>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Rebate Type <span class="text-danger">*</span></label>
+                                <select class="form-select modal-field" id="mf_rebate_type">
+                                    <option value="">Please Select</option>
+                                    <option>Standard</option>
+                                    <option>Generic Drug</option>
+                                    <option>Specialty Drug</option>
+                                    <option>Volume</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">GPO Tier</label>
+                                <input type="text" class="form-control modal-field" id="mf_gpo_tier_rb">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Rebate Amount <span class="text-danger">*</span></label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control modal-field" id="mf_rebate_amount"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Transaction Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control modal-field" id="mf_transaction_date">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Transaction Type <span class="text-danger">*</span></label>
+                                <div class="modal-radio-group" id="mf_transaction_type_radios">
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_transaction_type" value="Check"><label class="form-check-label">Check</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_transaction_type" value="ACH"><label class="form-check-label">ACH</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_transaction_type" value="Credit Memo"><label class="form-check-label">Credit Memo</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_transaction_type" value="EFT"><label class="form-check-label">EFT</label></div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Transaction Number <span class="text-danger">*</span></label>
+                                <textarea class="form-control modal-field" id="mf_transaction_number" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <!-- Facility Allocations -->
+                    <fieldset class="border rounded p-3 mb-3">
+                        <legend class="float-none w-auto px-2 fs-6 fw-bold text-primary">Facility Allocation</legend>
+                        <div class="row g-2">
+                            <div class="col-6 col-md-3"><label class="form-label">MMC</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_mmc" data-facility="MMC"></div></div>
+                            <div class="col-6 col-md-3"><label class="form-label">BURKE</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_burke" data-facility="BURKE"></div></div>
+                            <div class="col-6 col-md-3"><label class="form-label">AECOM</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_aecom" data-facility="AECOM"></div></div>
+                            <div class="col-6 col-md-3"><label class="form-label">MMVO</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_mmvo" data-facility="MMVO"></div></div>
+                            <div class="col-6 col-md-3"><label class="form-label">MSSO</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_msso" data-facility="MSSO"></div></div>
+                            <div class="col-6 col-md-3"><label class="form-label">NYACK</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_nyack" data-facility="NYACK"></div></div>
+                            <div class="col-6 col-md-3"><label class="form-label">SLCH</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_slch" data-facility="SLCH"></div></div>
+                            <div class="col-6 col-md-3"><label class="form-label">WPH</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_wph" data-facility="WPH"></div></div>
+                        </div>
+                        <div class="mt-2 d-flex align-items-center flex-wrap gap-2">
+                            <span class="fw-semibold">Total Allocation: $<span id="mf_alloc_total">0.00</span></span>
+                            <span id="mf_alloc_remaining"></span>
+                        </div>
+                    </fieldset>
+
+                    <!-- Attachments -->
+                    <fieldset class="border rounded p-3 mb-3">
+                        <legend class="float-none w-auto px-2 fs-6 fw-bold">Attachments</legend>
+                        <div id="mf_file_list" class="mb-2"></div>
+                        <div id="mf_file_upload_area" class="d-none mt-2">
+                            <label class="form-label small text-muted mb-1">Add files <span class="fst-italic">(changes applied when you click Save Changes)</span></label>
+                            <input type="file" id="mf_file_input" multiple
+                                   class="form-control form-control-sm"
+                                   accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.png,.jpg,.jpeg,.gif,.zip">
+                        </div>
+                    </fieldset>
+
+                    <!-- Review Info (read-only always) -->
+                    <div id="mf_review_section" class="d-none">
+                        <hr>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Reviewed By</label>
+                                <input type="text" class="form-control" id="mf_reviewed_by" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Review Date</label>
+                                <input type="text" class="form-control" id="mf_review_date" readonly>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Review Comments</label>
+                                <textarea class="form-control" id="mf_review_comments" rows="2" readonly></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <!-- Approve / Reject — shown only when status is Pending Review and user has permission -->
+                <button type="button" class="btn btn-danger d-none" id="modalRejectBtn"
+                        onclick="rejectInitiative(window._modalInitiativeId)">
+                    <i class="fas fa-times-circle"></i> Reject
+                </button>
+                <button type="button" class="btn btn-success d-none" id="modalApproveBtn"
+                        onclick="approveInitiativeFromModal()">
+                    <i class="fas fa-check-circle"></i> Approve
+                </button>
+                <!-- Revert — shown only when status is Rejected and user has permission -->
+                <button type="button" class="btn btn-warning d-none" id="modalRevertBtn"
+                        onclick="revertInitiativeFromModal()">
+                    <i class="fas fa-undo"></i> Revert to Pending
+                </button>
+                <!-- shown only in edit (form) view -->
+                <button type="button" class="btn btn-primary d-none" id="modalSaveBtn" onclick="saveModalChanges()">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+                <!-- shown only in confirm view -->
+                <button type="button" class="btn btn-secondary d-none" id="mf_goBackBtn" onclick="goBackToForm()">
+                    <i class="fas fa-arrow-left"></i> Go Back
+                </button>
+                <button type="button" class="btn btn-primary d-none" id="mf_confirmSaveBtn" onclick="confirmAndSave()">
+                    <i class="fas fa-check-circle"></i> Confirm &amp; Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Comment Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reject Initiative</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Rejection Reason <span class="form-required">*</span></label>
+                    <textarea class="form-control" id="rejectComment" rows="4" 
+                              placeholder="Please enter the reason for rejection..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="submitRejection()">
+                    <i class="fas fa-times-circle"></i> Reject
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

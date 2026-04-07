@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Savings Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Hero ── */
+    .hero-band {
+        background: var(--monte-navy, #112B46);
+        color: #fff;
+        padding: 3rem 2rem;
+        margin-bottom: 2.5rem;
+    }
+    .hero-band h1 {
+        font-family: 'Source Serif 4', Georgia, serif;
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: #fff;
+    }
+    .hero-band p {
+        font-size: 1rem;
+        color: rgba(255,255,255,.72);
+        max-width: 520px;
+        margin: 0;
+    }
+    .hero-band .hero-actions {
+        margin-top: 1.5rem;
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    .hero-band .btn-hero-primary {
+        background: #fff;
+        color: #112B46;
+        font-weight: 700;
+        border: none;
+        padding: 0.55rem 1.4rem;
+        border-radius: 4px;
+    }
+    .hero-band .btn-hero-primary:hover { background: rgba(255,255,255,.9); }
+    .hero-band .btn-hero-outline {
+        background: transparent;
+        color: rgba(255,255,255,.85);
+        font-weight: 600;
+        border: 1px solid rgba(255,255,255,.4);
+        padding: 0.55rem 1.4rem;
+        border-radius: 4px;
+    }
+    .hero-band .btn-hero-outline:hover {
+        border-color: rgba(255,255,255,.8);
+        color: #fff;
+    }
+
+    /* ── Action cards ── */
+    .action-card {
+        border: 1px solid #DDE3EA;
+        border-top: 3px solid #112B46;
+        border-radius: 6px;
+        padding: 1.5rem;
+        background: #fff;
+        transition: box-shadow 0.2s, transform 0.2s;
+        height: 100%;
+    }
+    .action-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 18px rgba(17,43,70,.10);
+    }
+    .action-card.card-savings { border-top-color: #1A7A4A; }
+    .action-card.card-rebate  { border-top-color: #0072BC; }
+    .action-card.card-avoidance { border-top-color: #00A8A8; }
+    .action-card .icon-box {
+        width: 42px;
+        height: 42px;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+    .icon-navy { background-color: #112B46; color: #fff; }
+    .icon-blue { background-color: #0072BC; color: #fff; }
+    .icon-teal { background-color: #00A8A8; color: #fff; }
+    .action-card h5 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #112B46;
+        margin-bottom: 0.35rem;
+    }
+    .action-card p { font-size: 0.82rem; color: #5E6E82; margin-bottom: 1rem; }
+
+    /* ── Stats cards (matching dashboard layout) ── */
+    .stats-card {
+        border-top: 3px solid #112B46;
+        transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .stats-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 18px rgba(17,43,70,.10);
+    }
+    .stats-icon { font-size: 2rem; opacity: 0.45; }
+    .stats-card h6 {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 600;
+        color: #5E6E82;
+    }
+    .stats-card h3 { font-size: 1.55rem; font-weight: 700; color: #1A2535; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ── Hero band ── -->
+<div class="hero-band">
+    <div class="container-fluid px-4">
+        <h1>Procurement Savings Tracker</h1>
+        <p>Track and manage Cost Savings, Rebates, and Cost Avoidance initiatives across Montefiore Einstein's supply chain.</p>
+        <div class="hero-actions">
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-hero-primary">
+                <i class="fas fa-table-columns me-1"></i>Open Dashboard
+            </a>
+            {# <a href="{{ url_for('main.savings_dashboard') }}" class="btn btn-hero-outline">
+                <i class="fas fa-chart-bar me-1"></i>View Analytics
+            #}
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ── Action cards ── -->
+<div class="container-fluid px-4">
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="action-card card-savings">
+                <div class="icon-box icon-navy"><i class="fas fa-piggy-bank"></i></div>
+                <h5>Cost Savings</h5>
+                <p>Submit initiatives where vendor pricing has been reduced vs. prior contract or market rates.</p>
+                <a href="{{ url_for('main.cost_savings_form') }}" class="btn btn-primary btn-sm">Start Form</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="action-card card-rebate">
+                <div class="icon-box icon-blue"><i class="fas fa-receipt"></i></div>
+                <h5>Rebate</h5>
+                <p>Record rebate agreements and expected returns from vendor compliance and volume commitments.</p>
+                <a href="{{ url_for('main.rebate_form') }}" class="btn btn-secondary btn-sm">Start Form</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="action-card card-avoidance">
+                <div class="icon-box icon-teal"><i class="fas fa-shield-halved"></i></div>
+                <h5>Cost Avoidance</h5>
+                <p>Document avoided costs where procurement actions prevented price increases or unnecessary spending.</p>
+                <a href="{{ url_for('main.cost_avoidance_form') }}" class="btn btn-sm" style="background:#00A8A8;color:#fff;border:none;">Start Form</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats row (matching dashboard layout) -->
+    <div class="row g-3 mt-2">
+        <div class="col-6 col-md-3">
+            <div class="card stats-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Total Initiatives</h6>
+                            <h3 class="mb-0" id="homeStatTotal">—</h3>
+                        </div>
+                        <div class="stats-icon" style="color:#112B46;"><i class="fas fa-list-ul"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card stats-card" style="border-top-color:#1A7A4A;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Approved</h6>
+                            <h3 class="mb-0" style="color:#1A7A4A;" id="homeStatApproved">—</h3>
+                        </div>
+                        <div class="stats-icon" style="color:#1A7A4A;"><i class="fas fa-check-circle"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card stats-card" style="border-top-color:#D4820A;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Pending Review</h6>
+                            <h3 class="mb-0" style="color:#D4820A;" id="homeStatPending">—</h3>
+                        </div>
+                        <div class="stats-icon" style="color:#D4820A;"><i class="fas fa-clock"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card stats-card" style="border-top-color:#0072BC;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Total Savings</h6>
+                            <h3 class="mb-0" style="color:#0072BC;" id="homeStatSavings">—</h3>
+                        </div>
+                        <div class="stats-icon" style="color:#0072BC;"><i class="fas fa-dollar-sign"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Quick stats pull for the home page strip
+fetch('/api/initiatives?limit=1000')
+    .then(r => r.json())
+    .then(data => {
+        const items = data.initiatives || data.data || data || [];
+        const approved = items.filter(i => (i.status || '').toLowerCase().includes('approved') && !i.is_deleted);
+        const pending  = items.filter(i => (i.status || '').toLowerCase().includes('pending') && !i.is_deleted);
+        const total    = approved.reduce((s,i) => s + parseFloat(i.saving_amount||i.savings_amount||0), 0);
+        document.getElementById('homeStatTotal').textContent    = items.filter(i=>!i.is_deleted).length;
+        document.getElementById('homeStatApproved').textContent = approved.length;
+        document.getElementById('homeStatPending').textContent  = pending.length;
+        document.getElementById('homeStatSavings').textContent  =
+            '$' + (total >= 1e6 ? (total/1e6).toFixed(2)+'M' : total >= 1e3 ? (total/1e3).toFixed(2)+'K' : total.toFixed(0));
+    })
+    .catch(() => {}); // silently ignore if endpoint differs
+</script>
+{% endblock %}

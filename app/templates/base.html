@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Savings Tracker{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* ══════════════════════════════════════════
+           MONTEFIORE EINSTEIN  —  Brand tokens
+        ══════════════════════════════════════════ */
+        :root {
+            --monte-navy:    #112B46;   /* primary brand navy */
+            --monte-navy-dk: #0B1E31;   /* darker navy (hover / footer) */
+            --monte-blue:    #0072BC;   /* accent blue */
+            --monte-teal:    #00A8A8;   /* secondary teal */
+            --success-color: #1A7A4A;
+            --danger-color:  #C0392B;
+            --warning-color: #D4820A;
+            --light-bg:      #F7F8FA;
+            --card-bg:       #FFFFFF;
+            --border-color:  #DDE3EA;
+            --text-main:     #1A2535;
+            --text-muted:    #5E6E82;
+            /* aliases for shared CSS files */
+            --primary-color: var(--monte-navy);
+            --secondary-color: var(--monte-blue);
+        }
+
+        /* ── Base ── */
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--light-bg);
+            color: var(--text-main);
+            font-size: 0.915rem;
+        }
+
+        /* ════════════════════════════════════════
+           MAIN NAV BAR  (dark navy, single bar)
+        ════════════════════════════════════════ */
+        .navbar-custom {
+            background-color: var(--monte-navy);
+            padding: 0;
+            min-height: 52px;
+        }
+        .navbar-custom > .container-fluid {
+            padding-left: var(--page-gutter);
+            padding-right: var(--page-gutter);
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .navbar-custom .navbar-brand img { height: 42px; filter: brightness(0) invert(1); }
+        .navbar-custom .navbar-brand .brand-text {
+            font-family: 'Source Serif 4', Georgia, serif;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            line-height: 1.1;
+        }
+        .navbar-custom .navbar-brand .brand-sub {
+            display: block;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.58rem;
+            font-weight: 600;
+            color: rgba(255,255,255,.55);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+        .navbar-custom .navbar-toggler { border-color: rgba(255,255,255,.3); }
+        .navbar-custom .navbar-toggler-icon { filter: invert(1); }
+
+        .navbar-custom .nav-link {
+            color: rgba(255,255,255,.78) !important;
+            font-weight: 500;
+            font-size: 0.875rem;
+            padding: 1rem 0.85rem;
+            position: relative;
+            transition: color .15s;
+        }
+        .navbar-custom .nav-link:hover,
+        .navbar-custom .nav-link.active { color: #fff !important; }
+        .navbar-custom .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0.85rem; right: 0.85rem;
+            height: 3px;
+            background: var(--monte-blue);
+            transform: scaleX(0);
+            transition: transform .2s;
+            border-radius: 3px 3px 0 0;
+        }
+        .navbar-custom .nav-link:hover::after,
+        .navbar-custom .nav-link.active::after { transform: scaleX(1); }
+        .navbar-custom .dropdown-toggle::after { border-color: rgba(255,255,255,.6) transparent transparent; }
+
+        .navbar-custom .dropdown-menu {
+            background-color: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-top: 3px solid var(--monte-blue);
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 8px 24px rgba(17,43,70,.18);
+            padding: 0.5rem 0;
+            min-width: 210px;
+            margin-top: 0;
+        }
+        .navbar-custom .dropdown-item {
+            color: var(--text-main);
+            padding: 0.5rem 1.1rem;
+            font-size: 0.875rem;
+            transition: background .15s, color .15s;
+        }
+        .navbar-custom .dropdown-item:hover {
+            background-color: #EFF4FA;
+            color: var(--monte-navy);
+        }
+        .navbar-custom .navbar-user {
+            font-size: 0.78rem;
+            color: rgba(255,255,255,.65);
+            font-weight: 500;
+        }
+        .navbar-custom .btn-logout {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: rgba(255,255,255,.8);
+            border: 1px solid rgba(255,255,255,.25);
+            border-radius: 4px;
+            padding: 0.25rem 0.8rem;
+            background: transparent;
+            transition: background .15s, color .15s, border-color .15s;
+        }
+        .navbar-custom .btn-logout:hover {
+            background: rgba(255,255,255,.12);
+            color: #fff;
+            border-color: rgba(255,255,255,.5);
+        }
+
+        /* ── Layout ── */
+        :root { --page-gutter: 3rem; }
+        .page-shell {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding-left: var(--page-gutter);
+            padding-right: var(--page-gutter);
+        }
+        /* child templates wrap in container-fluid — zero its padding so page-shell is sole gutter */
+        .content-wrapper .container-fluid {
+            padding-left: 0;
+            padding-right: 0;
+        }
+        .content-wrapper {
+            padding: 2rem 0;
+            min-height: calc(100vh - 130px);
+        }
+        @media (max-width: 768px) { :root { --page-gutter: 1rem; } }
+
+        /* ── Cards ── */
+        .card {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(17,43,70,.06);
+            background-color: var(--card-bg);
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            background-color: var(--monte-navy);
+            color: #FFFFFF;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0 !important;
+            padding: 0.85rem 1.25rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            letter-spacing: 0.01em;
+        }
+        .card-header a, .card-header .btn-light {
+            color: var(--monte-navy);
+            background: rgba(255,255,255,.92);
+            border: none;
+        }
+        .card-header a:hover, .card-header .btn-light:hover {
+            background: #fff;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            font-size: 0.875rem;
+            font-weight: 600;
+            border-radius: 4px;
+            padding: 0.45rem 1.1rem;
+            letter-spacing: 0.01em;
+            transition: all .2s;
+        }
+        .btn-primary {
+            background-color: var(--monte-navy);
+            border-color: var(--monte-navy);
+            color: #fff;
+        }
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: var(--monte-navy-dk);
+            border-color: var(--monte-navy-dk);
+        }
+        .btn-secondary {
+            background-color: var(--monte-blue);
+            border-color: var(--monte-blue);
+            color: #fff;
+        }
+        .btn-secondary:hover {
+            background-color: #005fa3;
+            border-color: #005fa3;
+        }
+        .btn-outline-primary {
+            color: var(--monte-navy);
+            border-color: var(--monte-navy);
+        }
+        .btn-outline-primary:hover {
+            background-color: var(--monte-navy);
+            border-color: var(--monte-navy);
+            color: #fff;
+        }
+
+        /* ── Alerts ── */
+        .alert {
+            border-radius: 4px;
+            font-size: 0.875rem;
+            border: 1px solid transparent;
+            border-left-width: 4px;
+        }
+        .alert-success { background-color: #F0FBF5; border-color: #1A7A4A; color: #0E4D2D; }
+        .alert-danger  { background-color: #FDF3F2; border-color: #C0392B; color: #7B2218; }
+        .alert-warning { background-color: #FEF9EE; border-color: #D4820A; color: #7A4A06; }
+        .alert-info    { background-color: #EFF5FC; border-color: #0072BC; color: #004D80; }
+
+        /* ── Form elements ── */
+        .form-required { color: var(--danger-color); font-weight: 600; }
+        .form-control, .form-select {
+            border-radius: 4px;
+            border-color: var(--border-color);
+            font-size: 0.875rem;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--monte-blue);
+            box-shadow: 0 0 0 3px rgba(0,114,188,.14);
+        }
+
+        /* ── Tables ── */
+        .table { font-size: 0.875rem; }
+        .table thead th {
+            background-color: var(--monte-navy);
+            color: rgba(255,255,255,.9);
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border: none;
+            padding: 0.65rem 0.85rem;
+        }
+        .table tbody tr:hover { background-color: #EFF4FA; }
+        .table tbody td { vertical-align: middle; padding: 0.6rem 0.85rem; }
+
+        /* ── Badges ── */
+        .badge {
+            font-weight: 600;
+            font-size: 0.72rem;
+            padding: 0.28em 0.65em;
+            border-radius: 3px;
+            letter-spacing: 0.03em;
+        }
+
+        /* ── Page headings ── */
+        h2, h3 {
+            font-family: 'Source Serif 4', Georgia, serif;
+            color: var(--monte-navy);
+            font-weight: 700;
+        }
+        h4, h5, h6 { color: var(--monte-navy); font-weight: 600; }
+        .text-muted { color: var(--text-muted) !important; }
+
+        /* ════════════════════════════════════════
+           FOOTER  (dark navy — matches site)
+        ════════════════════════════════════════ */
+        footer.site-footer {
+            background-color: var(--monte-navy);
+            color: rgba(255,255,255,.7);
+            padding: 2rem 0 1rem;
+            margin-top: 2.5rem;
+            font-size: 0.8rem;
+        }
+        footer.site-footer .footer-brand {
+            font-family: 'Source Serif 4', Georgia, serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.25rem;
+        }
+        footer.site-footer .footer-tagline {
+            font-size: 0.72rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--monte-blue);
+            font-weight: 600;
+        }
+        footer.site-footer a { color: rgba(255,255,255,.6); text-decoration: none; transition: color .15s; }
+        footer.site-footer a:hover { color: #fff; }
+        footer.site-footer hr { border-color: rgba(255,255,255,.12); margin: 1.25rem 0 0.75rem; }
+        footer.site-footer .footer-bottom {
+            font-size: 0.72rem;
+            color: rgba(255,255,255,.4);
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- ── Single Navy Navigation Bar ── -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+        <div class="container-fluid">
+            <!-- Brand -->
+            <a class="navbar-brand" href="{{ url_for('main.index') }}">
+                <img src="{{ url_for('static', filename='images/monte_logo.svg') }}"
+                     alt="Montefiore Logo"
+                     style="height: 38px;">
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <!-- Nav links -->
+                <ul class="navbar-nav ms-4 me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.dashboard') }}">
+                            <i class="fas fa-table-columns me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        {# <a class="nav-link" href="{{ url_for('main.savings_dashboard') }}">
+                            <i class="fas fa-chart-bar me-1"></i>Analytics
+                        </a> #}
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.rebate_extraction') }}">
+                            <i class="fas fa-file-export me-1"></i>Rebate Extraction
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-plus me-1"></i>New Initiative
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('main.cost_savings_form') }}">
+                                    <i class="fas fa-piggy-bank me-2" style="color:var(--monte-teal);"></i>Cost Savings
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('main.rebate_form') }}">
+                                    <i class="fas fa-receipt me-2" style="color:var(--monte-blue);"></i>Rebate
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('main.cost_avoidance_form') }}">
+                                    <i class="fas fa-shield-halved me-2" style="color:var(--monte-navy);"></i>Cost Avoidance
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <!-- Right: user + logout -->
+                <ul class="navbar-nav align-items-center gap-3">
+                    <li class="nav-item">
+                        <span class="navbar-user">
+                            <i class="fas fa-user-circle me-1" style="color:rgba(255,255,255,.5);"></i>
+                            {{ current_user }}
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn-logout" onclick="logout()">
+                            <i class="fas fa-sign-out-alt me-1"></i>Logout
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    <div class="page-shell mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content -->
+    <div class="content-wrapper">
+        <div class="page-shell">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <!-- ── Footer ── -->
+    <footer class="site-footer">
+        <div class="page-shell">
+            <div class="row">
+                <div class="col-md-5 mb-3">
+                    <div class="footer-brand">Montefiore Einstein</div>
+                    <div class="footer-tagline">Procurement &amp; Supply Chain</div>
+                    <p class="mt-2" style="color:rgba(255,255,255,.5); font-size:0.78rem; max-width:320px;">
+                        Internal tool for tracking Cost Savings, Rebates, and Cost Avoidance initiatives.
+                    </p>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="fw-600 mb-2" style="color:rgba(255,255,255,.5); font-size:0.72rem; text-transform:uppercase; letter-spacing:.08em;">Quick Links</div>
+                    <ul class="list-unstyled mb-0" style="line-height:2;">
+                        <li><a href="{{ url_for('main.dashboard') }}"><i class="fas fa-table-columns fa-fw me-1"></i>Dashboard</a></li>
+                        <li><a href="{{ url_for('main.rebate_extraction') }}"><i class="fas fa-file-export fa-fw me-1"></i>Rebate Extraction</a></li>
+                        {# <li><a href="{{ url_for('main.savings_dashboard') }}"><i class="fas fa-chart-bar fa-fw me-1"></i>Analytics</a></li> #}
+                        <li><a href="{{ url_for('main.cost_savings_form') }}"><i class="fas fa-piggy-bank fa-fw me-1"></i>Cost Savings Form</a></li>
+                        <li><a href="{{ url_for('main.rebate_form') }}"><i class="fas fa-receipt fa-fw me-1"></i>Rebate Form</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="fw-600 mb-2" style="color:rgba(255,255,255,.5); font-size:0.72rem; text-transform:uppercase; letter-spacing:.08em;">Montefiore Einstein</div>
+                    <ul class="list-unstyled mb-0" style="line-height:2;">
+                        <li><a href="https://montefioreeinstein.org/" target="_blank"><i class="fas fa-external-link-alt fa-fw me-1"></i>montefioreeinstein.org</a></li>
+                        <li><a href="https://montefioreeinstein.org/supplychain" target="_blank"><i class="fas fa-link fa-fw me-1"></i>Supply Chain Portal</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr>
+            <div class="footer-bottom text-center">
+                &copy; 2026 Montefiore Medicine &mdash; Procurement Data Team. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+    <script>
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                window.location.href = '/logout';
+            }
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            // Highlight active nav link
+            const links = document.querySelectorAll('.navbar-custom .nav-link');
+            links.forEach(l => {
+                if (l.href && l.href === window.location.href) {
+                    l.classList.add('active');
+                    l.style.color = 'var(--monte-navy)';
+                }
+            });
+        });
+    </script>
+
+    <!-- Number formatter (currency inputs) -->
+    <script src="{{ url_for('static', filename='js/number-format.js') }}"></script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

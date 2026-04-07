@@ -1,0 +1,168 @@
+/* Forms Common Styles — Montefiore Einstein brand */
+
+.form-section {
+    background-color: #FFFFFF;
+    padding: 1.5rem 1.75rem;
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--monte-navy, #112B46);
+}
+
+.section-title {
+    color: var(--monte-navy, #112B46);
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid var(--border-color, #DDE3EA);
+}
+
+.form-label {
+    font-weight: 600;
+    color: var(--text-muted, #5E6E82);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.4rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--monte-blue, #0072BC);
+    box-shadow: 0 0 0 3px rgba(0, 114, 188, 0.14);
+}
+
+.facility-allocation:focus {
+    border-color: var(--monte-teal, #00A8A8);
+    box-shadow: 0 0 0 3px rgba(0, 168, 168, 0.15);
+}
+
+/* ── File list ── */
+#fileList {
+    margin-top: 0.75rem;
+}
+
+.file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0.9rem;
+    background-color: #F9FAFB;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin-bottom: 0.4rem;
+}
+
+.file-item-name {
+    flex: 1;
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.file-item-size {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-right: 0.75rem;
+}
+
+.file-item-remove {
+    color: var(--danger-color);
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.file-item-remove:hover {
+    opacity: 0.7;
+}
+
+.input-group-text {
+    background-color: #F7F8FA !important;
+    color: var(--text-muted, #5E6E82);
+    font-weight: 700;
+    border-right: none !important;
+    border-color: var(--border-color, #DDE3EA) !important;
+    padding-left: 10px;
+    padding-right: 0;
+    font-size: 0.875rem;
+}
+.input-group .form-control,
+.input-group .form-select {
+    border-left: none !important;
+    box-shadow: none !important;
+    padding-left: 8px;
+}
+.input-group .form-control:focus,
+.input-group .form-select:focus {
+    box-shadow: none !important;
+    border-color: #0072BC !important;
+}
+.input-group:focus-within .input-group-text {
+    border-color: #0072BC !important;
+}
+.input-group:focus-within {
+    box-shadow: 0 0 0 3px rgba(0, 114, 188, 0.14);
+    border-radius: 4px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .form-section {
+        padding: 1rem;
+    }
+    .section-title {
+        font-size: 0.9rem;
+    }
+}
+
+/* ── Loading overlay ── */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255,255,255,0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    border: 3px solid var(--border-color, #DDE3EA);
+    border-top: 3px solid #112B46;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ── Validation ── */
+.is-invalid { border-color: var(--danger-color) !important; }
+.invalid-feedback {
+    display: block;
+    color: var(--danger-color);
+    font-size: 0.8rem;
+    margin-top: 0.2rem;
+}
+.is-valid { border-color: var(--success-color) !important; }
+.valid-feedback {
+    display: block;
+    color: var(--success-color);
+    font-size: 0.8rem;
+    margin-top: 0.2rem;
+}
+
+/* ── Misc ── */
+.text-warning-dark { color: #92600a !important; }
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }

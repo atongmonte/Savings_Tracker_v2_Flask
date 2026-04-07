@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Rebate Extraction – Savings Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .extraction-header {
+        background: #FFFFFF;
+        border: 1px solid #DDE3EA;
+        border-left: 4px solid #0072BC;
+        border-radius: 6px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.25rem;
+    }
+    .extraction-header h4 {
+        margin: 0;
+        color: #112B46;
+        font-family: 'Source Serif 4', Georgia, serif;
+        font-weight: 700;
+    }
+    .extraction-header p {
+        margin: .35rem 0 0;
+        color: #5E6E82;
+        font-size: .88rem;
+    }
+    .summary-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        background: #EFF5FC;
+        color: #112B46;
+        border: 1px solid #CFE0F2;
+        border-radius: 999px;
+        padding: .45rem .8rem;
+        font-size: .82rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .toolbar {
+        display: flex;
+        gap: .75rem;
+        justify-content: space-between;
+        align-items: end;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+    .toolbar .toolbar-group {
+        display: flex;
+        gap: .75rem;
+        align-items: end;
+        flex-wrap: wrap;
+    }
+    .toolbar label {
+        display: block;
+        margin-bottom: .25rem;
+        color: #5E6E82;
+        font-size: .72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+    .table-wrap {
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 70vh;
+    }
+    #rebateExtractionTable {
+        min-width: 2100px;
+        margin-bottom: 0;
+    }
+    #rebateExtractionTable thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        white-space: nowrap;
+    }
+    #rebateExtractionTable tbody td {
+        font-size: .83rem;
+        vertical-align: top;
+    }
+    .desc-cell {
+        min-width: 240px;
+        max-width: 320px;
+        white-space: normal;
+    }
+    .amount-cell {
+        text-align: right;
+        white-space: nowrap;
+        font-weight: 600;
+    }
+    .date-cell,
+    .id-cell {
+        white-space: nowrap;
+    }
+    .alloc-col {
+        min-width: 130px;
+        text-align: center;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+    .empty-state {
+        text-align: center;
+        color: #5E6E82;
+        padding: 2rem 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="extraction-header d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <h4><i class="fas fa-file-invoice-dollar me-2"></i>Rebate Extraction</h4>
+            <p>All rebate initiatives with detailed allocations in one export-friendly view.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <span class="summary-chip"><i class="fas fa-list me-1"></i>Rows: {{ rebate_count }}</span>
+            <span class="summary-chip"><i class="fas fa-dollar-sign me-1"></i>Total: {{ '${:,.2f}'.format(total_rebate_amount) }}</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span><i class="fas fa-table me-2"></i>Rebate Initiative Extract</span>
+        </div>
+        <div class="card-body">
+            <div class="toolbar">
+                <form method="get" action="{{ url_for('main.rebate_extraction') }}" class="toolbar-group">
+                    <div>
+                        <label for="startDate">Check Date From</label>
+                        <input id="startDate" name="start_date" type="date" class="form-control" value="{{ filter_start_date }}">
+                    </div>
+                    <div>
+                        <label for="endDate">Check Date To</label>
+                        <input id="endDate" name="end_date" type="date" class="form-control" value="{{ filter_end_date }}">
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-filter me-1"></i>Apply Filter
+                        </button>
+                    </div>
+                    <div>
+                        <a class="btn btn-outline-secondary" href="{{ url_for('main.rebate_extraction') }}">
+                            <i class="fas fa-rotate-left me-1"></i>Clear
+                        </a>
+                    </div>
+                </form>
+
+                <div class="toolbar-group">
+                    <div>
+                        <label for="rebateSearch">Quick Search</label>
+                        <input
+                            id="rebateSearch"
+                            type="text"
+                            class="form-control"
+                            style="min-width: 320px;"
+                            value="{{ search_term or '' }}"
+                            placeholder="Search initiative, vendor, contract, or allocation..."
+                            oninput="filterRebateRows()"
+                        >
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-secondary" type="button" onclick="exportRebateZip()">
+                            <i class="fas fa-file-zipper me-1"></i>Export ZIP
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table id="rebateExtractionTable" class="table table-hover table-bordered align-middle">
+                    <thead>
+                        <tr>
+                            <th>Initiative ID</th>
+                            <th>Init Desc</th>
+                            <th>Rebate Type</th>
+                            <th>Contract Num</th>
+                            <th>Contract Category</th>
+                            <th>Contract Source</th>
+                            <th>Vendor Name</th>
+                            <th>Rebate Check Date</th>
+                            <th>Rebate Payment Type</th>
+                            <th>Check Number</th>
+                            <th class="text-end">Rebate Amount</th>
+                            {% for column_name in allocation_columns %}
+                            <th>{{ column_name }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rebate_rows %}
+                        <tr data-row="rebate">
+                            <td class="id-cell">{{ row.initiative_id }}</td>
+                            <td class="desc-cell">{{ row.description }}</td>
+                            <td>{{ row.rebate_type }}</td>
+                            <td>{{ row.contract_number }}</td>
+                            <td>{{ row.contract_category }}</td>
+                            <td>{{ row.contract_source }}</td>
+                            <td>{{ row.vendor_name }}</td>
+                            <td class="date-cell">{{ row.rebate_check_date }}</td>
+                            <td>{{ row.rebate_payment_type }}</td>
+                            <td>{{ row.check_number }}</td>
+                            <td class="amount-cell">{{ '${:,.2f}'.format(row.rebate_amount) }}</td>
+                            {% for column_name in allocation_columns %}
+                            <td class="alloc-col">{{ row.allocation_map[column_name] }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                        <tr id="rebateEmptyState" {% if rebate_rows %}style="display:none;"{% endif %}>
+                            <td colspan="19" class="empty-state">No rebate initiatives match the current search.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function filterRebateRows() {
+        const term = (document.getElementById('rebateSearch')?.value || '').toLowerCase().trim();
+        const rows = Array.from(document.querySelectorAll('#rebateExtractionTable tbody tr[data-row="rebate"]'));
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const show = !term || row.textContent.toLowerCase().includes(term);
+            row.style.display = show ? '' : 'none';
+            if (show) visibleCount += 1;
+        });
+
+        const emptyState = document.getElementById('rebateEmptyState');
+        if (emptyState) {
+            emptyState.style.display = visibleCount === 0 ? '' : 'none';
+        }
+    }
+
+    function exportRebateZip() {
+        const params = new URLSearchParams();
+        const startDate = document.getElementById('startDate')?.value || '';
+        const endDate = document.getElementById('endDate')?.value || '';
+        const search = document.getElementById('rebateSearch')?.value.trim() || '';
+
+        if (startDate) params.set('start_date', startDate);
+        if (endDate) params.set('end_date', endDate);
+        if (search) params.set('search', search);
+
+        const query = params.toString();
+        const url = "{{ url_for('main.rebate_extraction_export') }}" + (query ? `?${query}` : '');
+        window.location.href = url;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        filterRebateRows();
+    });
+</script>
+{% endblock %}

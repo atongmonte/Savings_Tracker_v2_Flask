@@ -1,0 +1,1099 @@
+{% extends "base.html" %}
+
+{% block title %}Savings Analytics – Savings Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Page layout ─────────────────────────────────────── */
+    .analytics-header {
+        background: #FFFFFF;
+        border: 1px solid #DDE3EA;
+        border-left: 4px solid #112B46;
+        color: #1A2535;
+        padding: 1.25rem 1.5rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+    }
+    .analytics-header h4 { color: #112B46; font-family: 'Source Serif 4', Georgia, serif; font-weight: 700; margin: 0; }
+    .analytics-header p  { color: #5E6E82; font-size: 0.85rem; margin: 0; }
+
+    /* ── Filter bar (matching dashboard filter-section) ──── */
+    .filter-bar {
+        background-color: #FFFFFF;
+        padding: 1rem 1.25rem;
+        border-radius: 6px;
+        border: 1px solid #DDE3EA;
+        margin-bottom: 1.25rem;
+    }
+    .filter-bar label {
+        font-weight: 600;
+        font-size: 0.72rem;
+        color: #5E6E82;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+    }
+    .filter-bar .form-control,
+    .filter-bar .form-select {
+        border-radius: 4px;
+        font-size: 0.875rem;
+    }
+
+    /* ── KPI / Stats cards (matching dashboard layout) ──── */
+    .stats-card {
+        border-top: 3px solid #112B46;
+        transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .stats-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 18px rgba(17,43,70,.10);
+    }
+    .stats-card.avoidance { border-top-color: #00A8A8; }
+    .stats-card.savings   { border-top-color: #1A7A4A; }
+    .stats-card.rebate    { border-top-color: #0072BC; }
+    .stats-icon { font-size: 2rem; opacity: 0.45; }
+    .stats-card h6 {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 600;
+        color: #5E6E82;
+    }
+    .stats-card h3 { font-size: 1.55rem; font-weight: 700; color: #1A2535; }
+
+    /* ── Chart cards ─────────────────────────────────────── */
+    .chart-card {
+        background: white;
+        border-radius: 6px;
+        border: 1px solid #DDE3EA;
+        border-top: 3px solid #DDE3EA;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.5rem;
+        height: 100%;
+    }
+    .chart-card .chart-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .chart-card .chart-title small { font-size: .75rem; font-weight: 400; color: var(--text-muted); }
+    .chart-canvas-wrap {
+        position: relative;
+    }
+
+    /* ── Vendor table ────────────────────────────────────── */
+    .vendor-table-wrap {
+        overflow-y: auto;
+        max-height: 380px;
+    }
+    #vendorTable {
+        font-size: 0.83rem;
+        width: 100%;
+    }
+    #vendorTable thead th {
+        background: #112B46;
+        color: rgba(255,255,255,.9);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        white-space: nowrap;
+        padding: .5rem .75rem;
+        font-weight: 600;
+    }
+    #vendorTable tbody tr:hover { background-color: #EFF4FA; }
+    #vendorTable tbody td { padding: .4rem .75rem; vertical-align: middle; }
+    #vendorTable tfoot td {
+        font-weight: 700;
+        background: #F9FAFB;
+        border-top: 2px solid var(--border-color);
+        padding: .5rem .75rem;
+    }
+    .amount-cell { text-align: right; white-space: nowrap; }
+    .total-cell  { text-align: right; font-weight: 700; white-space: nowrap; }
+
+    /* ── View toggle ─────────────────────────────────────── */
+    .view-btn-group .btn {
+        font-size: .8rem;
+        padding: .2rem .65rem;
+    }
+
+    /* ── Loading/empty states ────────────────────────────── */
+    .loading-overlay {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 120px;
+        color: var(--text-muted);
+        font-size: .9rem;
+    }
+    .empty-msg {
+        text-align: center;
+        color: var(--text-muted);
+        padding: 2rem 0;
+        font-size: .9rem;
+    }
+
+    /* ── Detail table ────────────────────────────────────── */
+    .fac-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        background: #EAF0F7;
+        border: 1px solid #BDD0E8;
+        border-radius: 3px;
+        padding: 1px 6px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #112B46;
+        white-space: nowrap;
+        margin: 1px 2px 1px 0;
+    }
+    .fac-badge-detail { font-weight: 400; color: var(--text-muted); }
+    .fac-alloc-val { font-size: 0.8rem; font-weight: 600; color: #112B46; }
+    .fac-col-th { background: #EAF0F7; font-size: 0.75rem; letter-spacing: 0.03em; white-space: nowrap; }
+    .detail-table-wrap {
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 480px;
+    }
+    #detailTable {
+        font-size: 0.8rem;
+        min-width: 1100px;
+        width: 100%;
+    }
+    #detailTable thead th { background: #112B46; color: rgba(255,255,255,.9); position: sticky;
+        top: 0; z-index: 2; white-space: nowrap; padding: .45rem .7rem; font-weight: 600; font-size: 0.72rem;
+        text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; user-select: none; border-bottom: none; }
+    #detailTable thead th:hover { background: #0B1E31; }
+    #detailTable thead th .sort-icon { margin-left: .3rem; opacity: .55; font-size: .75rem; }
+    #detailTable tbody tr:hover { background-color: #EFF4FA; }
+    #detailTable tbody td {
+        padding: .38rem .7rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    #detailTable tfoot td {
+        font-weight: 700;
+        background: #F9FAFB;
+        border-top: 2px solid var(--border-color);
+        padding: .45rem .7rem;
+        white-space: nowrap;
+    }
+    .type-badge {
+        display: inline-block;
+        padding: .15rem .55rem;
+        border-radius: 10px;
+        font-size: .72rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .type-cs  { background: #EAF0F7; color: #112B46; }
+    .type-rb  { background: #E0EEFA; color: #004D80; }
+    .type-ca  { background: #E0F5F5; color: #005F5F; }
+    .status-badge-sm {
+        display: inline-block;
+        padding: .15rem .55rem;
+        border-radius: 10px;
+        font-size: .72rem;
+        font-weight: 600;
+    }
+    .sb-approved { background:#F0FBF5; color:#0E4D2D; }
+    .sb-pending  { background:#FEF9EE; color:#7A4A06; }
+    .sb-rejected { background:#FDF3F2; color:#7B2218; }
+    .detail-search { max-width: 260px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- ── Page header ──────────────────────────────────────── -->
+    <div class="analytics-header d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div>
+            <h4 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Savings Analytics Dashboard</h4>
+            <small class="text-muted">Approved initiatives · Cost Savings · Rebate · Cost Avoidance</small>
+        </div>
+        <span class="badge fs-6" style="background:#EAF0F7;color:#112B46;border:1px solid #BDD0E8;" id="totalBadge">Loading…</span>
+    </div>
+
+    <!-- ── Filter bar ──────────────────────────────────────── -->
+    <div class="filter-bar">
+        <div class="row g-3 align-items-end">
+            <div class="col-sm-4 col-lg-3">
+                <label for="startDate">Start Date</label>
+                <input type="date" id="startDate" class="form-control form-control-sm">
+            </div>
+            <div class="col-sm-4 col-lg-3">
+                <label for="endDate">End Date</label>
+                <input type="date" id="endDate" class="form-control form-control-sm">
+            </div>
+            <div class="col-sm-4 col-lg-2">
+                <label for="statusFilter">Include Pending</label>
+                <select id="statusFilter" class="form-select form-select-sm">
+                    <option value="false">Approved only</option>
+                    <option value="true" selected>Approved + Pending</option>
+                </select>
+            </div>
+            <div class="col-sm-4 col-lg-2">
+                <label>Facility</label>
+                <div class="dropdown" id="facilityDropdownWrap">
+                    <button class="btn btn-outline-secondary btn-sm w-100 dropdown-toggle text-start"
+                            type="button" id="facilityDropBtn"
+                            data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                            aria-expanded="false">
+                        <span id="facilityBtnLabel">All Facilities</span>
+                    </button>
+                    <ul class="dropdown-menu p-2" id="facilityDropdownMenu"
+                        style="max-height:240px;overflow-y:auto;min-width:200px;"
+                        aria-labelledby="facilityDropBtn">
+                        <li>
+                            <a class="dropdown-item small py-1" href="#" id="facilitySelectAll"
+                               onclick="selectAllFacilities(true);return false;">Select All</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item small py-1" href="#" id="facilitySelectNone"
+                               onclick="selectAllFacilities(false);return false;">Clear All</a>
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <!-- checkboxes injected by JS -->
+                    </ul>
+                </div>
+            </div>
+            <div class="col-sm-auto">
+                <button class="btn btn-primary btn-sm px-4" onclick="loadDashboard()">
+                    <i class="fas fa-sync-alt me-1"></i>Apply
+                </button>
+            </div>
+            <div class="col-sm-auto">
+                <!-- Quick range shortcuts -->
+                <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-outline-secondary" onclick="setRange('ytd')">YTD</button>
+                    <button class="btn btn-outline-secondary" onclick="setRange('last12')">Last 12 mo</button>
+                    <button class="btn btn-outline-secondary" onclick="setRange('last3y')">Last 3 yr</button>
+                    <button class="btn btn-outline-secondary" onclick="setRange('all')">All</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── KPI row ─────────────────────────────────────────── -->
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-3">
+            <div class="card stats-card avoidance">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Cost Avoidance</h6>
+                            <h3 class="mb-0" style="color:#00A8A8;" id="kpiCA">—</h3>
+                        </div>
+                        <div class="stats-icon" style="color:#00A8A8;"><i class="fas fa-shield-alt"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card stats-card savings">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Cost Savings</h6>
+                            <h3 class="mb-0" style="color:#1A7A4A;" id="kpiCS">—</h3>
+                        </div>
+                        <div class="stats-icon" style="color:#1A7A4A;"><i class="fas fa-piggy-bank"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card stats-card rebate">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Rebate</h6>
+                            <h3 class="mb-0" style="color:#0072BC;" id="kpiRB">—</h3>
+                        </div>
+                        <div class="stats-icon" style="color:#0072BC;"><i class="fas fa-receipt"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card stats-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted mb-2">Total</h6>
+                            <h3 class="mb-0" style="color:#112B46;" id="kpiTOT">—</h3>
+                        </div>
+                        <div class="stats-icon" style="color:#112B46;"><i class="fas fa-dollar-sign"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Row 2 : Vendor table + Pie ─────────────────────── -->
+    <div class="row g-3 mb-3">
+        <!-- Vendor pivot table -->
+        <div class="col-lg-7">
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span><i class="fas fa-table me-1 opacity-50"></i>Vendor Breakdown</span>
+                    <small id="vendorCount"></small>
+                </div>
+                <div class="vendor-table-wrap">
+                    <table id="vendorTable" class="table table-hover table-bordered mb-0">
+                        <thead>
+                            <tr>
+                                <th>Vendor Name</th>
+                                <th class="amount-cell">Cost Avoidance</th>
+                                <th class="amount-cell">Cost Savings</th>
+                                <th class="amount-cell">Rebate</th>
+                                <th class="total-cell">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vendorBody">
+                            <tr><td colspan="5" class="loading-overlay">
+                                <span><i class="fas fa-spinner fa-spin me-2"></i>Loading…</span>
+                            </td></tr>
+                        </tbody>
+                        <tfoot id="vendorFoot"></tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- Pie chart -->
+        <div class="col-lg-5">
+            <div class="chart-card d-flex flex-column">
+                <div class="chart-title">
+                    <span><i class="fas fa-chart-pie me-1 opacity-50"></i>Category Distribution</span>
+                </div>
+                <div class="chart-canvas-wrap flex-grow-1 d-flex align-items-center justify-content-center">
+                    <canvas id="pieChart" style="max-height:300px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Row 3 : Daily / cumulative trend ──────────────── -->
+    <div class="row g-3 mb-3">
+        <div class="col-12">
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span><i class="fas fa-chart-area me-1 opacity-50"></i>Daily Savings Trend</span>
+                    <div class="view-btn-group btn-group btn-group-sm" role="group">
+                        <button class="btn btn-outline-secondary active" id="btnDaily" onclick="setDailyMode('daily')">Daily</button>
+                        <button class="btn btn-outline-secondary" id="btnCumul" onclick="setDailyMode('cumulative')">Cumulative</button>
+                    </div>
+                </div>
+                <div class="chart-canvas-wrap">
+                    <canvas id="dailyChart" style="max-height:240px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Row 4 : By Quarter + By Fiscal Year ───────────── -->
+    <div class="row g-3 mb-4">
+        <!-- Savings by Quarter -->
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span><i class="fas fa-chart-bar me-1 opacity-50"></i>Savings by Quarter</span>
+                </div>
+                <div class="chart-canvas-wrap">
+                    <canvas id="quarterChart" style="max-height:300px;"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Savings by Fiscal Year -->
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <div class="chart-title">
+                    <span><i class="fas fa-chart-bar me-1 opacity-50"></i>Savings by Fiscal Year</span>
+                </div>
+                <div class="chart-canvas-wrap">
+                    <canvas id="fyChart" style="max-height:300px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Row 5 : Full Initiative Details ──────────────── -->
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="chart-card">
+                <div class="chart-title d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <span><i class="fas fa-list-alt me-1 opacity-50"></i>All Initiative Details
+                        <span class="text-muted fw-normal fs-6 ms-2" id="detailCount"></span>
+                    </span>
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <!-- Type filter -->
+                        <select id="detailTypeFilter" class="form-select form-select-sm" style="width:auto" onchange="applyDetailFilters()">
+                            <option value="">All Types</option>
+                            <option value="Cost Savings">Cost Savings</option>
+                            <option value="Rebate">Rebate</option>
+                            <option value="Cost Avoidance">Cost Avoidance</option>
+                        </select>
+                        <!-- Search -->
+                        <input type="text" id="detailSearch" class="form-control form-control-sm detail-search"
+                               placeholder="Search vendor / contract…" oninput="applyDetailFilters()">
+                        <!-- Export -->
+                        <button class="btn btn-outline-secondary btn-sm" onclick="exportDetailCsv()">
+                            <i class="fas fa-download me-1"></i>Export CSV
+                        </button>
+                    </div>
+                </div>
+                <div class="detail-table-wrap">
+                    <table id="detailTable" class="table table-hover table-bordered mb-0">
+                        <thead>
+                            <tr>
+                                <th onclick="sortDetail('id')">#<span class="sort-icon">↕</span></th>
+                                <th onclick="sortDetail('type')">Type<span class="sort-icon">↕</span></th>
+                                <th onclick="sortDetail('status')">Status<span class="sort-icon">↕</span></th>
+                                <th onclick="sortDetail('vendor')">Vendor<span class="sort-icon">↕</span></th>
+                                <th onclick="sortDetail('contract_number')">Contract #<span class="sort-icon">↕</span></th>
+                                <th onclick="sortDetail('contract_category')">Category<span class="sort-icon">↕</span></th>
+                                <th onclick="sortDetail('start_date')">Start Date<span class="sort-icon">↕</span></th>
+                                <th onclick="sortDetail('end_date')">End Date<span class="sort-icon">↕</span></th>
+                                <th onclick="sortDetail('amount')" class="amount-cell">Amount<span class="sort-icon">↕</span></th>
+                                <th>Facilities</th>
+                                <th onclick="sortDetail('owner')">Owner<span class="sort-icon">↕</span></th>
+                                <th onclick="sortDetail('created_by')">Created By<span class="sort-icon">↕</span></th>
+                                <th onclick="sortDetail('created_at')">Created<span class="sort-icon">↕</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailBody">
+                            <tr><td colspan="13" class="loading-overlay"><span><i class="fas fa-spinner fa-spin me-2"></i>Loading…</span></td></tr>
+                        </tbody>
+                        <tfoot id="detailFoot"></tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /container-fluid -->
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+<script>
+// ── Colour palette ─────────────────────────────────────────────────────────
+const COLORS = {
+    ca:  { solid: '#64748b', light: 'rgba(100,116,139,.18)' },   // Cost Avoidance – slate
+    cs:  { solid: '#7C3AED', light: 'rgba(124, 58,237,.18)' },   // Cost Savings   – violet
+    rb:  { solid: '#0EA5E9', light: 'rgba( 14,165,233,.18)' },   // Rebate         – sky blue
+};
+
+// ── Chart instances ────────────────────────────────────────────────────────
+let pieInst      = null;
+let dailyInst    = null;
+let quarterInst  = null;
+let fyInst       = null;
+
+// ── Current data cache ─────────────────────────────────────────────────────
+let _byDay  = [];
+let _dailyMode = 'daily';   // 'daily' | 'cumulative'
+
+// ── Utility ────────────────────────────────────────────────────────────────
+function fmt(n) {
+    if (n === null || n === undefined) return '';
+    const abs = Math.abs(n);
+    if (abs >= 1_000_000)  return '$' + (n / 1_000_000).toFixed(2) + 'M';
+    if (abs >= 1_000)      return '$' + (n / 1_000).toFixed(2) + 'K';
+    return '$' + n.toFixed(0);
+}
+
+function fmtFull(n) {
+    if (!n) return '$0';
+    return '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+}
+
+function destroyChart(inst) {
+    if (inst) { inst.destroy(); }
+    return null;
+}
+
+// ── Date quick-ranges ──────────────────────────────────────────────────────
+function setRange(mode) {
+    const today = new Date();
+    const iso = d => d.toISOString().slice(0,10);
+
+    let start, end = iso(today);
+    if (mode === 'ytd') {
+        start = iso(new Date(today.getFullYear(), 0, 1));
+    } else if (mode === 'last12') {
+        const d = new Date(today); d.setMonth(d.getMonth() - 12);
+        start = iso(d);
+    } else if (mode === 'last3y') {
+        const d = new Date(today); d.setFullYear(d.getFullYear() - 3);
+        start = iso(d);
+    } else {
+        // all — go back 10 years
+        start = iso(new Date(today.getFullYear() - 10, 0, 1));
+    }
+    document.getElementById('startDate').value = start;
+    document.getElementById('endDate').value   = end;
+    loadDashboard();
+}
+
+// ── (chart loading now handled by _loadCharts inside loadDashboard above) ──
+
+// ── KPI cards ──────────────────────────────────────────────────────────────
+function renderKPI(totals) {
+    document.getElementById('kpiCA').textContent  = fmt(totals['Cost Avoidance'] || 0);
+    document.getElementById('kpiCS').textContent  = fmt(totals['Cost Savings']   || 0);
+    document.getElementById('kpiRB').textContent  = fmt(totals['Rebate']         || 0);
+    const tot = (totals['Cost Savings']    || 0)
+              + (totals['Rebate']          || 0)
+              + (totals['Cost Avoidance']  || 0);
+    document.getElementById('kpiTOT').textContent = fmt(tot);
+}
+
+// ── Vendor table ───────────────────────────────────────────────────────────
+function renderVendorTable(rows) {
+    const body = document.getElementById('vendorBody');
+    const foot = document.getElementById('vendorFoot');
+    document.getElementById('vendorCount').textContent = rows.length + ' vendors';
+
+    if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="5" class="empty-msg">No data in selected range</td></tr>';
+        foot.innerHTML = '';
+        return;
+    }
+
+    let totCA = 0, totCS = 0, totRB = 0, totAll = 0;
+    body.innerHTML = rows.map(r => {
+        totCA  += r.cost_avoidance || 0;
+        totCS  += r.cost_savings   || 0;
+        totRB  += r.rebate         || 0;
+        totAll += r.total          || 0;
+        return `<tr>
+            <td>${r.vendor}</td>
+            <td class="amount-cell">${r.cost_avoidance ? fmtFull(r.cost_avoidance) : ''}</td>
+            <td class="amount-cell">${r.cost_savings   ? fmtFull(r.cost_savings)   : ''}</td>
+            <td class="amount-cell">${r.rebate         ? fmtFull(r.rebate)         : ''}</td>
+            <td class="total-cell">${fmtFull(r.total)}</td>
+        </tr>`;
+    }).join('');
+
+    foot.innerHTML = `<tr>
+        <td><strong>Total</strong></td>
+        <td class="amount-cell"><strong>${fmtFull(totCA)}</strong></td>
+        <td class="amount-cell"><strong>${fmtFull(totCS)}</strong></td>
+        <td class="amount-cell"><strong>${fmtFull(totRB)}</strong></td>
+        <td class="total-cell"><strong>${fmtFull(totAll)}</strong></td>
+    </tr>`;
+}
+
+// ── Pie chart ──────────────────────────────────────────────────────────────
+function renderPie(totals) {
+    pieInst = destroyChart(pieInst);
+    const ca  = totals['Cost Avoidance'] || 0;
+    const cs  = totals['Cost Savings']   || 0;
+    const rb  = totals['Rebate']         || 0;
+
+    pieInst = new Chart(document.getElementById('pieChart'), {
+        type: 'pie',
+        data: {
+            labels: ['Cost Avoidance', 'Cost Savings', 'Rebate'],
+            datasets: [{
+                data: [ca, cs, rb],
+                backgroundColor: [COLORS.ca.solid, COLORS.cs.solid, COLORS.rb.solid],
+                borderWidth: 2,
+                borderColor: '#fff',
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'right', labels: { boxWidth: 14, font: { size: 12 } } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const v = ctx.parsed;
+                            const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+                            const pct = total ? ((v/total)*100).toFixed(1) : '0';
+                            return ` ${fmtFull(v)}  (${pct}%)`;
+                        }
+                    }
+                },
+                datalabels: { display: false }
+            }
+        }
+    });
+}
+
+// ── Daily / Cumulative trend ───────────────────────────────────────────────
+function setDailyMode(mode) {
+    _dailyMode = mode;
+    document.getElementById('btnDaily').classList.toggle('active', mode === 'daily');
+    document.getElementById('btnCumul').classList.toggle('active', mode === 'cumulative');
+    renderDaily(_byDay, mode);
+}
+
+function renderDaily(byDay, mode) {
+    dailyInst = destroyChart(dailyInst);
+    if (!byDay.length) return;
+
+    const labels = byDay.map(d => d.date);
+    let ca_vals = byDay.map(d => d.cost_avoidance || 0);
+    let cs_vals = byDay.map(d => d.cost_savings   || 0);
+    let rb_vals = byDay.map(d => d.rebate         || 0);
+
+    if (mode === 'cumulative') {
+        const cumul = arr => arr.reduce((acc, v, i) => { acc.push((acc[i-1]||0)+v); return acc; }, []);
+        ca_vals = cumul(ca_vals);
+        cs_vals = cumul(cs_vals);
+        rb_vals = cumul(rb_vals);
+    }
+
+    dailyInst = new Chart(document.getElementById('dailyChart'), {
+        type: mode === 'cumulative' ? 'line' : 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Cost Avoidance',
+                    data: ca_vals,
+                    backgroundColor: mode === 'cumulative' ? COLORS.ca.light : COLORS.ca.solid,
+                    borderColor:  COLORS.ca.solid,
+                    borderWidth:  mode === 'cumulative' ? 2 : 0,
+                    fill: mode === 'cumulative',
+                    tension: 0.3, pointRadius: labels.length > 60 ? 0 : 3,
+                },
+                {
+                    label: 'Cost Savings',
+                    data: cs_vals,
+                    backgroundColor: mode === 'cumulative' ? COLORS.cs.light : COLORS.cs.solid,
+                    borderColor:  COLORS.cs.solid,
+                    borderWidth:  mode === 'cumulative' ? 2 : 0,
+                    fill: mode === 'cumulative',
+                    tension: 0.3, pointRadius: labels.length > 60 ? 0 : 3,
+                },
+                {
+                    label: 'Rebate',
+                    data: rb_vals,
+                    backgroundColor: mode === 'cumulative' ? COLORS.rb.light : COLORS.rb.solid,
+                    borderColor:  COLORS.rb.solid,
+                    borderWidth:  mode === 'cumulative' ? 2 : 0,
+                    fill: mode === 'cumulative',
+                    tension: 0.3, pointRadius: labels.length > 60 ? 0 : 3,
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: {
+                    stacked: mode !== 'cumulative',
+                    ticks: { maxTicksLimit: 12, maxRotation: 30, font: { size: 11 } },
+                    grid: { display: false }
+                },
+                y: {
+                    stacked: mode !== 'cumulative',
+                    ticks: { callback: v => fmt(v) },
+                    grid: { color: '#f0f0f0' }
+                }
+            },
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 12, font: { size: 12 } } },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtFull(ctx.parsed.y)}` } }
+            }
+        }
+    });
+}
+
+// ── By Quarter ────────────────────────────────────────────────────────────
+function renderQuarter(byQ) {
+    quarterInst = destroyChart(quarterInst);
+    if (!byQ.length) return;
+
+    const labels = byQ.map(d => d.label.replace('FY',''));
+    quarterInst = new Chart(document.getElementById('quarterChart'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Cost Avoidance', data: byQ.map(d => d.cost_avoidance||0), backgroundColor: COLORS.ca.solid },
+                { label: 'Cost Savings',   data: byQ.map(d => d.cost_savings||0),   backgroundColor: COLORS.cs.solid },
+                { label: 'Rebate',         data: byQ.map(d => d.rebate||0),         backgroundColor: COLORS.rb.solid },
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
+                y: { stacked: true, ticks: { callback: v => fmt(v) }, grid: { color: '#f0f0f0' } }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ` ${ctx.dataset.label}: ${fmtFull(ctx.parsed.y)}`,
+                        afterBody: items => {
+                            const tot = items.reduce((s, i) => s + i.parsed.y, 0);
+                            return [`Total: ${fmtFull(tot)}`];
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ── By Fiscal Year ────────────────────────────────────────────────────────
+function renderFiscalYear(byFY) {
+    fyInst = destroyChart(fyInst);
+    if (!byFY.length) return;
+
+    const labels = byFY.map(d => d.label);
+    fyInst = new Chart(document.getElementById('fyChart'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Cost Avoidance', data: byFY.map(d => d.cost_avoidance||0), backgroundColor: COLORS.ca.solid },
+                { label: 'Cost Savings',   data: byFY.map(d => d.cost_savings||0),   backgroundColor: COLORS.cs.solid },
+                { label: 'Rebate',         data: byFY.map(d => d.rebate||0),         backgroundColor: COLORS.rb.solid },
+            ]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                x: { stacked: true, ticks: { callback: v => fmt(v) }, grid: { color: '#f0f0f0' } },
+                y: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } }
+            },
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 12, font: { size: 12 } } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ` ${ctx.dataset.label}: ${fmtFull(ctx.parsed.x)}`,
+                        afterBody: items => {
+                            const tot = items.reduce((s, i) => s + i.parsed.x, 0);
+                            return [`Total: ${fmtFull(tot)}`];
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ── Detail table state ────────────────────────────────────────────────────
+let _detailRows    = [];   // full list from API
+let _detailVisible = [];   // after client-side filter
+let _sortKey       = 'start_date';
+let _sortAsc       = false;
+
+// ── Load detail table ─────────────────────────────────────────────────────
+function loadDetails() {
+    const params = _buildFilterParams();
+
+    document.getElementById('detailBody').innerHTML =
+        `<tr><td colspan="${_totalCols()}" class="loading-overlay"><span><i class="fas fa-spinner fa-spin me-2"></i>Loading…</span></td></tr>`;
+
+    fetch('/api/analytics/details?' + params.toString())
+        .then(r => r.json())
+        .then(data => {
+            _detailRows = data.rows || [];
+            applyDetailFilters();
+        })
+        .catch(err => {
+            document.getElementById('detailBody').innerHTML =
+                `<tr><td colspan="${_totalCols()}" class="empty-msg">Error loading details</td></tr>`;
+            console.error(err);
+        });
+}
+
+function applyDetailFilters() {
+    const q    = (document.getElementById('detailSearch').value || '').toLowerCase();
+    const type = document.getElementById('detailTypeFilter').value;
+    _detailVisible = _detailRows.filter(r => {
+        if (type && r.type !== type) return false;
+        if (q && !(`${r.vendor} ${r.contract_number} ${r.description} ${r.owner} ${r.created_by}`.toLowerCase().includes(q))) return false;
+        return true;
+    });
+    sortDetailBy(_sortKey, null);   // re-sort with current key without toggling
+}
+
+function sortDetail(key) {
+    if (_sortKey === key) _sortAsc = !_sortAsc;
+    else { _sortKey = key; _sortAsc = true; }
+    sortDetailBy(key, _sortAsc);
+}
+
+function sortDetailBy(key, asc) {
+    if (asc === null) asc = _sortAsc;
+    _detailVisible.sort((a, b) => {
+        let va = a[key] ?? '', vb = b[key] ?? '';
+        if (typeof va === 'number') return asc ? va - vb : vb - va;
+        return asc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+    });
+    renderDetailTable();
+}
+
+function renderFacilityBadges(facs) {
+    if (!facs || !facs.length) return '<span class="text-muted small">—</span>';
+    return facs.map(f => {
+        const label = f.pct    != null ? `${f.code} <span class="fac-badge-detail">${f.pct}%</span>`
+                    : f.amount != null ? `${f.code} <span class="fac-badge-detail">$${f.amount.toLocaleString()}</span>`
+                    : f.code;
+        return `<span class="fac-badge">${label}</span>`;
+    }).join(' ');
+}
+
+function rebuildDetailHeader() {
+    const tr = document.getElementById('detailHead');
+    if (!tr) return;
+    // Remove any previously injected facility ths (they come after the 9th th)
+    Array.from(tr.querySelectorAll('th.fac-col-th')).forEach(el => el.remove());
+    // 9th th is Amount; insert facility ths after it
+    const ths = tr.querySelectorAll('th');
+    const amountTh = ths[8]; // 0-indexed: #=0 … Amount=8
+    _allFacilities.forEach(f => {
+        const th = document.createElement('th');
+        th.className = 'fac-col-th amount-cell';
+        th.title = f.name;
+        th.textContent = f.code;
+        amountTh.insertAdjacentElement('afterend', th);
+    });
+    // Re-order: insertAdjacentElement('afterend') inserts in reverse; fix by reversing iteration
+    // Redo properly:
+    Array.from(tr.querySelectorAll('th.fac-col-th')).forEach(el => el.remove());
+    let ref = amountTh;
+    _allFacilities.forEach(f => {
+        const th = document.createElement('th');
+        th.className = 'fac-col-th amount-cell';
+        th.title = f.name;
+        th.textContent = f.code;
+        ref.insertAdjacentElement('afterend', th);
+        ref = th;
+    });
+}
+
+function renderDetailTable() {
+    const body = document.getElementById('detailBody');
+    const foot = document.getElementById('detailFoot');
+    document.getElementById('detailCount').textContent =
+        `(${_detailVisible.length} of ${_detailRows.length})`;
+
+    if (!_detailVisible.length) {
+        body.innerHTML = `<tr><td colspan="${_totalCols()}" class="empty-msg">No records in selected range</td></tr>`;
+        foot.innerHTML = '';
+        return;
+    }
+
+    const typeBadge = t => {
+        const cls = t === 'Cost Savings' ? 'type-cs' : t === 'Rebate' ? 'type-rb' : 'type-ca';
+        return `<span class="type-badge ${cls}">${t}</span>`;
+    };
+    const statusBadge = s => {
+        const cls = s === 'Approved' ? 'sb-approved' : s === 'Pending Review' ? 'sb-pending' : 'sb-rejected';
+        return `<span class="status-badge-sm ${cls}">${s}</span>`;
+    };
+
+    let totCA = 0, totCS = 0, totRB = 0;
+    const facTotals = Object.fromEntries(_allFacilities.map(f => [f.code, 0]));
+    body.innerHTML = _detailVisible.map(r => {
+        if (r.type === 'Cost Savings')  totCS += r.amount;
+        if (r.type === 'Rebate')        totRB += r.amount;
+        if (r.type === 'Cost Avoidance') totCA += r.amount;
+        const facMap = Object.fromEntries((r.facilities || []).map(f => [f.code, f]));
+        const facCells = _allFacilities.map(f => {
+            const alloc = facMap[f.code];
+            if (!alloc) return '<td class="amount-cell text-muted">$0</td>';
+            let val, num = 0;
+            if (alloc.pct    != null) { val = `${alloc.pct}%`;                  num = r.amount * alloc.pct / 100; }
+            else if (alloc.amount != null) { val = `$${alloc.amount.toLocaleString()}`; num = alloc.amount; }
+            else { val = alloc.code; }
+            facTotals[f.code] = (facTotals[f.code] || 0) + num;
+            return `<td class="amount-cell"><span class="fac-alloc-val">${val}</span></td>`;
+        }).join('');
+        return `<tr>
+            <td>${r.id}</td>
+            <td>${typeBadge(r.type)}</td>
+            <td>${statusBadge(r.status)}</td>
+            <td>${r.vendor}</td>
+            <td>${r.contract_number}</td>
+            <td>${r.contract_category}</td>
+            <td>${r.start_date || ''}</td>
+            <td>${r.end_date   || ''}</td>
+            <td class="amount-cell">${fmtFull(r.amount)}</td>
+            ${facCells}
+            <td>${r.owner}</td>
+            <td>${r.created_by}</td>
+            <td>${r.created_at || ''}</td>
+        </tr>`;
+    }).join('');
+
+    const totAll = totCS + totRB + totCA;
+    const facFootCells = _allFacilities.map(f =>
+        `<td class="amount-cell"><strong>${fmtFull(facTotals[f.code] || 0)}</strong></td>`
+    ).join('');
+    foot.innerHTML = `<tr>
+        <td colspan="8"><strong>Totals (${_detailVisible.length} rows)</strong></td>
+        <td class="amount-cell"><strong>${fmtFull(totAll)}</strong>
+            <small class="d-block text-muted">CS: ${fmtFull(totCS)} · RB: ${fmtFull(totRB)} · CA: ${fmtFull(totCA)}</small>
+        </td>
+        ${facFootCells}
+        <td colspan="3"></td>
+    </tr>`;
+}
+
+// ── CSV export ─────────────────────────────────────────────────────────────
+function exportDetailCsv() {
+    if (!_detailVisible.length) return;
+    const facHeaders = _allFacilities.map(f => f.code);
+    const headers = ['ID','Type','Status','Vendor','Contract #','Category',
+                     'Start Date','End Date','Amount',
+                     ...facHeaders,
+                     'Owner','Created By','Created At'];
+    const escape  = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const facVal  = (r, code) => {
+        const alloc = (r.facilities || []).find(f => f.code === code);
+        if (!alloc) return 0;
+        if (alloc.pct    != null) return `${alloc.pct}%`;
+        if (alloc.amount != null) return alloc.amount;
+        return 0;
+    };
+    const lines   = [
+        headers.map(escape).join(','),
+        ..._detailVisible.map(r => [
+            r.id, r.type, r.status, r.vendor, r.contract_number, r.contract_category,
+            r.start_date, r.end_date, r.amount,
+            ..._allFacilities.map(f => facVal(r, f.code)),
+            r.owner, r.created_by, r.created_at
+        ].map(escape).join(','))
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `savings_details_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+}
+
+// ── Facility filter helpers ──────────────────────────────────────────────
+function loadFacilities() {
+    fetch('/api/analytics/facilities')
+        .then(r => r.json())
+        .then(facilities => {
+            const menu = document.getElementById('facilityDropdownMenu');
+            // Remove any previously injected checkboxes (keep first 3 static items)
+            Array.from(menu.querySelectorAll('li.facility-item')).forEach(el => el.remove());
+            facilities.forEach(f => {
+                const li = document.createElement('li');
+                li.className = 'facility-item';
+                li.innerHTML = `<label class="dropdown-item small py-1" style="cursor:pointer">
+                    <input type="checkbox" class="form-check-input me-2 facility-chk"
+                           value="${f.code}" checked
+                           onchange="updateFacilityLabel()">
+                    ${f.code} – ${f.name}
+                </label>`;
+                menu.appendChild(li);
+            });
+            updateFacilityLabel();
+            loadDashboard();
+        })
+        .catch(err => {
+            console.warn('Could not load facilities', err);
+            loadDashboard();
+        });
+}
+
+function getSelectedFacilityCodes() {
+    const checked = Array.from(document.querySelectorAll('.facility-chk:checked')).map(c => c.value);
+    const all     = Array.from(document.querySelectorAll('.facility-chk')).map(c => c.value);
+    // If all selected (or none loaded yet) return empty string → no filter
+    return checked.length === all.length ? '' : checked.join(',');
+}
+
+function selectAllFacilities(state) {
+    document.querySelectorAll('.facility-chk').forEach(c => c.checked = state);
+    updateFacilityLabel();
+}
+
+function updateFacilityLabel() {
+    const checked = document.querySelectorAll('.facility-chk:checked').length;
+    const total   = document.querySelectorAll('.facility-chk').length;
+    const lbl     = document.getElementById('facilityBtnLabel');
+    if (!total || checked === total) {
+        lbl.textContent = 'All Facilities';
+    } else if (checked === 0) {
+        lbl.textContent = 'No Facility';
+    } else {
+        lbl.textContent = `${checked} of ${total} Facilities`;
+    }
+}
+
+// ── Main loader (charts + details) ────────────────────────────────────────
+function loadDashboard() {
+    _loadCharts();
+    loadDetails();
+}
+
+function _buildFilterParams() {
+    const start    = document.getElementById('startDate').value;
+    const end      = document.getElementById('endDate').value;
+    const pending  = document.getElementById('statusFilter').value;
+    const facCodes = getSelectedFacilityCodes();
+    const params = new URLSearchParams();
+    if (start)    params.set('start_date',      start);
+    if (end)      params.set('end_date',         end);
+    if (pending)  params.set('include_pending',  pending);
+    if (facCodes) params.set('facility_codes',   facCodes);
+    return params;
+}
+
+function _loadCharts() {
+    const params = _buildFilterParams();
+
+    document.getElementById('totalBadge').textContent = 'Loading…';
+
+    fetch('/api/analytics/summary?' + params.toString())
+        .then(r => r.json())
+        .then(data => {
+            renderKPI(data.totals);
+            renderVendorTable(data.vendor_breakdown);
+            renderPie(data.totals);
+            _byDay = data.by_day;
+            renderDaily(_byDay, _dailyMode);
+            renderQuarter(data.by_quarter);
+            renderFiscalYear(data.by_fiscal_year);
+            const tot = (data.totals['Cost Savings'] || 0)
+                      + (data.totals['Rebate']        || 0)
+                      + (data.totals['Cost Avoidance']|| 0);
+            document.getElementById('totalBadge').textContent = 'Total: ' + fmtFull(tot);
+        })
+        .catch(err => {
+            console.error('Dashboard error:', err);
+            document.getElementById('totalBadge').textContent = 'Error loading data';
+        });
+}
+
+// ── Initialise ────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    // Default: last 3 years → today
+    const today = new Date();
+    const past  = new Date(today); past.setFullYear(past.getFullYear() - 3);
+    document.getElementById('startDate').value = past.toISOString().slice(0,10);
+    document.getElementById('endDate').value   = today.toISOString().slice(0,10);
+    rebuildDetailHeader();  // build fixed facility columns immediately (constant list)
+    loadFacilities();       // populate facility filter dropdown, then calls loadDashboard
+});
+</script>
+{% endblock %}
