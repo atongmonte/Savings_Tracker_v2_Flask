@@ -31,6 +31,10 @@ def create_app(config_name='default'):
     # Load configuration
     from app.config import config
     app.config.from_object(config[config_name])
+
+    # Apply editable static settings from JSON
+    from app.utils.runtime_settings import apply_static_settings
+    apply_static_settings(app)
     
     # Initialize extensions
     db.init_app(app)
@@ -38,10 +42,14 @@ def create_app(config_name='default'):
     CORS(app)
     
     # Create logs directory
-    logs_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+    logs_dir = app.config.get('LOGS_DIR') or os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+    if not os.path.isabs(logs_dir):
+        logs_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), logs_dir)
+    logs_dir = os.path.normpath(logs_dir)
+    app.config['LOGS_DIR'] = logs_dir
     if not os.path.exists(logs_dir):
         os.makedirs(logs_dir)
-    
+
     # Register blueprints
     from app.api import initiatives_bp, cost_savings_bp, rebate_bp, cost_avoidance_bp, auth_bp, analytics_bp
     app.register_blueprint(initiatives_bp, url_prefix='/api/initiatives')

@@ -36,12 +36,52 @@
         border-radius: 2px;
         margin-top: 0.8rem;
     }
+    #initiativesTable thead th {
+        text-align: left;
+        vertical-align: middle;
+        white-space: normal;
+        line-height: 1.2;
+    }
+    #initiativesTable thead th.text-end {
+        text-align: left !important;
+    }
+    th.sortable {
         cursor: pointer;
         user-select: none;
-        white-space: nowrap;
+    }
+    th.sortable .sortable-header-content {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+        justify-content: start;
+        gap: 0.35rem;
+        width: 100%;
+        max-width: 100%;
+    }
+    th.sortable .sortable-header-label {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        white-space: normal;
+        text-align: left;
+    }
+    th.sortable .sort-icon-inactive {
+        flex-shrink: 0;
+        margin-top: 0.05rem;
     }
     th.sortable:hover {
         background-color: rgba(0, 0, 0, 0.04);
+        color: #FFFFFF;
+    }
+    th.sortable:hover .sortable-header-label,
+    th.sortable:hover .sort-icon-inactive,
+    th.sortable:hover .sort-icon-inactive.text-muted,
+    th.sortable:focus-visible .sortable-header-label,
+    th.sortable:focus-visible .sort-icon-inactive,
+    th.sortable:focus-visible .sort-icon-inactive.text-muted {
+        color: rgba(255, 255, 255, 0.95) !important;
     }
     .sort-icon-inactive { opacity: 0.35; }
 
@@ -108,22 +148,19 @@
         color: #1A2535;
     }
 
-    /* ── Year tab pills ── */
-    .year-pill {
-        border: 1px solid var(--border-color);
-        background: #fff;
-        color: var(--text-muted);
+    /* ── Summary year label ── */
+    .summary-label {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.2rem 0.7rem;
         border-radius: 50px;
-        padding: 0.2rem 0.85rem;
+        border: 1px solid #BDD0E8;
+        background: #EFF5FC;
+        color: #112B46;
         font-size: 0.78rem;
         font-weight: 600;
-        cursor: pointer;
-        transition: all 0.15s;
-        line-height: 1.6;
+        line-height: 1.4;
     }
-    .year-pill:hover   { background: #f0f4ff; border-color: var(--primary-color); color: var(--primary-color); }
-    .year-pill.active  { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
-    .year-pill-group   { display: flex; gap: 0.4rem; align-items: center; }
 </style>
 {% endblock %}
 
@@ -141,11 +178,7 @@
     <!-- Statistics Cards -->
     <div class="d-flex align-items-center gap-3 mb-2">
         <small class="text-muted fw-semibold">SUMMARY</small>
-        <div class="year-pill-group">
-            <button class="year-pill" id="year-pill-all"  onclick="setStatsYear(null)">All</button>
-            <button class="year-pill" id="year-pill-2025" onclick="setStatsYear(2025)">2025</button>
-            <button class="year-pill active" id="year-pill-2026" onclick="setStatsYear(2026)">2026</button>
-        </div>
+        <span class="summary-label" id="summaryYearLabel">Initiative Year: 2026</span>
     </div>
     <div class="row mb-4">
         <div class="col-md-3">
@@ -224,10 +257,10 @@
                 <label class="form-label"><i class="fas fa-calendar-alt"></i> Initiative Year</label>
                 <select class="form-select" id="filterYear">
                     <option value="">All Years</option>
-                    <option value="2023">2023</option>
-                    <option value="2024">2024</option>
-                    <option value="2025">2025</option>
                     <option value="2026" selected>2026</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
                 </select>
             </div>
             <div class="col-md-3">
@@ -261,7 +294,10 @@
                     <thead>
                         <tr>
                             <th class="sortable" onclick="toggleSort('id')" title="Sort by Initiative ID" style="width:90px">
-                                Initiative ID <i id="sort-icon-id" class="fas fa-sort ms-1 text-muted sort-icon-inactive"></i>
+                                <span class="sortable-header-content">
+                                    <span class="sortable-header-label">Init ID</span>
+                                    <i id="sort-icon-id" class="fas fa-sort text-muted sort-icon-inactive"></i>
+                                </span>
                             </th>
                             <th>Owner</th>
                             <th>Type</th>
@@ -269,13 +305,22 @@
                             <th>Contract Category</th>
                             <th>Vendor Name</th>
                             <th class="text-end sortable" onclick="toggleSort('amount')" title="Sort by Saving Amount">
-                                Saving Amount <i id="sort-icon-amount" class="fas fa-sort ms-1 text-muted sort-icon-inactive"></i>
+                                <span class="sortable-header-content">
+                                    <span class="sortable-header-label">Saving Amount</span>
+                                    <i id="sort-icon-amount" class="fas fa-sort text-muted sort-icon-inactive"></i>
+                                </span>
                             </th>
                             <th class="sortable" onclick="toggleSort('initiative_date')" title="Sort by Initiative Year">
-                                Initiative Year <i id="sort-icon-initdate" class="fas fa-sort ms-1 text-muted sort-icon-inactive"></i>
+                                <span class="sortable-header-content">
+                                    <span class="sortable-header-label">Init Yr</span>
+                                    <i id="sort-icon-initdate" class="fas fa-sort text-muted sort-icon-inactive"></i>
+                                </span>
                             </th>
                             <th class="sortable" onclick="toggleSort('updated_at')" title="Sort by Last Updated">
-                                Last Updated <i id="sort-icon-updated" class="fas fa-sort ms-1 text-muted sort-icon-inactive"></i>
+                                <span class="sortable-header-content">
+                                    <span class="sortable-header-label">Last Updated</span>
+                                    <i id="sort-icon-updated" class="fas fa-sort text-muted sort-icon-inactive"></i>
+                                </span>
                             </th>
                             <th>Status</th>
                             <th>Actions</th>

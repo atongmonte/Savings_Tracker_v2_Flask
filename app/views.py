@@ -6,16 +6,39 @@ import os
 import zipfile
 from datetime import datetime
 
-from flask import Blueprint, send_file, send_from_directory, render_template, redirect, request, url_for
+from flask import Blueprint, current_app, flash, g, send_file, send_from_directory, render_template, redirect, request, url_for
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.table import Table, TableStyleInfo
 from sqlalchemy.orm import joinedload
-from werkzeug.utils import secure_filename
 
-from app.models import Initiative, FacilityAllocation, Rebate
+from app.models import Initiative, FacilityAllocation, Rebate, User, UserRole
+from app.utils.decorators import get_current_user, login_required
+from app.utils.email import (
+    is_graph_mail_configured,
+    send_initiative_approved_notification,
+    send_initiative_creator_notification,
+    send_initiative_review_notification,
+    send_weekly_review_reminder,
+)
+from app.utils.runtime_settings import apply_static_settings, load_static_settings, save_static_settings
+from app.utils.timezone import now_eastern
 
 main_bp = Blueprint('main', __name__)
+
+
+@main_bp.app_context_processor
+def inject_template_user():
+    """Expose the signed-in user object to Jinja templates."""
+    user = getattr(g, 'current_user', None)
+    if user is None:
+        try:
+            user = get_current_user()
+        except Exception:
+            user = None
+    return {'template_current_user': user}
+
 
 _REBATE_ALLOC_COLUMNS = [
     ('MMC', 'MMC_ALLOC'),
@@ -56,13 +79,20 @@ def _parse_filter_date(value):
         return None
 
 
-def _format_allocation_value(allocation):
-    """Format an allocation amount or percent for display/export."""
+def _get_allocation_numeric_value(allocation, rebate_amount=0):
+    """Return an allocation as a numeric amount for export formatting."""
     if allocation.allocation_amount is not None:
-        return f"${float(allocation.allocation_amount):,.2f}"
+        return round(float(allocation.allocation_amount), 2)
     if allocation.allocation_percentage is not None:
-        return f"{float(allocation.allocation_percentage):,.2f}%"
-    return '—'
+        return round(float(rebate_amount or 0) * float(allocation.allocation_percentage) / 100, 2)
+    return None
+
+
+def _format_currency_display(value):
+    """Format a numeric value for display on the extraction page."""
+    if value is None:
+        return '—'
+    return f"${float(value):,.2f}"
 
 
 def _get_rebate_extraction_data(start_date=None, end_date=None, search_term=''):
@@ -96,7 +126,8 @@ def _get_rebate_extraction_data(start_date=None, end_date=None, search_term=''):
         if rebate is None:
             continue
 
-        allocation_map = {column_name: '—' for _, column_name in _REBATE_ALLOC_COLUMNS}
+        rebate_amount = float(rebate.rebate_amount or 0)
+        allocation_map = {column_name: None for _, column_name in _REBATE_ALLOC_COLUMNS}
         for allocation in sorted(
             initiative.facility_allocations,
             key=lambda item: ((item.facility.code if item.facility else 'ZZZ'), item.id)
@@ -105,7 +136,7 @@ def _get_rebate_extraction_data(start_date=None, end_date=None, search_term=''):
             column_name = _REBATE_ALLOC_CODE_MAP.get(str(facility_code).upper())
             if not column_name:
                 continue
-            allocation_map[column_name] = _format_allocation_value(allocation)
+            allocation_map[column_name] = _get_allocation_numeric_value(allocation, rebate_amount)
 
         attachments = []
         for file_record in initiative.files:
@@ -117,7 +148,10 @@ def _get_rebate_extraction_data(start_date=None, end_date=None, search_term=''):
                 'file_path': file_record.file_path,
             })
 
-        rebate_amount = float(rebate.rebate_amount or 0)
+        allocation_display_map = {
+            column_name: _format_currency_display(value)
+            for column_name, value in allocation_map.items()
+        }
         row = {
             'initiative_id': initiative.id,
             'description': initiative.description or '—',
@@ -131,6 +165,7 @@ def _get_rebate_extraction_data(start_date=None, end_date=None, search_term=''):
             'check_number': rebate.check_number or '—',
             'rebate_amount': rebate_amount,
             'allocation_map': allocation_map,
+            'allocation_display_map': allocation_display_map,
             'attachments': attachments,
         }
 
@@ -146,7 +181,7 @@ def _get_rebate_extraction_data(start_date=None, end_date=None, search_term=''):
                 row['rebate_check_date'],
                 row['rebate_payment_type'],
                 row['check_number'],
-                *allocation_map.values(),
+                *allocation_display_map.values(),
             ]).lower()
             if normalized_search not in searchable_text:
                 continue
@@ -157,44 +192,80 @@ def _get_rebate_extraction_data(start_date=None, end_date=None, search_term=''):
     return rebate_rows, total_rebate_amount
 
 
-def _build_rebate_excel_workbook(rebate_rows, allocation_headers):
-    """Create the rebate extraction Excel workbook with attachment hyperlink placeholders."""
+def _build_rebate_excel_workbook(rebate_rows, allocation_headers, attachments_folder='Rebate_Attachments'):
+    """Create the rebate extraction Excel workbook matching the reference workbook style."""
     workbook = Workbook()
     worksheet = workbook.active
-    worksheet.title = 'Rebate Initiatives'
+    worksheet.title = f"Rebate_{datetime.now().strftime('%m.%d.%y')}"
+    worksheet.sheet_properties.tabColor = '92D050'
 
-    headers = [
-        'INITIATIVE_ID',
-        'INIT_DESC',
-        'REBATE_TYPE',
-        'CONTRACT_NUM',
-        'CONTRACT_CATEGORY',
-        'CONTRACT_SOURCE',
-        'VENDOR_NAME',
-        'REBATE_CHECK_DATE',
-        'REBATE_PAYMENT_TYPE',
-        'CHECK_NUMBER',
-        'REBATE_AMOUNT',
+    display_headers = [
+        'InitiativeID',
+        'Initiative_Desc',
+        'Rebates_Type',
+        'Contract_Number',
+        'Contract_Category',
+        'Contract_Source',
+        'Vendor_Name',
+        'Rebate_Check_Date',
+        'Rebate_Payment_Type',
+        'Check_Number',
+        'Rebate_amount',
         *allocation_headers,
-        *_REBATE_FILE_PATH_HEADERS,
+        'ParentFolder',
     ]
-    worksheet.append(headers)
+    for file_path_header in _REBATE_FILE_PATH_HEADERS:
+        suffix = file_path_header.split('_')[-1]
+        display_headers.extend([f'FILE_NAME_{suffix}', file_path_header])
 
-    header_fill = PatternFill(fill_type='solid', fgColor='112B46')
-    header_font = Font(color='FFFFFF', bold=True)
-    hyperlink_start_col = len(headers) - len(_REBATE_FILE_PATH_HEADERS) + 1
+    worksheet.append(display_headers)
+    accounting_format = '_("$"* #,##0.00_);_("$"* \(#,##0.00\);_("$"* "-"??_);_(@_)'
+    default_font = Font(name='Aptos Narrow', size=11)
+    header_font = Font(name='Aptos Narrow', size=11, color='FFFFFF')
+    rebate_font = Font(name='Aptos Narrow', size=11, color='9C5700')
+    alloc_font = Font(name='Aptos Narrow', size=11, bold=True, color='FA7D00')
+    hyperlink_font = Font(name='Aptos Narrow', size=11, color='0000FF', underline='single')
+    rebate_fill = PatternFill(fill_type='solid', fgColor='FFEB9C')
+    alloc_fill = PatternFill(fill_type='solid', fgColor='F2F2F2')
 
-    for col_idx, header in enumerate(headers, start=1):
-        cell = worksheet.cell(row=1, column=col_idx)
-        cell.fill = header_fill
-        cell.font = header_font
-        worksheet.column_dimensions[get_column_letter(col_idx)].width = min(max(len(header) + 2, 14), 28)
+    column_widths = {
+        'A': 12.57, 'B': 15.71, 'C': 14.86, 'D': 18.29, 'E': 18.86,
+        'F': 17.29, 'G': 15.14, 'H': 20.14, 'I': 22.29, 'J': 16.29,
+        'K': 16.43, 'L': 16.29, 'M': 15.14, 'N': 15.71, 'O': 15.00,
+        'P': 14.57, 'Q': 15.43, 'R': 14.14, 'S': 13.71,
+    }
+
+    for col_letter, width in column_widths.items():
+        worksheet.column_dimensions[col_letter].width = width
+
+    for col_idx in range(1, len(display_headers) + 1):
+        worksheet.cell(row=1, column=col_idx).font = header_font
+
+    parent_folder_col = 11 + len(allocation_headers) + 1
+    worksheet.column_dimensions[get_column_letter(parent_folder_col)].width = 19.86
+    worksheet.column_dimensions[get_column_letter(parent_folder_col)].hidden = True
+
+    for idx in range(len(_REBATE_FILE_PATH_HEADERS)):
+        file_name_col = parent_folder_col + 1 + (idx * 2)
+        file_path_col = file_name_col + 1
+        worksheet.column_dimensions[get_column_letter(file_name_col)].width = 73
+        worksheet.column_dimensions[get_column_letter(file_name_col)].hidden = True
+        worksheet.column_dimensions[get_column_letter(file_path_col)].width = 73
 
     for row_idx, row in enumerate(rebate_rows, start=2):
-        file_paths = list(row.get('excel_file_paths', []))[:len(_REBATE_FILE_PATH_HEADERS)]
-        file_paths += [''] * (len(_REBATE_FILE_PATH_HEADERS) - len(file_paths))
+        file_links = list(row.get('excel_file_links', []))[:len(_REBATE_FILE_PATH_HEADERS)]
+        file_links += [None] * (len(_REBATE_FILE_PATH_HEADERS) - len(file_links))
 
-        worksheet.append([
+        parent_folder = ''
+        file_names = []
+        for link_info in file_links:
+            if link_info:
+                parent_folder = parent_folder or link_info.get('parent_folder', attachments_folder)
+                file_names.append(link_info.get('file_name') or '')
+            else:
+                file_names.append('')
+
+        row_values = [
             row['initiative_id'],
             row['description'],
             row['rebate_type'],
@@ -207,20 +278,54 @@ def _build_rebate_excel_workbook(rebate_rows, allocation_headers):
             row['check_number'],
             row['rebate_amount'],
             *[row['allocation_map'][column_name] for column_name in allocation_headers],
-            *file_paths,
-        ])
+            parent_folder,
+        ]
 
-        worksheet.cell(row=row_idx, column=11).number_format = '$#,##0.00'
+        for file_name in file_names:
+            row_values.extend([file_name, ''])
 
-        for offset, relative_path in enumerate(file_paths):
-            if not relative_path:
-                continue
-            cell = worksheet.cell(row=row_idx, column=hyperlink_start_col + offset)
-            cell.hyperlink = relative_path
-            cell.style = 'Hyperlink'
+        worksheet.append(row_values)
 
-    worksheet.freeze_panes = 'A2'
-    worksheet.auto_filter.ref = worksheet.dimensions
+        for col_idx in range(1, worksheet.max_column + 1):
+            worksheet.cell(row=row_idx, column=col_idx).font = default_font
+
+        rebate_amount_cell = worksheet.cell(row=row_idx, column=11)
+        rebate_amount_cell.number_format = accounting_format
+        rebate_amount_cell.fill = rebate_fill
+        rebate_amount_cell.font = rebate_font
+
+        for col_idx in range(12, 12 + len(allocation_headers)):
+            alloc_cell = worksheet.cell(row=row_idx, column=col_idx)
+            alloc_cell.number_format = accounting_format
+            alloc_cell.fill = alloc_fill
+            alloc_cell.font = alloc_font
+
+        for idx in range(len(_REBATE_FILE_PATH_HEADERS)):
+            file_name_col = parent_folder_col + 1 + (idx * 2)
+            file_path_col = file_name_col + 1
+            file_name = worksheet.cell(row=row_idx, column=file_name_col).value or ''
+            path_cell = worksheet.cell(row=row_idx, column=file_path_col)
+
+            if file_name:
+                file_path = f'{parent_folder}\\{row["initiative_id"]}\\{file_name}'
+                safe_file_path = str(file_path).replace('"', '""')
+                safe_file_name = str(file_name).replace('"', '""')
+                path_cell.value = f'=HYPERLINK("{safe_file_path}", "{safe_file_name}")'
+            else:
+                path_cell.value = ''
+
+            path_cell.font = hyperlink_font
+
+    table_ref = f"A1:{get_column_letter(worksheet.max_column)}{max(worksheet.max_row, 1)}"
+    table = Table(displayName='RebateExtractTable', ref=table_ref)
+    table.tableStyleInfo = TableStyleInfo(
+        name='TableStyleLight9',
+        showFirstColumn=False,
+        showLastColumn=False,
+        showRowStripes=True,
+        showColumnStripes=False,
+    )
+    worksheet.add_table(table)
 
     output = io.BytesIO()
     workbook.save(output)
@@ -262,8 +367,14 @@ def rebate_form():
 
 
 @main_bp.route('/rebate/extraction')
+@login_required
 def rebate_extraction():
     """Display all rebate initiatives with their detailed facility allocations."""
+    user = g.current_user
+    if not _is_admin_user(user):
+        flash('Admin access is required for rebate extraction.', 'error')
+        return redirect(url_for('main.dashboard'))
+
     start_date_raw = (request.args.get('start_date') or '').strip()
     end_date_raw = (request.args.get('end_date') or '').strip()
     search_term = (request.args.get('search') or '').strip()
@@ -286,14 +397,21 @@ def rebate_extraction():
 
 
 @main_bp.route('/rebate/extraction/export')
+@login_required
 def rebate_extraction_export():
     """Export rebate extraction results as a ZIP containing an Excel workbook and attachments."""
+    user = g.current_user
+    if not _is_admin_user(user):
+        flash('Admin access is required for rebate extraction export.', 'error')
+        return redirect(url_for('main.dashboard'))
+
     start_date = _parse_filter_date((request.args.get('start_date') or '').strip())
     end_date = _parse_filter_date((request.args.get('end_date') or '').strip())
     search_term = (request.args.get('search') or '').strip()
 
     rebate_rows, _ = _get_rebate_extraction_data(start_date, end_date, search_term)
     allocation_headers = [column_name for _, column_name in _REBATE_ALLOC_COLUMNS]
+    attachment_folder = current_app.config.get('REBATE_ATTACHMENTS_FOLDER', 'Rebate_Attachments')
     export_date = datetime.now().strftime('%m.%d.%Y')
     workbook_name = f'Rebate Initiatives-Savings Tracker - {export_date}.xlsx'
     zip_name = f'Rebate Initiatives-Savings Tracker - {export_date}.zip'
@@ -303,39 +421,47 @@ def rebate_extraction_export():
 
     with zipfile.ZipFile(zip_buffer, 'w', compression=zipfile.ZIP_DEFLATED) as zip_file:
         attachment_count = 0
+        used_archive_names = set()
+
         for row in rebate_rows:
-            excel_file_paths = []
+            excel_file_links = []
             for attachment in row['attachments']:
                 file_path = attachment.get('file_path')
-                safe_name = secure_filename(attachment.get('file_name') or '') or f"file_{attachment.get('id', 'unknown')}"
+                original_name = os.path.basename(attachment.get('file_name') or '') or f"file_{attachment.get('id', 'unknown')}"
 
                 if file_path and os.path.isfile(file_path):
                     attachment_count += 1
-                    arcname = (
-                        f"Rebate_Attachments/initiative_{row['initiative_id']}/"
-                        f"{attachment.get('id', 'file')}_{safe_name}"
-                    )
+                    file_root, file_ext = os.path.splitext(original_name)
+                    archive_file_name = original_name
+                    if archive_file_name.lower() in used_archive_names:
+                        archive_file_name = f"{file_root}_{attachment.get('id', 'file')}{file_ext}"
+                    used_archive_names.add(archive_file_name.lower())
+
+                    arcname = f"{attachment_folder}/{row['initiative_id']}/{archive_file_name}"
                     zip_file.write(file_path, arcname=arcname)
-                    if len(excel_file_paths) < len(_REBATE_FILE_PATH_HEADERS):
-                        excel_file_paths.append(arcname)
+                    if len(excel_file_links) < len(_REBATE_FILE_PATH_HEADERS):
+                        excel_file_links.append({
+                            'parent_folder': attachment_folder,
+                            'file_name': archive_file_name,
+                        })
                 else:
                     missing_files.append(
                         f"Initiative {row['initiative_id']}: {attachment.get('file_name', 'Unknown file')}"
                     )
 
-            row['excel_file_paths'] = excel_file_paths
+            row['excel_file_links'] = excel_file_links
 
-        workbook_buffer = _build_rebate_excel_workbook(rebate_rows, allocation_headers)
+        workbook_buffer = _build_rebate_excel_workbook(rebate_rows, allocation_headers, attachment_folder)
         zip_file.writestr(workbook_name, workbook_buffer.getvalue())
 
         if attachment_count == 0:
             zip_file.writestr(
-                'Rebate_Attachments/README.txt',
+                f'{attachment_folder}/README.txt',
                 'No attachment files were found for the selected rebate initiatives.\n'
             )
 
         if missing_files:
-            zip_file.writestr('Rebate_Attachments/MISSING_FILES.txt', '\n'.join(missing_files))
+            zip_file.writestr(f'{attachment_folder}/MISSING_FILES.txt', '\n'.join(missing_files))
 
     zip_buffer.seek(0)
     return send_file(
@@ -351,6 +477,150 @@ def cost_avoidance_form():
     """Serve the cost avoidance form page."""
     # TEMPORARY: Use test user for local development
     return render_template('cost_avoidance_form.html', current_user='Andrew Tong')
+
+
+def _is_admin_user(user):
+    """Return True when the current user is an administrator."""
+    if not user:
+        return False
+    return any([
+        user.has_permission('manage_users'),
+        getattr(getattr(user, 'role', None), 'name', '') == 'Admin',
+    ])
+
+
+def _can_access_email_testing(user):
+    """Return True when the current user should see the admin email test tools."""
+    if not user:
+        return False
+    return any([
+        user.has_permission('approve'),
+        _is_admin_user(user),
+    ])
+
+
+@main_bp.route('/admin/email-notifications')
+@login_required
+def email_notifications_admin():
+    """Admin page for testing Microsoft Graph email notifications."""
+    user = g.current_user
+    if not _can_access_email_testing(user):
+        flash('Admin access is required to test email notifications.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    initiatives = (
+        Initiative.query
+        .filter_by(is_deleted=False)
+        .order_by(Initiative.id.desc())
+        .limit(50)
+        .all()
+    )
+
+    current_settings = current_app.config.get('STATIC_APP_SETTINGS') or load_static_settings(current_app.config)
+
+    return render_template(
+        'email_notifications.html',
+        current_user=user.full_name,
+        initiatives=initiatives,
+        graph_ready=is_graph_mail_configured(),
+        sender_mailbox=current_app.config.get('MS_GRAPH_SENDER_USER_ID') or current_app.config.get('FROM_EMAIL'),
+        review_mailbox=current_app.config.get('REVIEW_NOTIFICATION_TO') or current_app.config.get('PROCUREMENT_DATA_TEAM_EMAIL'),
+        procurement_mailbox=current_app.config.get('PROCUREMENT_DATA_TEAM_EMAIL'),
+        selected_id=request.args.get('selected_id', type=int),
+        settings=current_settings,
+        settings_file_path=current_app.config.get('STATIC_CONFIG_FILE'),
+    )
+
+
+@main_bp.route('/admin/email-notifications/send', methods=['POST'])
+@login_required
+def send_test_email_notification():
+    """Send one of the configured email notifications for admin testing."""
+    user = g.current_user
+    if not _can_access_email_testing(user):
+        flash('Admin access is required to test email notifications.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    email_type = (request.form.get('email_type') or '').strip().lower()
+    initiative_id = request.form.get('initiative_id', type=int)
+    initiative = None
+
+    if initiative_id:
+        initiative = Initiative.query.filter_by(id=initiative_id, is_deleted=False).first()
+
+    if email_type != 'weekly' and not initiative:
+        flash('Please select a valid initiative for the test email.', 'error')
+        return redirect(url_for('main.email_notifications_admin', selected_id=initiative_id or ''))
+
+    reviewers = User.query.join(UserRole).filter(
+        UserRole.can_review == True,
+        User.is_active == True,
+    ).all()
+
+    success = False
+    label = 'email notification'
+    email_result = {'success': False, 'message': 'No email result was returned.', 'status_code': None}
+
+    if email_type == 'created':
+        email_result = send_initiative_creator_notification(initiative, initiative.creator or user, return_details=True)
+        label = f'new initiative created email for #{initiative.id}'
+    elif email_type == 'review':
+        email_result = send_initiative_review_notification(initiative, initiative.creator or user, reviewers, return_details=True)
+        label = f'review notification email for #{initiative.id}'
+    elif email_type == 'approved':
+        if initiative.review_date is None:
+            initiative.review_date = initiative.updated_at or initiative.created_at or now_eastern()
+        email_result = send_initiative_approved_notification(initiative, initiative.reviewer or user, return_details=True)
+        label = f'approval email for #{initiative.id}'
+    elif email_type == 'weekly':
+        email_result = send_weekly_review_reminder(return_details=True)
+        label = 'weekly reminder email'
+    else:
+        flash('Unknown email notification type selected.', 'error')
+        return redirect(url_for('main.email_notifications_admin', selected_id=initiative_id or ''))
+
+    success = bool(email_result.get('success'))
+    if success:
+        flash(f"Successfully sent the {label}. {email_result.get('message', '')}".strip(), 'success')
+    else:
+        error_message = email_result.get('message', 'Unknown Microsoft Graph error.')
+        status_code = email_result.get('status_code')
+        status_suffix = f' (status {status_code})' if status_code else ''
+        flash(f'Unable to send the {label}{status_suffix}: {error_message}', 'warning')
+
+    return redirect(url_for('main.email_notifications_admin', selected_id=initiative_id or ''))
+
+
+@main_bp.route('/admin/static-config/save', methods=['POST'])
+@login_required
+def save_static_config():
+    """Save admin-managed notification and file path settings to the static config file."""
+    user = g.current_user
+    if not _can_access_email_testing(user):
+        flash('Admin access is required to update settings.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    settings = load_static_settings(current_app.config)
+    settings['email'] = {
+        'from_email': (request.form.get('from_email') or '').strip(),
+        'graph_sender_user_id': (request.form.get('graph_sender_user_id') or '').strip(),
+        'creator_notification_to': (request.form.get('creator_notification_to') or '').strip(),
+        'review_notification_to': (request.form.get('review_notification_to') or '').strip(),
+        'approval_notification_to': (request.form.get('approval_notification_to') or '').strip(),
+        'weekly_reminder_to': (request.form.get('weekly_reminder_to') or '').strip(),
+        'cc_addresses': (request.form.get('cc_addresses') or '').strip(),
+    }
+    settings['files'] = {
+        'file_storage_path': (request.form.get('file_storage_path') or '').strip(),
+        'uploads_fallback_path': (request.form.get('uploads_fallback_path') or '').strip() or 'uploads',
+        'rebate_attachments_folder': (request.form.get('rebate_attachments_folder') or '').strip() or 'Rebate_Attachments',
+        'logs_path': (request.form.get('logs_path') or '').strip() or 'logs',
+    }
+
+    save_static_settings(settings)
+    apply_static_settings(current_app)
+    flash('Static configuration updated successfully.', 'success')
+    return redirect(url_for('main.email_notifications_admin'))
 
 
 @main_bp.route('/logout')

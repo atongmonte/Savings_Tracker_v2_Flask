@@ -4,30 +4,28 @@ let currentInitiativeId = null;
 window._showDeleted = false;
 
 // ── Sorting & pagination state ────────────────────────
-let _sortColumn  = null;   // 'id' | 'updated_at' | 'amount' | 'initiative_date' | null
-let _sortDir     = 'asc';  // 'asc' | 'desc'
+let _sortColumn  = 'initiative_date';   // default: newest initiative year first
+let _sortDir     = 'desc';
 let _currentPage = 1;
 const _pageSize  = 20;
 
-// ── Stats year filter ────────────────────────
-let _statsYear = new Date().getFullYear(); // default = current year
+// ── Stats year follows the bottom Initiative Year filter ────────────────
+let _statsYear = null;
 
-function setStatsYear(year) {
-    _statsYear = year;
-    // Update pill active state
-    ['all', '2025', '2026'].forEach(k => {
-        const el = document.getElementById(`year-pill-${k}`);
-        if (!el) return;
-        const match = (k === 'all') ? (year === null) : (parseInt(k) === year);
-        el.classList.toggle('active', match);
-    });
-    // Update the badge on the Cost Savings card
+function syncStatsYearFromFilter() {
+    const selectedYear = document.getElementById('filterYear')?.value || '';
+    _statsYear = selectedYear ? parseInt(selectedYear, 10) : null;
+
+    const summaryLabel = document.getElementById('summaryYearLabel');
+    if (summaryLabel) {
+        summaryLabel.textContent = selectedYear ? `Initiative Year: ${selectedYear}` : 'Initiative Year: All Years';
+    }
+
     const badge = document.getElementById('statsYearBadge');
     if (badge) {
-        if (year) { badge.textContent = year; badge.style.display = ''; }
-        else      { badge.style.display = 'none'; }
+        badge.textContent = selectedYear || 'All Years';
+        badge.style.display = '';
     }
-    loadStats();
 }
 
 /**
@@ -213,6 +211,8 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(() => { window._currentUser = {}; });
 
+    syncStatsYearFromFilter();
+    updateSortIcons();
     loadInitiatives();
 
     // Setup filter event listeners
@@ -284,6 +284,8 @@ function loadStats() {
     const status = document.getElementById('filterStatus').value;
     const search = document.getElementById('searchBox').value;
     const filterYear = document.getElementById('filterYear')?.value || '';
+
+    syncStatsYearFromFilter();
 
     const statsParams = new URLSearchParams();
     if (status)              statsParams.set('status', status);

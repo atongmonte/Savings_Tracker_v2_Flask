@@ -468,9 +468,12 @@ def upload_files(initiative_id):
     if not files or all(f.filename == '' for f in files):
         return jsonify({'error': 'No files selected'}), 400
 
-    storage_base = current_app.config.get('FILE_STORAGE_PATH') or os.path.join(
-        current_app.root_path, '..', 'uploads'
-    )
+    storage_base = current_app.config.get('FILE_STORAGE_PATH')
+    if not storage_base:
+        fallback_path = current_app.config.get('UPLOADS_FALLBACK_PATH', 'uploads')
+        storage_base = fallback_path if os.path.isabs(fallback_path) else os.path.join(
+            current_app.root_path, '..', fallback_path
+        )
     # python-dotenv reads \\\\ from .env as 4 literal backslashes; normalize
     # any UNC path that starts with multiple backslashes back to exactly \\
     if storage_base:

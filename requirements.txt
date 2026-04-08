@@ -8,8 +8,7 @@ Flask-CORS==4.0.0
 pyodbc==5.0.1
 sqlalchemy==2.0.23
 
-# Email
-sendgrid==6.11.0
+# Email / Microsoft Graph uses the Python standard library
 
 # File handling
 python-magic==0.4.27

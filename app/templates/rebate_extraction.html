@@ -202,7 +202,7 @@
                             <td>{{ row.check_number }}</td>
                             <td class="amount-cell">{{ '${:,.2f}'.format(row.rebate_amount) }}</td>
                             {% for column_name in allocation_columns %}
-                            <td class="alloc-col">{{ row.allocation_map[column_name] }}</td>
+                            <td class="alloc-col">{{ row.allocation_display_map[column_name] }}</td>
                             {% endfor %}
                         </tr>
                         {% endfor %}

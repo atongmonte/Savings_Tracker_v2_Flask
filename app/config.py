@@ -33,14 +33,25 @@ class Config:
     
     # File Storage
     FILE_STORAGE_PATH = os.getenv('FILE_STORAGE_PATH', '')
+    UPLOADS_FALLBACK_PATH = os.getenv('UPLOADS_FALLBACK_PATH', 'uploads')
+    REBATE_ATTACHMENTS_FOLDER = os.getenv('REBATE_ATTACHMENTS_FOLDER', 'Rebate_Attachments')
+    LOGS_DIR = os.getenv('LOGS_DIR', 'logs')
     MAX_FILE_SIZE_MB = int(os.getenv('MAX_FILE_SIZE_MB', 500))
     MAX_CONTENT_LENGTH = MAX_FILE_SIZE_MB * 1024 * 1024  # Convert to bytes
     ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'zip'}
     
-    # Email
-    SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY', '')
+    # Email / Microsoft Graph
+    EMAIL_ENABLED = os.getenv('EMAIL_ENABLED', 'true').lower() == 'true'
     FROM_EMAIL = os.getenv('FROM_EMAIL', 'savingstracker@montefiore.org')
     PROCUREMENT_DATA_TEAM_EMAIL = os.getenv('PROCUREMENT_DATA_TEAM_EMAIL', 'procurementdatateam@montefiore.org')
+    CREATOR_NOTIFICATION_TO_OVERRIDE = os.getenv('CREATOR_NOTIFICATION_TO_OVERRIDE', '')
+    REVIEW_NOTIFICATION_TO = os.getenv('REVIEW_NOTIFICATION_TO', '')
+    APPROVAL_NOTIFICATION_TO_OVERRIDE = os.getenv('APPROVAL_NOTIFICATION_TO_OVERRIDE', '')
+    WEEKLY_REMINDER_TO = os.getenv('WEEKLY_REMINDER_TO', '')
+    MS_GRAPH_TENANT_ID = os.getenv('MS_GRAPH_TENANT_ID', '')
+    MS_GRAPH_CLIENT_ID = os.getenv('MS_GRAPH_CLIENT_ID', '')
+    MS_GRAPH_CLIENT_SECRET = os.getenv('MS_GRAPH_CLIENT_SECRET', '')
+    MS_GRAPH_SENDER_USER_ID = os.getenv('MS_GRAPH_SENDER_USER_ID', FROM_EMAIL)
     
     # Pagination
     ITEMS_PER_PAGE = int(os.getenv('ITEMS_PER_PAGE', 50))
@@ -56,9 +67,10 @@ class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
     SQLALCHEMY_ECHO = True
-    # In development, route all emails to the developer
-    FROM_EMAIL = 'atong@montefiore.org'
-    PROCUREMENT_DATA_TEAM_EMAIL = 'atong@montefiore.org'
+    # In development, route reviewer reminders to the procurement data team mailbox.
+    FROM_EMAIL = os.getenv('FROM_EMAIL', 'atong@montefiore.org')
+    PROCUREMENT_DATA_TEAM_EMAIL = os.getenv('PROCUREMENT_DATA_TEAM_EMAIL', 'atong@montefiore.org')
+    REVIEW_NOTIFICATION_TO = os.getenv('REVIEW_NOTIFICATION_TO', PROCUREMENT_DATA_TEAM_EMAIL)
 
 
 class TestingConfig(Config):
@@ -72,6 +84,7 @@ class ProductionConfig(Config):
     DEBUG = False
     FROM_EMAIL = os.getenv('FROM_EMAIL', 'savingstracker@montefiore.org')
     PROCUREMENT_DATA_TEAM_EMAIL = os.getenv('PROCUREMENT_DATA_TEAM_EMAIL', 'procurementdatateam@montefiore.org')
+    REVIEW_NOTIFICATION_TO = os.getenv('REVIEW_NOTIFICATION_TO', '')
 
 
 config = {

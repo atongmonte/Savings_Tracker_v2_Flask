@@ -1,0 +1,17 @@
+{
+  "email": {
+    "from_email": "procurementdatateam@montefiore.org",
+    "graph_sender_user_id": "procurementdatateam@montefiore.org",
+    "creator_notification_to": "atong@montefiore.org",
+    "review_notification_to": "procurementdatateam@montefiore.org",
+    "approval_notification_to": "",
+    "weekly_reminder_to": "procurementdatateam@montefiore.org",
+    "cc_addresses": "procurementdatateam@montefiore.org"
+  },
+  "files": {
+    "file_storage_path": "\\\\montefiore.org\\centralfiles\\data\\Procurement PMO\\SavingsTrackerV2",
+    "uploads_fallback_path": "uploads",
+    "rebate_attachments_folder": "Rebate_Attachments",
+    "logs_path": "logs"
+  }
+}
