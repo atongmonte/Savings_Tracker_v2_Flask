@@ -8,7 +8,7 @@ A modernized Flask-based application for tracking procurement savings initiative
 - **Normalized Database** - Improved database schema with proper relationships
 - **Role-Based Access Control** - Fine-grained permissions system
 - **Audit Logging** - Complete audit trail of all changes
-- **Email Notifications** - Automated notifications using SendGrid
+- **Email Notifications** - Automated notifications using Microsoft Graph
 - **IIS Windows Authentication** - Integrated with Windows Auth for SSO
 - **Three Initiative Types**:
   - Cost Savings
@@ -20,7 +20,7 @@ A modernized Flask-based application for tracking procurement savings initiative
 - **Backend**: Flask 3.0, SQLAlchemy ORM, pyodbc
 - **Database**: Microsoft SQL Server (savingstracker_v2)
 - **Authentication**: IIS Windows Authentication
-- **Email**: SendGrid
+- **Email**: Microsoft Graph API
 - **Server**: IIS with FastCGI
 
 ## Project Structure
@@ -75,7 +75,8 @@ Savings_Tracker_v2_Flask/
 ### 2. Clone and Setup
 
 ```bash
-cd "C:\Users\atong\OneDrive - Montefiore Medicine\Savings_Tracker_v2_Flask"
+# From the parent folder that contains this project
+cd .\Savings_Tracker_v2_Flask
 
 # Create virtual environment
 python -m venv .venv
@@ -90,18 +91,20 @@ pip install -r requirements.txt
 ### 3. Configure Environment
 
 ```bash
-# Copy example environment file
-copy .env.example .env
-
-# Edit .env with your settings
+# Create or update the environment file in the project root
 notepad .env
 ```
 
-**Required settings in .env:**
+**Required settings in `.env`:**
 - Database connection details
-- SendGrid API key for emails
-- File storage path
-- Application URL
+- `MS_GRAPH_TENANT_ID`, `MS_GRAPH_CLIENT_ID`, `MS_GRAPH_CLIENT_SECRET`
+- `FILE_STORAGE_PATH`
+- `APP_URL`
+
+**Admin-managed email settings:**
+- Sender is fixed to `procurementdatateam@montefiore.org`
+- CC is fixed to `procurementdatateam@montefiore.org`
+- Receiver fields can be updated from the Admin email settings page and support multiple addresses separated by commas or semicolons
 
 ### 4. Initialize Database
 
@@ -261,9 +264,9 @@ Or create an admin interface for role management.
 - Verify REMOTE_USER header is being passed
 
 **Email notifications not sending:**
-- Validate SendGrid API key
-- Check FROM_EMAIL is verified in SendGrid
-- Review application logs for errors
+- Validate `MS_GRAPH_TENANT_ID`, `MS_GRAPH_CLIENT_ID`, and `MS_GRAPH_CLIENT_SECRET`
+- Confirm `procurementdatateam@montefiore.org` is the configured sender mailbox
+- Review application logs or the Admin email testing page for details
 
 ## Development
 

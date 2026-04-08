@@ -239,7 +239,7 @@ Savings_Tracker_v2_Flask/
 
 ### Running the Application
 ```bash
-cd "C:\Users\atong\OneDrive - Montefiore Medicine\Savings_Tracker_v2_Flask"
+cd .\Savings_Tracker_v2_Flask
 py run.py
 ```
 

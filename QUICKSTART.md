@@ -3,8 +3,8 @@
 ## Run the Application
 
 ```bash
-# Navigate to project directory
-cd "C:\Users\atong\OneDrive - Montefiore Medicine\Savings_Tracker_v2_Flask"
+# Navigate to the project directory from its parent folder
+cd .\Savings_Tracker_v2_Flask
 
 # Run the Flask application
 py run.py
