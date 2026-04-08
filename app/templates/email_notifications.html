@@ -112,27 +112,30 @@
                 <div class="small text-muted mb-3">
                     Saved to: <code>{{ settings_file_path }}</code>
                 </div>
+                <div class="alert alert-info py-2 small">
+                    Sender and CC are fixed to <strong>procurementdatateam@montefiore.org</strong>. Receiver fields below accept multiple email addresses separated by commas or semicolons.
+                </div>
                 <form method="post" action="{{ url_for('main.save_static_config') }}">
-                    <label class="form-label">From Email</label>
-                    <input type="text" class="form-control mb-2" name="from_email" value="{{ settings.email.from_email }}">
+                    <label class="form-label">From Email (fixed)</label>
+                    <input type="text" class="form-control mb-2" value="procurementdatateam@montefiore.org" readonly>
 
-                    <label class="form-label">Graph Sender Mailbox</label>
-                    <input type="text" class="form-control mb-2" name="graph_sender_user_id" value="{{ settings.email.graph_sender_user_id }}">
+                    <label class="form-label">Graph Sender Mailbox (fixed)</label>
+                    <input type="text" class="form-control mb-2" value="procurementdatateam@montefiore.org" readonly>
 
                     <label class="form-label">Created Email To Override</label>
-                    <input type="text" class="form-control mb-2" name="creator_notification_to" value="{{ settings.email.creator_notification_to }}" placeholder="Leave blank to use the creator's email">
+                    <textarea class="form-control mb-2" name="creator_notification_to" rows="2" placeholder="Leave blank to use the creator's email. Separate multiple emails with commas or semicolons.">{{ settings.email.creator_notification_to }}</textarea>
 
                     <label class="form-label">Review Email To</label>
-                    <input type="text" class="form-control mb-2" name="review_notification_to" value="{{ settings.email.review_notification_to }}">
+                    <textarea class="form-control mb-2" name="review_notification_to" rows="2" placeholder="Separate multiple emails with commas or semicolons.">{{ settings.email.review_notification_to }}</textarea>
 
                     <label class="form-label">Approved Email To Override</label>
-                    <input type="text" class="form-control mb-2" name="approval_notification_to" value="{{ settings.email.approval_notification_to }}" placeholder="Leave blank to use the creator's email">
+                    <textarea class="form-control mb-2" name="approval_notification_to" rows="2" placeholder="Leave blank to use the creator's email. Separate multiple emails with commas or semicolons.">{{ settings.email.approval_notification_to }}</textarea>
 
                     <label class="form-label">Weekly Reminder To</label>
-                    <input type="text" class="form-control mb-2" name="weekly_reminder_to" value="{{ settings.email.weekly_reminder_to }}">
+                    <textarea class="form-control mb-2" name="weekly_reminder_to" rows="2" placeholder="Separate multiple emails with commas or semicolons.">{{ settings.email.weekly_reminder_to }}</textarea>
 
-                    <label class="form-label">CC Addresses</label>
-                    <textarea class="form-control mb-3" name="cc_addresses" rows="2" placeholder="comma-separated emails">{{ settings.email.cc_addresses }}</textarea>
+                    <label class="form-label">CC Address (fixed)</label>
+                    <input type="text" class="form-control mb-3" value="procurementdatateam@montefiore.org" readonly>
 
                     <label class="form-label">File Storage Path</label>
                     <input type="text" class="form-control mb-2" name="file_storage_path" value="{{ settings.files.file_storage_path }}" placeholder="\\server\share\SavingsTracker or local path">

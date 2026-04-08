@@ -5,17 +5,18 @@ from copy import deepcopy
 
 
 SETTINGS_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static_config.json')
+FIXED_NOTIFICATION_MAILBOX = 'procurementdatateam@montefiore.org'
 
 
 DEFAULT_STATIC_SETTINGS = {
     'email': {
-        'from_email': 'savingstracker@montefiore.org',
-        'graph_sender_user_id': 'savingstracker@montefiore.org',
+        'from_email': FIXED_NOTIFICATION_MAILBOX,
+        'graph_sender_user_id': FIXED_NOTIFICATION_MAILBOX,
         'creator_notification_to': '',
-        'review_notification_to': 'procurementdatateam@montefiore.org',
+        'review_notification_to': FIXED_NOTIFICATION_MAILBOX,
         'approval_notification_to': '',
-        'weekly_reminder_to': 'procurementdatateam@montefiore.org',
-        'cc_addresses': 'procurementdatateam@montefiore.org',
+        'weekly_reminder_to': FIXED_NOTIFICATION_MAILBOX,
+        'cc_addresses': FIXED_NOTIFICATION_MAILBOX,
     },
     'files': {
         'file_storage_path': '',
@@ -42,11 +43,8 @@ def _build_defaults_from_config(config=None):
     config = config or {}
     return {
         'email': {
-            'from_email': config.get('FROM_EMAIL', DEFAULT_STATIC_SETTINGS['email']['from_email']),
-            'graph_sender_user_id': config.get(
-                'MS_GRAPH_SENDER_USER_ID',
-                config.get('FROM_EMAIL', DEFAULT_STATIC_SETTINGS['email']['graph_sender_user_id'])
-            ),
+            'from_email': FIXED_NOTIFICATION_MAILBOX,
+            'graph_sender_user_id': FIXED_NOTIFICATION_MAILBOX,
             'creator_notification_to': config.get('CREATOR_NOTIFICATION_TO_OVERRIDE', ''),
             'review_notification_to': config.get(
                 'REVIEW_NOTIFICATION_TO',
@@ -57,7 +55,7 @@ def _build_defaults_from_config(config=None):
                 'WEEKLY_REMINDER_TO',
                 config.get('REVIEW_NOTIFICATION_TO', config.get('PROCUREMENT_DATA_TEAM_EMAIL', DEFAULT_STATIC_SETTINGS['email']['weekly_reminder_to']))
             ),
-            'cc_addresses': config.get('PROCUREMENT_DATA_TEAM_EMAIL', DEFAULT_STATIC_SETTINGS['email']['cc_addresses']),
+            'cc_addresses': FIXED_NOTIFICATION_MAILBOX,
         },
         'files': {
             'file_storage_path': config.get('FILE_STORAGE_PATH', DEFAULT_STATIC_SETTINGS['files']['file_storage_path']),
@@ -90,6 +88,11 @@ def load_static_settings(config=None):
     if not merged.get('files', {}).get('file_storage_path') and env_storage_path:
         merged.setdefault('files', {})['file_storage_path'] = env_storage_path
 
+    merged.setdefault('email', {})
+    merged['email']['from_email'] = FIXED_NOTIFICATION_MAILBOX
+    merged['email']['graph_sender_user_id'] = FIXED_NOTIFICATION_MAILBOX
+    merged['email']['cc_addresses'] = FIXED_NOTIFICATION_MAILBOX
+
     if merged != stored:
         save_static_settings(merged)
     return merged
@@ -116,13 +119,13 @@ def apply_static_settings(app):
     app.config['STATIC_APP_SETTINGS'] = settings
     app.config['STATIC_CONFIG_FILE'] = SETTINGS_FILE_PATH
 
-    app.config['FROM_EMAIL'] = email_settings.get('from_email') or app.config.get('FROM_EMAIL')
-    app.config['MS_GRAPH_SENDER_USER_ID'] = email_settings.get('graph_sender_user_id') or app.config.get('MS_GRAPH_SENDER_USER_ID') or app.config.get('FROM_EMAIL')
+    app.config['FROM_EMAIL'] = FIXED_NOTIFICATION_MAILBOX
+    app.config['MS_GRAPH_SENDER_USER_ID'] = FIXED_NOTIFICATION_MAILBOX
     app.config['CREATOR_NOTIFICATION_TO_OVERRIDE'] = email_settings.get('creator_notification_to', '')
     app.config['REVIEW_NOTIFICATION_TO'] = email_settings.get('review_notification_to', '')
     app.config['APPROVAL_NOTIFICATION_TO_OVERRIDE'] = email_settings.get('approval_notification_to', '')
     app.config['WEEKLY_REMINDER_TO'] = email_settings.get('weekly_reminder_to', '')
-    app.config['PROCUREMENT_DATA_TEAM_EMAIL'] = email_settings.get('cc_addresses', app.config.get('PROCUREMENT_DATA_TEAM_EMAIL', ''))
+    app.config['PROCUREMENT_DATA_TEAM_EMAIL'] = FIXED_NOTIFICATION_MAILBOX
 
     app.config['FILE_STORAGE_PATH'] = file_settings.get('file_storage_path') or app.config.get('FILE_STORAGE_PATH', '')
     app.config['UPLOADS_FALLBACK_PATH'] = file_settings.get('uploads_fallback_path') or app.config.get('UPLOADS_FALLBACK_PATH', 'uploads')

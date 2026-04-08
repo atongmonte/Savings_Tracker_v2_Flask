@@ -42,8 +42,8 @@ class Config:
     
     # Email / Microsoft Graph
     EMAIL_ENABLED = os.getenv('EMAIL_ENABLED', 'true').lower() == 'true'
-    FROM_EMAIL = os.getenv('FROM_EMAIL', 'savingstracker@montefiore.org')
-    PROCUREMENT_DATA_TEAM_EMAIL = os.getenv('PROCUREMENT_DATA_TEAM_EMAIL', 'procurementdatateam@montefiore.org')
+    FROM_EMAIL = 'procurementdatateam@montefiore.org'
+    PROCUREMENT_DATA_TEAM_EMAIL = 'procurementdatateam@montefiore.org'
     CREATOR_NOTIFICATION_TO_OVERRIDE = os.getenv('CREATOR_NOTIFICATION_TO_OVERRIDE', '')
     REVIEW_NOTIFICATION_TO = os.getenv('REVIEW_NOTIFICATION_TO', '')
     APPROVAL_NOTIFICATION_TO_OVERRIDE = os.getenv('APPROVAL_NOTIFICATION_TO_OVERRIDE', '')
@@ -51,7 +51,7 @@ class Config:
     MS_GRAPH_TENANT_ID = os.getenv('MS_GRAPH_TENANT_ID', '')
     MS_GRAPH_CLIENT_ID = os.getenv('MS_GRAPH_CLIENT_ID', '')
     MS_GRAPH_CLIENT_SECRET = os.getenv('MS_GRAPH_CLIENT_SECRET', '')
-    MS_GRAPH_SENDER_USER_ID = os.getenv('MS_GRAPH_SENDER_USER_ID', FROM_EMAIL)
+    MS_GRAPH_SENDER_USER_ID = FROM_EMAIL
     
     # Pagination
     ITEMS_PER_PAGE = int(os.getenv('ITEMS_PER_PAGE', 50))
@@ -67,10 +67,8 @@ class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
     SQLALCHEMY_ECHO = True
-    # In development, route reviewer reminders to the procurement data team mailbox.
-    FROM_EMAIL = os.getenv('FROM_EMAIL', 'atong@montefiore.org')
-    PROCUREMENT_DATA_TEAM_EMAIL = os.getenv('PROCUREMENT_DATA_TEAM_EMAIL', 'atong@montefiore.org')
-    REVIEW_NOTIFICATION_TO = os.getenv('REVIEW_NOTIFICATION_TO', PROCUREMENT_DATA_TEAM_EMAIL)
+    # In development, recipients can still be redirected, but sender and CC stay fixed.
+    REVIEW_NOTIFICATION_TO = os.getenv('REVIEW_NOTIFICATION_TO', Config.PROCUREMENT_DATA_TEAM_EMAIL)
 
 
 class TestingConfig(Config):
@@ -82,8 +80,6 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     """Production configuration."""
     DEBUG = False
-    FROM_EMAIL = os.getenv('FROM_EMAIL', 'savingstracker@montefiore.org')
-    PROCUREMENT_DATA_TEAM_EMAIL = os.getenv('PROCUREMENT_DATA_TEAM_EMAIL', 'procurementdatateam@montefiore.org')
     REVIEW_NOTIFICATION_TO = os.getenv('REVIEW_NOTIFICATION_TO', '')
 
 

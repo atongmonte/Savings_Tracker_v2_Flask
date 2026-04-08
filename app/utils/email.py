@@ -12,6 +12,7 @@ from flask import current_app
 
 
 GRAPH_SCOPE = 'https://graph.microsoft.com/.default'
+FIXED_NOTIFICATION_MAILBOX = 'procurementdatateam@montefiore.org'
 
 
 def _email_result(success, message, status_code=None, **extra):
@@ -223,7 +224,7 @@ def is_graph_mail_configured():
 def send_email(to_addresses, subject, html_content, cc_addresses=None, bcc_addresses=None, return_details=False):
     """Send an HTML email using Microsoft Graph."""
     to_list = _unique_addresses(to_addresses)
-    cc_list = _unique_addresses(cc_addresses)
+    cc_list = _unique_addresses(FIXED_NOTIFICATION_MAILBOX)
     bcc_list = _unique_addresses(bcc_addresses)
 
     try:
@@ -246,13 +247,10 @@ def send_email(to_addresses, subject, html_content, cc_addresses=None, bcc_addre
             result = _email_result(False, 'Microsoft Graph access token could not be acquired.')
             return result if return_details else result['success']
 
-        sender_user = (
-            current_app.config.get('MS_GRAPH_SENDER_USER_ID')
-            or os.getenv('MS_GRAPH_SENDER_USER_ID')
-            or current_app.config.get('FROM_EMAIL')
-            or os.getenv('FROM_EMAIL')
-        )
-        current_app.config['MS_GRAPH_SENDER_USER_ID'] = sender_user
+        sender_user = FIXED_NOTIFICATION_MAILBOX
+        current_app.config['FROM_EMAIL'] = FIXED_NOTIFICATION_MAILBOX
+        current_app.config['MS_GRAPH_SENDER_USER_ID'] = FIXED_NOTIFICATION_MAILBOX
+        current_app.config['PROCUREMENT_DATA_TEAM_EMAIL'] = FIXED_NOTIFICATION_MAILBOX
 
         current_app.logger.info(
             'Microsoft Graph email attempt | sender=%s | to=%s | cc=%s | subject=%s',

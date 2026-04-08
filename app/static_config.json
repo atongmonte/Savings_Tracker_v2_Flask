@@ -2,7 +2,7 @@
   "email": {
     "from_email": "procurementdatateam@montefiore.org",
     "graph_sender_user_id": "procurementdatateam@montefiore.org",
-    "creator_notification_to": "atong@montefiore.org",
+    "creator_notification_to": "",
     "review_notification_to": "procurementdatateam@montefiore.org",
     "approval_notification_to": "",
     "weekly_reminder_to": "procurementdatateam@montefiore.org",

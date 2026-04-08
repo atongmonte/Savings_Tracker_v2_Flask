@@ -491,12 +491,7 @@ def _is_admin_user(user):
 
 def _can_access_email_testing(user):
     """Return True when the current user should see the admin email test tools."""
-    if not user:
-        return False
-    return any([
-        user.has_permission('approve'),
-        _is_admin_user(user),
-    ])
+    return _is_admin_user(user)
 
 
 @main_bp.route('/admin/email-notifications')
@@ -600,15 +595,16 @@ def save_static_config():
         flash('Admin access is required to update settings.', 'error')
         return redirect(url_for('main.dashboard'))
 
+    fixed_mailbox = 'procurementdatateam@montefiore.org'
     settings = load_static_settings(current_app.config)
     settings['email'] = {
-        'from_email': (request.form.get('from_email') or '').strip(),
-        'graph_sender_user_id': (request.form.get('graph_sender_user_id') or '').strip(),
+        'from_email': fixed_mailbox,
+        'graph_sender_user_id': fixed_mailbox,
         'creator_notification_to': (request.form.get('creator_notification_to') or '').strip(),
         'review_notification_to': (request.form.get('review_notification_to') or '').strip(),
         'approval_notification_to': (request.form.get('approval_notification_to') or '').strip(),
         'weekly_reminder_to': (request.form.get('weekly_reminder_to') or '').strip(),
-        'cc_addresses': (request.form.get('cc_addresses') or '').strip(),
+        'cc_addresses': fixed_mailbox,
     }
     settings['files'] = {
         'file_storage_path': (request.form.get('file_storage_path') or '').strip(),
@@ -619,7 +615,7 @@ def save_static_config():
 
     save_static_settings(settings)
     apply_static_settings(current_app)
-    flash('Static configuration updated successfully.', 'success')
+    flash(f'Static configuration updated successfully. Sender and CC remain fixed to {fixed_mailbox}.', 'success')
     return redirect(url_for('main.email_notifications_admin'))
 
 
