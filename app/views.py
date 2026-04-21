@@ -219,7 +219,7 @@ def _build_rebate_excel_workbook(rebate_rows, allocation_headers, attachments_fo
         display_headers.extend([f'FILE_NAME_{suffix}', file_path_header])
 
     worksheet.append(display_headers)
-    accounting_format = '_("$"* #,##0.00_);_("$"* \(#,##0.00\);_("$"* "-"??_);_(@_)'
+    accounting_format = r'_("$"* #,##0.00_);_("$"* \(#,##0.00\);_("$"* "-"??_);_(@_)'
     default_font = Font(name='Aptos Narrow', size=11)
     header_font = Font(name='Aptos Narrow', size=11, color='FFFFFF')
     rebate_font = Font(name='Aptos Narrow', size=11, color='9C5700')
