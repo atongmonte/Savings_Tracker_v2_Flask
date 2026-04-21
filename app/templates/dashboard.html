@@ -387,25 +387,14 @@
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label">Contract Category <span class="text-danger">*</span></label>
-                                <select class="form-select modal-field" id="mf_contract_category">
-                                    <option value="">Please Select</option>
-                                    <option>Administrative And Related Services</option>
-                                    <option>Capital Equipment</option>
-                                    <option>Clinical</option>
-                                    <option>Facilities And Construction</option>
-                                    <option>Food Services</option>
-                                    <option>Information Technology</option>
-                                    <option>Laboratory</option>
-                                    <option>Medical Devices</option>
-                                    <option>Pharmaceuticals</option>
-                                    <option>Professional Services</option>
-                                    <option>Supplies</option>
-                                    <option>Other</option>
+                                <select class="form-select modal-field" id="mf_contract_category" disabled>
+                                    <option value="">Loading contract categories...</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Contract ID</label>
-                                <input type="text" class="form-control modal-field" id="mf_contract_number">
+                                <label class="form-label">Contract ID <span class="form-required">*</span></label>
+                                <input type="text" class="form-control modal-field" id="mf_contract_number" required list="mf_contract_number_options">
+                                <datalist id="mf_contract_number_options"></datalist>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Contract Source <span class="text-danger">*</span></label>
@@ -423,7 +412,8 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Vendor Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control modal-field" id="mf_vendor_name">
+                                <input type="text" class="form-control modal-field" id="mf_vendor_name" list="mf_vendor_name_options">
+                                <datalist id="mf_vendor_name_options"></datalist>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Wave Initiative ID</label>
@@ -674,5 +664,6 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/contract_categories.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}

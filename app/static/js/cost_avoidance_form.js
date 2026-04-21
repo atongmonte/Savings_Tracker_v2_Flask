@@ -2,7 +2,14 @@
 
 let editInitiativeId = null;
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadContractCategorySelect('contractCategory');
+    await initializePrimeContractLookup({
+        contractInputId: 'contractId',
+        vendorInputId: 'vendorName',
+        contractListId: 'contractIdOptions',
+        vendorListId: 'vendorNameOptions',
+    });
     initializeForm();
     setupEventListeners();
     checkEditMode();
@@ -493,38 +500,40 @@ function checkEditMode() {
     }
 }
 
-function loadInitiativeData(id) {
-    fetch(`/api/initiatives/${id}`)
-        .then(r => r.json())
-        .then(data => {
-            const ca = data.cost_avoidance || {};
-            setField('description', data.description);
-            setRadio('avoidance_type', ca.avoidance_type);
-            setField('strataProjectId', ca.strata_project_id);
-            setField('waveInitiativeId', ca.wave_initiative_id);
-            setSelect('contractCategory', ca.contract_category);
-            setField('contractId', ca.contract_number);
-            setRadio('contract_source', ca.contract_source);
-            setField('vendorName', ca.vendor_name);
-            setField('poNumber', ca.po_number);
-            setField('poDate', ca.po_date);
-            setField('avoidanceDate', ca.avoidance_date);
-            setField('originalQuote', ca.original_quote);
-            setField('newQuote', ca.new_quote);
-            setField('avoidanceAmount', ca.avoidance_amount);
-            (data.facility_allocations || []).forEach(alloc => {
-                if (alloc.facility) {
-                    const input = document.getElementById(alloc.facility.code.toLowerCase());
-                    if (input) {
-                        input.value = alloc.allocation_amount !== null && alloc.allocation_amount !== undefined
-                            ? alloc.allocation_amount : (alloc.allocation_percentage || 0);
-                        input.dispatchEvent(new Event('input'));
-                    }
+async function loadInitiativeData(id) {
+    try {
+        const response = await fetch(`/api/initiatives/${id}`);
+        const data = await response.json();
+        const ca = data.cost_avoidance || {};
+        setField('description', data.description);
+        setRadio('avoidance_type', ca.avoidance_type);
+        setField('strataProjectId', ca.strata_project_id);
+        setField('waveInitiativeId', ca.wave_initiative_id);
+        setSelect('contractCategory', ca.contract_category);
+        setField('contractId', ca.contract_number);
+        await loadPrimeVendorOptions(ca.contract_number, 'vendorNameOptions');
+        setRadio('contract_source', ca.contract_source);
+        setField('vendorName', ca.vendor_name);
+        setField('poNumber', ca.po_number);
+        setField('poDate', ca.po_date);
+        setField('avoidanceDate', ca.avoidance_date);
+        setField('originalQuote', ca.original_quote);
+        setField('newQuote', ca.new_quote);
+        setField('avoidanceAmount', ca.avoidance_amount);
+        (data.facility_allocations || []).forEach(alloc => {
+            if (alloc.facility) {
+                const input = document.getElementById(alloc.facility.code.toLowerCase());
+                if (input) {
+                    input.value = alloc.allocation_amount !== null && alloc.allocation_amount !== undefined
+                        ? alloc.allocation_amount : (alloc.allocation_percentage || 0);
+                    input.dispatchEvent(new Event('input'));
                 }
-            });
-            document.getElementById('originalQuote').dispatchEvent(new Event('input'));
-        })
-        .catch(err => console.error('Error loading initiative:', err));
+            }
+        });
+        document.getElementById('originalQuote').dispatchEvent(new Event('input'));
+    } catch (err) {
+        console.error('Error loading initiative:', err);
+    }
 }
 
 function setField(id, value) {
@@ -540,5 +549,14 @@ function setRadio(name, value) {
 
 function setSelect(id, value) {
     const el = document.getElementById(id);
-    if (el && value) el.value = value;
+    if (!el || !value) return;
+    const exists = Array.from(el.options || []).some(option => option.value === value);
+    if (!exists) {
+        const dynamic = document.createElement('option');
+        dynamic.value = value;
+        dynamic.text = value;
+        dynamic.dataset.dynamic = 'true';
+        el.appendChild(dynamic);
+    }
+    el.value = value;
 }

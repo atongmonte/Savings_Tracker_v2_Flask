@@ -12,6 +12,11 @@ from app.api import initiatives_bp
 from app.models import Initiative, User, UserRole, FacilityAllocation, Facility, AuditLog, FileTracking
 from app.utils.decorators import login_required, permission_required
 from app.utils.email import send_initiative_approved_notification, send_initiative_rejected_notification
+from app.utils.contract_categories import (
+    get_contract_categories,
+    get_prime_contract_numbers,
+    get_prime_vendors_for_contract,
+)
 
 
 @initiatives_bp.route('', methods=['GET'])
@@ -192,6 +197,25 @@ def get_initiative(initiative_id):
     _reconcile_missing_files(initiative)
 
     return jsonify(initiative.to_dict(include_details=True)), 200
+
+
+@initiatives_bp.route('/contract-categories', methods=['GET'])
+@login_required
+def get_contract_category_options():
+    """Return contract categories for async dropdown loading."""
+    return jsonify({'contract_categories': get_contract_categories()}), 200
+
+
+@initiatives_bp.route('/prime-contract-lookup', methods=['GET'])
+@login_required
+def get_prime_contract_lookup_options():
+    """Return PRIME contract number suggestions and vendor suggestions for a contract."""
+    contract_number = (request.args.get('contract_number') or '').strip()
+
+    return jsonify({
+        'contract_numbers': get_prime_contract_numbers(),
+        'vendors': get_prime_vendors_for_contract(contract_number) if contract_number else [],
+    }), 200
 
 
 @initiatives_bp.route('/<int:initiative_id>', methods=['DELETE'])

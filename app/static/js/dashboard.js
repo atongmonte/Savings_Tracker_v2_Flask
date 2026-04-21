@@ -365,9 +365,17 @@ function editInitiative(id) {
 
 // Open the initiative modal (view or edit mode)
 function showInitiativeModal(id, editMode) {
-    fetch(`/api/initiatives/${id}`)
-        .then(response => response.json())
-        .then(data => {
+    Promise.all([
+        fetch(`/api/initiatives/${id}`).then(response => response.json()),
+        loadContractCategorySelect('mf_contract_category'),
+        initializePrimeContractLookup({
+            contractInputId: 'mf_contract_number',
+            vendorInputId: 'mf_vendor_name',
+            contractListId: 'mf_contract_number_options',
+            vendorListId: 'mf_vendor_name_options',
+        }),
+    ])
+        .then(([data]) => {
             populateInitiativeModal(data, editMode);
             const modal = new bootstrap.Modal(document.getElementById('actionModal'));
             modal.show();
@@ -454,6 +462,7 @@ function populateInitiativeModal(data, editMode) {
     }
     setSelectNormalized('mf_contract_category', raw.contract_category);
     setVal('mf_contract_number',     raw.contract_number);
+    loadPrimeVendorOptions(raw.contract_number, 'mf_vendor_name_options');
     setRadio('mf_contract_source_r', raw.contract_source);
     setVal('mf_vendor_name',         raw.vendor_name);
     setVal('mf_wave_initiative_id',  raw.wave_initiative_id);
@@ -962,6 +971,7 @@ function validateModalForm(type) {
     // Common — all types
     req('mf_description',     'Description');
     req('mf_contract_category', 'Contract Category');
+    req('mf_contract_number', 'Contract ID');
     req('mf_vendor_name',     'Vendor Name');
     reqRadio('mf_contract_source_r', 'Contract Source', 'mf_contract_source_radios');
 

@@ -83,8 +83,8 @@
     font-weight: 700;
     border-right: none !important;
     border-color: var(--border-color, #DDE3EA) !important;
-    padding-left: 10px;
-    padding-right: 0;
+    padding-left: 8px;
+    padding-right: 8px;
     font-size: 0.875rem;
 }
 .input-group .form-control,
@@ -92,6 +92,9 @@
     border-left: none !important;
     box-shadow: none !important;
     padding-left: 8px;
+}
+.input-group input[type="number"].form-control {
+    padding-left: 0;
 }
 .input-group .form-control:focus,
 .input-group .form-select:focus {

@@ -2,7 +2,14 @@
 
 let editInitiativeId = null;
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadContractCategorySelect('contractCategory');
+    await initializePrimeContractLookup({
+        contractInputId: 'contractId',
+        vendorInputId: 'vendorName',
+        contractListId: 'contractIdOptions',
+        vendorListId: 'vendorNameOptions',
+    });
     initializeForm();
     setupEventListeners();
     checkEditMode();
@@ -457,34 +464,36 @@ function checkEditMode() {
     }
 }
 
-function loadInitiativeData(id) {
-    fetch(`/api/initiatives/${id}`)
-        .then(r => r.json())
-        .then(data => {
-            const rb = data.rebate || {};
-            setField('description', data.description);
-            setSelect('rebateType', rb.rebate_type);
-            setField('waveInitiativeId', rb.wave_initiative_id);
-            setSelect('contractCategory', rb.contract_category);
-            setField('contractId', rb.contract_number);
-            setRadio('contract_source', rb.contract_source);
-            setField('vendorName', rb.vendor_name);
-            setField('transactionDate', rb.transaction_date);
-            setRadio('transaction_type', rb.transaction_type);
-            setField('transactionNumber', rb.transaction_number);
-            setField('rebateAmount', rb.rebate_amount);
-            (data.facility_allocations || []).forEach(alloc => {
-                if (alloc.facility) {
-                    const input = document.getElementById(alloc.facility.code.toLowerCase());
-                    if (input) {
-                        input.value = alloc.allocation_amount !== null && alloc.allocation_amount !== undefined
-                            ? alloc.allocation_amount : (alloc.allocation_percentage || 0);
-                        input.dispatchEvent(new Event('input'));
-                    }
+async function loadInitiativeData(id) {
+    try {
+        const response = await fetch(`/api/initiatives/${id}`);
+        const data = await response.json();
+        const rb = data.rebate || {};
+        setField('description', data.description);
+        setSelect('rebateType', rb.rebate_type);
+        setField('waveInitiativeId', rb.wave_initiative_id);
+        setSelect('contractCategory', rb.contract_category);
+        setField('contractId', rb.contract_number);
+        await loadPrimeVendorOptions(rb.contract_number, 'vendorNameOptions');
+        setRadio('contract_source', rb.contract_source);
+        setField('vendorName', rb.vendor_name);
+        setField('transactionDate', rb.transaction_date);
+        setRadio('transaction_type', rb.transaction_type);
+        setField('transactionNumber', rb.transaction_number);
+        setField('rebateAmount', rb.rebate_amount);
+        (data.facility_allocations || []).forEach(alloc => {
+            if (alloc.facility) {
+                const input = document.getElementById(alloc.facility.code.toLowerCase());
+                if (input) {
+                    input.value = alloc.allocation_amount !== null && alloc.allocation_amount !== undefined
+                        ? alloc.allocation_amount : (alloc.allocation_percentage || 0);
+                    input.dispatchEvent(new Event('input'));
                 }
-            });
-        })
-        .catch(err => console.error('Error loading initiative:', err));
+            }
+        });
+    } catch (err) {
+        console.error('Error loading initiative:', err);
+    }
 }
 
 function setField(id, value) {
@@ -500,5 +509,14 @@ function setRadio(name, value) {
 
 function setSelect(id, value) {
     const el = document.getElementById(id);
-    if (el && value) el.value = value;
+    if (!el || !value) return;
+    const exists = Array.from(el.options || []).some(option => option.value === value);
+    if (!exists) {
+        const dynamic = document.createElement('option');
+        dynamic.value = value;
+        dynamic.text = value;
+        dynamic.dataset.dynamic = 'true';
+        el.appendChild(dynamic);
+    }
+    el.value = value;
 }

@@ -21,6 +21,14 @@ def create_cost_savings():
     """Create a new Cost Savings initiative."""
     user = g.current_user
     data = request.get_json()
+
+    def has_required_value(field_name):
+        value = data.get(field_name)
+        if value is None:
+            return False
+        if isinstance(value, str):
+            return bool(value.strip())
+        return True
     
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -28,7 +36,7 @@ def create_cost_savings():
     # Validate required fields
     required_fields = ['contract_number', 'vendor_name', 'start_date', 'end_date']
     for field in required_fields:
-        if field not in data:
+        if not has_required_value(field):
             return jsonify({'error': f'Missing required field: {field}'}), 400
     
     # Validate facility allocations
@@ -168,6 +176,9 @@ def update_cost_savings(initiative_id):
     old_values = cost_savings.to_dict()
     
     try:
+        if 'contract_number' in data and not str(data['contract_number']).strip():
+            return jsonify({'error': 'Missing required field: contract_number'}), 400
+
         # Validate if contract/vendor/dates are being changed
         if ('contract_number' in data or 'vendor_name' in data or 
             'start_date' in data or 'end_date' in data):

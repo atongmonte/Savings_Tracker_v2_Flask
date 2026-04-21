@@ -19,6 +19,13 @@ class Config:
     DB_TRUSTED_CONNECTION = os.getenv('DB_TRUSTED_CONNECTION', 'yes')
     DB_USER = os.getenv('DB_USER', '')
     DB_PASSWORD = os.getenv('DB_PASSWORD', '')
+    PRIME_DB_SERVER = os.getenv('PRIME_DB_SERVER', 'MISCPRDADHOCDB')
+    PRIME_DB_NAME = os.getenv('PRIME_DB_NAME', 'PRIME')
+    PRIME_DB_DRIVER = os.getenv('PRIME_DB_DRIVER', DB_DRIVER)
+    PRIME_DB_TRUSTED_CONNECTION = os.getenv('PRIME_DB_TRUSTED_CONNECTION', DB_TRUSTED_CONNECTION)
+    PRIME_DB_USER = os.getenv('PRIME_DB_USER', DB_USER)
+    PRIME_DB_PASSWORD = os.getenv('PRIME_DB_PASSWORD', DB_PASSWORD)
+    PRIME_DB_TIMEOUT = int(os.getenv('PRIME_DB_TIMEOUT', '5'))
     
     # Build connection string (use format() instead of f-string to avoid backslash escaping)
     if DB_TRUSTED_CONNECTION.lower() == 'yes':

@@ -28,28 +28,17 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Contract Category <span class="form-required">*</span></label>
-                            <select class="form-select" id="contractCategory" name="contract_category" required>
-                                <option value="">Please Select</option>
-                                <option value="Administrative And Related Services">Administrative And Related Services</option>
-                                <option value="Capital Equipment">Capital Equipment</option>
-                                <option value="Clinical">Clinical</option>
-                                <option value="Facilities And Construction">Facilities And Construction</option>
-                                <option value="Food Services">Food Services</option>
-                                <option value="Information Technology">Information Technology</option>
-                                <option value="Laboratory">Laboratory</option>
-                                <option value="Medical Devices">Medical Devices</option>
-                                <option value="Pharmaceuticals">Pharmaceuticals</option>
-                                <option value="Professional Services">Professional Services</option>
-                                <option value="Supplies">Supplies</option>
-                                <option value="Other">Other</option>
+                            <select class="form-select" id="contractCategory" name="contract_category" required disabled>
+                                <option value="">Loading contract categories...</option>
                             </select>
                             <small class="form-text text-muted">If you chose "Other", include the appropriate category in the description</small>
                         </div>
                         
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Contract ID</label>
+                            <label class="form-label">Contract ID <span class="form-required">*</span></label>
                             <input type="text" class="form-control" id="contractId" name="contract_id" 
-                                   placeholder="Enter Contract ID">
+                                   placeholder="Enter Contract ID" required list="contractIdOptions">
+                            <datalist id="contractIdOptions"></datalist>
                         </div>
                     </div>
 
@@ -75,7 +64,8 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Vendor Name <span class="form-required">*</span></label>
                             <input type="text" class="form-control" id="vendorName" name="vendor_name" 
-                                   placeholder="Enter Vendor Name" required>
+                                   placeholder="Enter Vendor Name" required list="vendorNameOptions">
+                            <datalist id="vendorNameOptions"></datalist>
                         </div>
                         
                         <div class="col-md-6 mb-3">
@@ -330,5 +320,6 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/contract_categories.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cost_savings_form.js') }}"></script>
 {% endblock %}

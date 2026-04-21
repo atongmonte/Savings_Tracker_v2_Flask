@@ -18,14 +18,22 @@ def create_cost_avoidance():
     """Create a new Cost Avoidance initiative."""
     user = g.current_user
     data = request.get_json()
+
+    def has_required_value(field_name):
+        value = data.get(field_name)
+        if value is None:
+            return False
+        if isinstance(value, str):
+            return bool(value.strip())
+        return True
     
     if not data:
         return jsonify({'error': 'No data provided'}), 400
     
     # Validate required fields
-    required_fields = ['avoidance_type', 'vendor_name', 'po_number']
+    required_fields = ['avoidance_type', 'contract_number', 'vendor_name', 'po_number']
     for field in required_fields:
-        if field not in data:
+        if not has_required_value(field):
             return jsonify({'error': f'Missing required field: {field}'}), 400
     
     # Validate facility allocations
@@ -163,6 +171,9 @@ def update_cost_avoidance(initiative_id):
     old_values = cost_avoidance.to_dict()
     
     try:
+        if 'contract_number' in data and not str(data['contract_number']).strip():
+            return jsonify({'error': 'Missing required field: contract_number'}), 400
+
         # Validate if avoidance type/vendor/PO are being changed
         if ('avoidance_type' in data or 'vendor_name' in data or 'po_number' in data):
             avoidance_type = data.get('avoidance_type', cost_avoidance.avoidance_type)
