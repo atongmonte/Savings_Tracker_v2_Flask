@@ -44,29 +44,37 @@ def get_current_user():
 #     """
 #     Get current user from IIS Windows Authentication.
 #     IIS will pass the username in REMOTE_USER or AUTH_USER header.
+#     First-time users are automatically assigned the Read-Only role.
 #     """
-#     # Try to get username from IIS authentication
 #     username = request.environ.get('REMOTE_USER') or request.environ.get('AUTH_USER')
-#     
+#
 #     if not username:
-#         # For development, check custom header
 #         username = request.headers.get('X-Remote-User')
-#     
-#     if username:
-#         # Remove domain prefix if present (DOMAIN\username -> username)
-#         if '\\' in username:
-#             username = username.split('\\')[-1]
-#         
-#         # Get or create user
-#         user = User.query.filter_by(username=username).first()
-#         if not user:
-#             # Auto-create user (you may want to disable this in production)
-#             # For now, return None and handle in endpoint
-#             return None
-#         
-#         return user
-#     
-#     return None
+#
+#     if not username:
+#         return None
+#
+#     # Remove domain prefix if present (DOMAIN\username -> username)
+#     if '\\' in username:
+#         username = username.split('\\')[-1]
+#
+#     user = User.query.filter_by(username=username).first()
+#     if not user:
+#         # Auto-create first-time login user with Read-Only role
+#         readonly_role = UserRole.query.filter_by(name='Read-Only').first()
+#         if not readonly_role:
+#             return None  # DB not seeded yet
+#         user = User(
+#             username=username,
+#             full_name=username,
+#             email='',
+#             role_id=readonly_role.id,
+#             is_active=True,
+#         )
+#         db.session.add(user)
+#         db.session.commit()
+#
+#     return user
 
 
 def login_required(f):

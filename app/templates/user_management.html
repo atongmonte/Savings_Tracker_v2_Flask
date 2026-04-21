@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}User Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .user-avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background-color: var(--monte-navy);
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.8rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        letter-spacing: 0.05em;
+        flex-shrink: 0;
+    }
+    .role-badge-Admin    { background-color: #112B46; color: #fff; }
+    .role-badge-Reviewer { background-color: #0072BC; color: #fff; }
+    .role-badge-User     { background-color: #00A8A8; color: #fff; }
+    .role-badge-Read-Only{ background-color: #5E6E82; color: #fff; }
+
+    .status-dot {
+        width: 9px; height: 9px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+        flex-shrink: 0;
+    }
+    .status-dot.active   { background-color: #1A7A4A; }
+    .status-dot.inactive { background-color: #C0392B; }
+
+    .permission-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .perm-pill {
+        font-size: 0.68rem;
+        padding: 2px 7px;
+        border-radius: 3px;
+        background: #EFF4FA;
+        color: var(--monte-navy);
+        font-weight: 600;
+        border: 1px solid var(--border-color);
+    }
+    .perm-pill.has-perm { background: #1A7A4A; color: #fff; border-color: #1A7A4A; }
+
+    .stat-card { text-align: center; padding: 1rem; border-radius: 6px; border: 1px solid var(--border-color); }
+    .stat-card .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--monte-navy); line-height: 1; }
+    .stat-card .stat-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+
+    /* Delete modal confirm input */
+    #deleteConfirmInput:valid ~ .modal-footer #confirmDeleteBtn { opacity: 1; pointer-events: auto; }
+    #confirmDeleteBtn { transition: opacity .2s; }
+
+    /* Inline role form */
+    .role-form select { min-width: 130px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h2 class="mb-1"><i class="fas fa-users-gear me-2" style="color:var(--monte-blue);"></i>User Management</h2>
+        <p class="text-muted mb-0">Assign roles, manage access, and remove users from the system.</p>
+    </div>
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-primary">
+        <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+    </a>
+</div>
+
+{# ── Flash messages ── #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ 'success' if category == 'success' else ('danger' if category == 'error' else 'warning') }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+{# ── Stats row ── #}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-sm-3">
+        <div class="stat-card">
+            <div class="stat-value">{{ users | length }}</div>
+            <div class="stat-label">Total Users</div>
+        </div>
+    </div>
+    <div class="col-6 col-sm-3">
+        <div class="stat-card">
+            <div class="stat-value" style="color:var(--success-color);">{{ users | selectattr('is_active') | list | length }}</div>
+            <div class="stat-label">Active</div>
+        </div>
+    </div>
+    <div class="col-6 col-sm-3">
+        <div class="stat-card">
+            <div class="stat-value" style="color:var(--danger-color);">{{ users | rejectattr('is_active') | list | length }}</div>
+            <div class="stat-label">Inactive</div>
+        </div>
+    </div>
+    <div class="col-6 col-sm-3">
+        <div class="stat-card">
+            <div class="stat-value" style="color:var(--monte-blue);">{{ roles | length }}</div>
+            <div class="stat-label">Roles</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    {# ════════════════════════════════════════
+       LEFT — User Table
+    ════════════════════════════════════════ #}
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-users me-2"></i>All Users</span>
+                <span class="badge bg-secondary">{{ users | length }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if users %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th style="width:36px;"></th>
+                                <th>User</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Last Login</th>
+                                <th style="width:120px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in users %}
+                            <tr id="user-row-{{ u.id }}">
+                                {# Avatar #}
+                                <td>
+                                    <span class="user-avatar">
+                                        {{ (u.full_name or u.username or '?')[:2] | upper }}
+                                    </span>
+                                </td>
+
+                                {# User info #}
+                                <td>
+                                    <div class="fw-semibold" style="font-size:0.875rem;">{{ u.full_name or u.username }}</div>
+                                    <div class="text-muted" style="font-size:0.775rem;">{{ u.username }}</div>
+                                    <div class="text-muted" style="font-size:0.75rem;">{{ u.email }}</div>
+                                </td>
+
+                                {# Inline role assignment #}
+                                <td>
+                                    <form class="role-form d-flex align-items-center gap-2"
+                                          method="post"
+                                          action="{{ url_for('main.user_assign_role', user_id=u.id) }}">
+                                        <select name="role_id" class="form-select form-select-sm"
+                                                title="Assign role"
+                                                onchange="this.form.submit()">
+                                            {% for role in roles %}
+                                            <option value="{{ role.id }}"
+                                                {{ 'selected' if u.role_id == role.id else '' }}>
+                                                {{ role.name }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </form>
+                                </td>
+
+                                {# Status toggle #}
+                                <td>
+                                    <form method="post"
+                                          action="{{ url_for('main.user_toggle_status', user_id=u.id) }}"
+                                          class="d-inline">
+                                        <button type="submit"
+                                                class="btn btn-sm {{ 'btn-outline-danger' if u.is_active else 'btn-outline-success' }} d-flex align-items-center gap-1"
+                                                title="{{ 'Deactivate user' if u.is_active else 'Activate user' }}">
+                                            <span class="status-dot {{ 'active' if u.is_active else 'inactive' }}"></span>
+                                            {{ 'Active' if u.is_active else 'Inactive' }}
+                                        </button>
+                                    </form>
+                                </td>
+
+                                {# Last login #}
+                                <td class="text-muted" style="font-size:0.8rem; white-space:nowrap;">
+                                    {% if u.last_login %}
+                                        {{ u.last_login.strftime('%b %d, %Y') }}<br>
+                                        <span style="font-size:0.72rem;">{{ u.last_login.strftime('%I:%M %p') }}</span>
+                                    {% else %}
+                                        <span class="text-muted">Never</span>
+                                    {% endif %}
+                                </td>
+
+                                {# Actions #}
+                                <td>
+                                    {% if u.id != current_user_id %}
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            title="Delete user"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteModal"
+                                            data-user-id="{{ u.id }}"
+                                            data-user-name="{{ u.full_name or u.username }}"
+                                            data-username="{{ u.username }}">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                    {% else %}
+                                    <span class="text-muted small" title="Cannot delete your own account">&mdash;</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-4 text-center text-muted">
+                    <i class="fas fa-users fa-2x mb-2 d-block" style="opacity:.3;"></i>
+                    No users found.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# ════════════════════════════════════════
+       RIGHT — Role Reference Cards
+    ════════════════════════════════════════ #}
+    <div class="col-xl-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-id-badge me-2"></i>Role Permissions
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for role in roles %}
+                    <div class="list-group-item px-3 py-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge role-badge-{{ role.name.replace(' ', '-') }} px-2 py-1"
+                                  style="font-size:0.78rem;">
+                                {{ role.name }}
+                            </span>
+                            <span class="text-muted" style="font-size:0.75rem;">
+                                {{ role.users.count() }} user{{ 's' if role.users.count() != 1 else '' }}
+                            </span>
+                        </div>
+                        {% if role.description %}
+                        <div class="text-muted mb-2" style="font-size:0.78rem;">{{ role.description }}</div>
+                        {% endif %}
+                        <div class="permission-grid">
+                            {% set perms = [
+                                ('create',       'Create'),
+                                ('edit_own',     'Edit Own'),
+                                ('edit_all',     'Edit All'),
+                                ('delete_own',   'Del Own'),
+                                ('delete_all',   'Del All'),
+                                ('review',       'Review'),
+                                ('approve',      'Approve'),
+                                ('export',       'Export'),
+                                ('manage_users', 'Manage Users'),
+                            ] %}
+                            {% for key, label in perms %}
+                                {% if role['can_' + key] %}
+                                <span class="perm-pill has-perm">{{ label }}</span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ════════════════════════════════════════
+   Delete Confirmation Modal
+════════════════════════════════════════ #}
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" id="deleteModalLabel">
+                    <i class="fas fa-triangle-exclamation text-danger me-2"></i>Delete User
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <p>You are about to permanently delete <strong id="deleteUserName"></strong>.
+                   This cannot be undone and will remove all association with this account.</p>
+                <p class="text-muted small">To confirm, type the username <strong id="deleteUsernameHint"></strong> below:</p>
+                <form id="deleteForm" method="post" action="">
+                    <input type="text" id="deleteConfirmInput" class="form-control"
+                           placeholder="Type username to confirm"
+                           autocomplete="off" required>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="confirmDeleteBtn" class="btn btn-danger" disabled>
+                    <i class="fas fa-trash-alt me-1"></i>Delete User
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    // Wire up delete modal
+    const deleteModal = document.getElementById('deleteModal');
+    const deleteForm = document.getElementById('deleteForm');
+    const deleteUserName = document.getElementById('deleteUserName');
+    const deleteUsernameHint = document.getElementById('deleteUsernameHint');
+    const deleteConfirmInput = document.getElementById('deleteConfirmInput');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+
+    deleteModal.addEventListener('show.bs.modal', function (event) {
+        const btn = event.relatedTarget;
+        const userId = btn.dataset.userId;
+        const fullName = btn.dataset.userName;
+        const username = btn.dataset.username;
+
+        deleteUserName.textContent = fullName;
+        deleteUsernameHint.textContent = username;
+        deleteConfirmInput.value = '';
+        deleteConfirmInput.dataset.expected = username;
+        confirmDeleteBtn.disabled = true;
+
+        deleteForm.action = '/admin/users/' + userId + '/delete';
+    });
+
+    deleteConfirmInput.addEventListener('input', function () {
+        confirmDeleteBtn.disabled = (this.value !== this.dataset.expected);
+    });
+
+    confirmDeleteBtn.addEventListener('click', function () {
+        deleteForm.submit();
+    });
+
+    // Auto-dismiss flash alerts
+    setTimeout(function () {
+        document.querySelectorAll('.alert-dismissible').forEach(function (el) {
+            var bsAlert = bootstrap.Alert.getOrCreateInstance(el);
+            bsAlert.close();
+        });
+    }, 5000);
+})();
+</script>
+{% endblock %}

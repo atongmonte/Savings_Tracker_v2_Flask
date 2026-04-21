@@ -619,6 +619,96 @@ def save_static_config():
     return redirect(url_for('main.email_notifications_admin'))
 
 
+@main_bp.route('/admin/users')
+@login_required
+def user_management():
+    """Admin page for managing user accounts and role assignments."""
+    user = g.current_user
+    if not _is_admin_user(user):
+        flash('Admin access is required to manage users.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    users = User.query.order_by(User.full_name).all()
+    roles = UserRole.query.order_by(UserRole.name).all()
+
+    return render_template(
+        'user_management.html',
+        current_user=user.full_name,
+        current_user_id=user.id,
+        users=users,
+        roles=roles,
+    )
+
+
+@main_bp.route('/admin/users/<int:user_id>/role', methods=['POST'])
+@login_required
+def user_assign_role(user_id):
+    """Assign a role to a user."""
+    admin = g.current_user
+    if not _is_admin_user(admin):
+        flash('Admin access required.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    target = User.query.get_or_404(user_id)
+    role_id = request.form.get('role_id', type=int)
+    role = UserRole.query.get(role_id) if role_id else None
+
+    if not role:
+        flash('Invalid role selected.', 'error')
+        return redirect(url_for('main.user_management'))
+
+    from app import db
+    old_role = target.role.name if target.role else 'None'
+    target.role_id = role.id
+    db.session.commit()
+    flash(f'Role updated for {target.full_name or target.username}: {old_role} → {role.name}.', 'success')
+    return redirect(url_for('main.user_management'))
+
+
+@main_bp.route('/admin/users/<int:user_id>/toggle-status', methods=['POST'])
+@login_required
+def user_toggle_status(user_id):
+    """Activate or deactivate a user account."""
+    admin = g.current_user
+    if not _is_admin_user(admin):
+        flash('Admin access required.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    if user_id == admin.id:
+        flash('You cannot change the status of your own account.', 'error')
+        return redirect(url_for('main.user_management'))
+
+    target = User.query.get_or_404(user_id)
+    from app import db
+    target.is_active = not target.is_active
+    db.session.commit()
+    status_label = 'activated' if target.is_active else 'deactivated'
+    flash(f'User {target.full_name or target.username} has been {status_label}.', 'success')
+    return redirect(url_for('main.user_management'))
+
+
+@main_bp.route('/admin/users/<int:user_id>/delete', methods=['POST'])
+@login_required
+def user_delete(user_id):
+    """Permanently delete a user account."""
+    admin = g.current_user
+    if not _is_admin_user(admin):
+        flash('Admin access required.', 'error')
+        return redirect(url_for('main.dashboard'))
+
+    if user_id == admin.id:
+        flash('You cannot delete your own account.', 'error')
+        return redirect(url_for('main.user_management'))
+
+    target = User.query.get_or_404(user_id)
+    display_name = target.full_name or target.username
+    from app import db
+    db.session.delete(target)
+    db.session.commit()
+    flash(f'User {display_name} has been permanently deleted.', 'success')
+    return redirect(url_for('main.user_management'))
+
+
 @main_bp.route('/logout')
 def logout():
     """Handle logout."""
