@@ -627,6 +627,13 @@ def delete_file(initiative_id, file_id):
     if not file_record:
         return jsonify({'error': 'File not found'}), 404
 
+    # Block deletion if this is the last remaining file
+    remaining = FileTracking.query.filter_by(
+        initiative_id=initiative_id, is_deleted=False
+    ).count()
+    if remaining <= 1:
+        return jsonify({'error': 'At least one file attachment is required. Upload a replacement before deleting this one.'}), 400
+
     # Physically remove from disk
     try:
         if file_record.file_path and os.path.exists(file_record.file_path):

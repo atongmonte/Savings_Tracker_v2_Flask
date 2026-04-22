@@ -1,6 +1,7 @@
 // Cost Avoidance Form JavaScript
 
 let editInitiativeId = null;
+let existingFileCount = 0;
 
 document.addEventListener('DOMContentLoaded', async function() {
     await loadContractCategorySelect('contractCategory');
@@ -48,6 +49,7 @@ function setupFileUpload() {
     fileInput.addEventListener('change', function(e) {
         const files = Array.from(e.target.files);
         displayFileList(files, fileList);
+        if (files.length > 0) fileInput.classList.remove('is-invalid');
     });
 }
 
@@ -66,6 +68,48 @@ function displayFileList(files, container) {
         `;
         container.appendChild(fileItem);
     });
+}
+
+function displayExistingFiles(files) {
+    const fileList = document.getElementById('fileList');
+    if (!files || files.length === 0) return;
+    const header = document.createElement('div');
+    header.className = 'text-muted small mb-1';
+    header.innerHTML = '<i class="fas fa-paperclip"></i> Already attached:';
+    fileList.appendChild(header);
+    files.forEach(file => {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.id = `existing-file-${file.id}`;
+        const sizeText = file.file_size ? formatFileSize(file.file_size) : '';
+        fileItem.innerHTML = `
+            <span class="file-item-name"><i class="fas fa-file"></i> ${file.file_name}</span>
+            <span class="file-item-size">${sizeText}</span>
+            <span class="file-item-remove" onclick="deleteExistingFile(${file.id}, this.closest('.file-item'))" title="Delete file">
+                <i class="fas fa-times-circle"></i>
+            </span>
+        `;
+        fileList.appendChild(fileItem);
+    });
+}
+
+function deleteExistingFile(fileId, rowEl) {
+    if (!editInitiativeId) return;
+    const fileInput = document.getElementById('fileUpload');
+    const pendingUploads = fileInput ? fileInput.files.length : 0;
+    if (existingFileCount <= 1 && pendingUploads === 0) {
+        showAlert('At least one file attachment is required. Upload a replacement before deleting this one.', 'warning');
+        return;
+    }
+    if (!confirm('Delete this attachment? This cannot be undone.')) return;
+    fetch(`/api/initiatives/${editInitiativeId}/files/${fileId}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { showAlert(data.error, 'danger'); return; }
+            existingFileCount = Math.max(0, existingFileCount - 1);
+            if (rowEl) rowEl.remove();
+        })
+        .catch(() => showAlert('Error deleting file', 'danger'));
 }
 
 function formatFileSize(bytes) {
@@ -263,6 +307,19 @@ function validateForm() {
             showAlert('Facility allocation must equal the Avoidance Amount before submitting. Please fully allocate the remaining amount.', 'warning');
             isValid = false;
         }
+    }
+
+    // Require at least one file attachment (new upload or existing)
+    const fileInput = document.getElementById('fileUpload');
+    const existingRows = document.querySelectorAll('#fileList [id^="existing-file-"]').length;
+    const newFileCount = fileInput ? fileInput.files.length : 0;
+    if (existingRows + newFileCount === 0) {
+        showAlert('At least one supporting document must be attached before submitting.', 'warning');
+        if (fileInput) {
+            fileInput.classList.add('is-invalid');
+            fileInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        isValid = false;
     }
 
     return isValid;
@@ -531,6 +588,8 @@ async function loadInitiativeData(id) {
             }
         });
         document.getElementById('originalQuote').dispatchEvent(new Event('input'));
+        existingFileCount = (data.files || []).length;
+        displayExistingFiles(data.files || []);
     } catch (err) {
         console.error('Error loading initiative:', err);
     }

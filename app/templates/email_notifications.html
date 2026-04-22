@@ -3,20 +3,20 @@
 {% block title %}Admin Email Notifications{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
     <div>
-        <h2 class="mb-1">Admin Email Notifications</h2>
-        <p class="text-muted mb-0">Send test emails through Microsoft Graph for create, review, approval, and weekly reminder scenarios.</p>
+        <h4 class="mb-0">Admin Email Notifications</h4>
+        <small class="text-muted">Send test emails via Microsoft Graph for create, review, approval, and weekly reminder scenarios.</small>
     </div>
-    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-primary">
+    <a href="{{ url_for('main.dashboard') }}" class="btn btn-sm btn-outline-primary">
         <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
     </a>
 </div>
 
-<div class="row g-4">
+<div class="row g-3">
     <div class="col-lg-8">
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
                 <span><i class="fas fa-envelope-open-text me-2"></i>Test Email Actions</span>
                 {% if graph_ready %}
                     <span class="badge bg-success">MS Graph configured</span>
@@ -24,8 +24,8 @@
                     <span class="badge bg-warning text-dark">Setup required</span>
                 {% endif %}
             </div>
-            <div class="card-body">
-                <div class="alert alert-{{ 'success' if graph_ready else 'warning' }} mb-4">
+            <div class="card-body py-3">
+                <div class="alert alert-{{ 'success' if graph_ready else 'warning' }} py-2 mb-3 small">
                     {% if graph_ready %}
                         Microsoft Graph credentials are present. You can send test emails from this page.
                     {% else %}
@@ -33,9 +33,9 @@
                     {% endif %}
                 </div>
 
-                <form method="post" action="{{ url_for('main.send_test_email_notification') }}" class="mb-4">
-                    <label for="initiative_id" class="form-label fw-semibold">Choose a recent initiative</label>
-                    <select id="initiative_id" name="initiative_id" class="form-select mb-3" required>
+                <form method="post" action="{{ url_for('main.send_test_email_notification') }}" class="mb-3">
+                    <label for="initiative_id" class="form-label fw-semibold mb-1">Choose a recent initiative</label>
+                    <select id="initiative_id" name="initiative_id" class="form-select form-select-sm mb-2" required>
                         <option value="">Select an initiative...</option>
                         {% for initiative in initiatives %}
                             <option value="{{ initiative.id }}" {% if selected_id == initiative.id %}selected{% endif %}>
@@ -46,36 +46,36 @@
                     </select>
 
                     <div class="d-flex flex-wrap gap-2">
-                        <button type="submit" name="email_type" value="created" class="btn btn-primary">
+                        <button type="submit" name="email_type" value="created" class="btn btn-sm btn-primary">
                             <i class="fas fa-circle-check me-1"></i>1. New initiative created
                         </button>
-                        <button type="submit" name="email_type" value="review" class="btn btn-secondary">
+                        <button type="submit" name="email_type" value="review" class="btn btn-sm btn-secondary">
                             <i class="fas fa-user-clock me-1"></i>2. Available for review
                         </button>
-                        <button type="submit" name="email_type" value="approved" class="btn btn-success text-white">
+                        <button type="submit" name="email_type" value="approved" class="btn btn-sm btn-success text-white">
                             <i class="fas fa-thumbs-up me-1"></i>3. Initiative approved
                         </button>
                     </div>
                 </form>
 
-                <hr>
+                <hr class="my-2">
 
-                <form method="post" action="{{ url_for('main.send_test_email_notification') }}">
+                <form method="post" action="{{ url_for('main.send_test_email_notification') }}" class="d-flex align-items-center gap-3">
                     <input type="hidden" name="email_type" value="weekly">
-                    <button type="submit" class="btn btn-outline-primary">
+                    <button type="submit" class="btn btn-sm btn-outline-primary">
                         <i class="fas fa-calendar-week me-1"></i>4. Send weekly reminder email
                     </button>
-                    <div class="form-text mt-2">This sends the pending-review summary reminder to the configured review mailbox.</div>
+                    <small class="text-muted">Sends the pending-review summary reminder to the configured review mailbox.</small>
                 </form>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header">
+        <div class="card mt-3">
+            <div class="card-header py-2">
                 <i class="fas fa-list-check me-2"></i>What each email sends
             </div>
-            <div class="card-body">
-                <ul class="mb-0">
+            <div class="card-body py-2">
+                <ul class="mb-0 small">
                     <li><strong>New initiative created</strong> — confirms the submission to the creator and includes the initiative summary.</li>
                     <li><strong>Available for review</strong> — notifies the review mailbox that the initiative is ready for review.</li>
                     <li><strong>Initiative approved</strong> — sends the creator the approval notice and initiative details.</li>
@@ -87,84 +87,101 @@
 
     <div class="col-lg-4">
         <div class="card">
-            <div class="card-header">
+            <div class="card-header py-2">
                 <i class="fas fa-route me-2"></i>Current Delivery Targets
             </div>
-            <div class="card-body">
-                <dl class="row mb-0" style="font-size:0.875rem;">
+            <div class="card-body py-2">
+                <dl class="row mb-0 small">
                     <dt class="col-sm-5">Sender</dt>
-                    <dd class="col-sm-7">{{ sender_mailbox or 'Not set' }}</dd>
-
+                    <dd class="col-sm-7 mb-1">{{ sender_mailbox or 'Not set' }}</dd>
                     <dt class="col-sm-5">Reviewer To</dt>
-                    <dd class="col-sm-7">{{ review_mailbox or 'Not set' }}</dd>
-
+                    <dd class="col-sm-7 mb-1">{{ review_mailbox or 'Not set' }}</dd>
                     <dt class="col-sm-5">CC</dt>
-                    <dd class="col-sm-7">{{ procurement_mailbox or 'Not set' }}</dd>
+                    <dd class="col-sm-7 mb-0">{{ procurement_mailbox or 'Not set' }}</dd>
                 </dl>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header">
+        <div class="card mt-3">
+            <div class="card-header py-2">
                 <i class="fas fa-sliders me-2"></i>Static Config Settings
             </div>
-            <div class="card-body">
-                <div class="small text-muted mb-3">
+            <div class="card-body py-2 px-3">
+                <div class="small text-muted mb-2">
                     Saved to: <code>{{ settings_file_path }}</code>
                 </div>
-                <div class="alert alert-info py-2 small">
-                    Sender and CC are fixed to <strong>procurementdatateam@montefiore.org</strong>. Receiver fields below accept multiple email addresses separated by commas or semicolons.
+                <div class="alert alert-info py-1 mb-2 small">
+                    Sender and CC are fixed. Receiver fields accept multiple emails separated by commas or semicolons.
                 </div>
-                <form method="post" action="{{ url_for('main.save_static_config') }}">
-                    <label class="form-label">From Email (fixed)</label>
-                    <input type="text" class="form-control mb-2" value="procurementdatateam@montefiore.org" readonly>
+                <form method="post" action="{{ url_for('main.save_static_config') }}" class="small">
+                    <div class="mb-2">
+                        <label class="form-label mb-1">From / Graph Sender (fixed)</label>
+                        <input type="text" class="form-control form-control-sm" value="procurementdatateam@montefiore.org" readonly>
+                    </div>
 
-                    <label class="form-label">Graph Sender Mailbox (fixed)</label>
-                    <input type="text" class="form-control mb-2" value="procurementdatateam@montefiore.org" readonly>
+                    <div class="mb-2">
+                        <label class="form-label mb-1">Created Email To Override</label>
+                        <textarea class="form-control form-control-sm" name="creator_notification_to" rows="1" placeholder="Leave blank to use creator's email">{{ settings.email.creator_notification_to }}</textarea>
+                    </div>
 
-                    <label class="form-label">Created Email To Override</label>
-                    <textarea class="form-control mb-2" name="creator_notification_to" rows="2" placeholder="Leave blank to use the creator's email. Separate multiple emails with commas or semicolons.">{{ settings.email.creator_notification_to }}</textarea>
+                    <div class="mb-2">
+                        <label class="form-label mb-1">Review Email To</label>
+                        <textarea class="form-control form-control-sm" name="review_notification_to" rows="1" placeholder="Commas or semicolons">{{ settings.email.review_notification_to }}</textarea>
+                    </div>
 
-                    <label class="form-label">Review Email To</label>
-                    <textarea class="form-control mb-2" name="review_notification_to" rows="2" placeholder="Separate multiple emails with commas or semicolons.">{{ settings.email.review_notification_to }}</textarea>
+                    <div class="mb-2">
+                        <label class="form-label mb-1">Approved Email To Override</label>
+                        <textarea class="form-control form-control-sm" name="approval_notification_to" rows="1" placeholder="Leave blank to use creator's email">{{ settings.email.approval_notification_to }}</textarea>
+                    </div>
 
-                    <label class="form-label">Approved Email To Override</label>
-                    <textarea class="form-control mb-2" name="approval_notification_to" rows="2" placeholder="Leave blank to use the creator's email. Separate multiple emails with commas or semicolons.">{{ settings.email.approval_notification_to }}</textarea>
+                    <div class="mb-2">
+                        <label class="form-label mb-1">Weekly Reminder To</label>
+                        <textarea class="form-control form-control-sm" name="weekly_reminder_to" rows="1" placeholder="Commas or semicolons">{{ settings.email.weekly_reminder_to }}</textarea>
+                    </div>
 
-                    <label class="form-label">Weekly Reminder To</label>
-                    <textarea class="form-control mb-2" name="weekly_reminder_to" rows="2" placeholder="Separate multiple emails with commas or semicolons.">{{ settings.email.weekly_reminder_to }}</textarea>
+                    <div class="mb-2">
+                        <label class="form-label mb-1">CC Address (fixed)</label>
+                        <input type="text" class="form-control form-control-sm" value="procurementdatateam@montefiore.org" readonly>
+                    </div>
 
-                    <label class="form-label">CC Address (fixed)</label>
-                    <input type="text" class="form-control mb-3" value="procurementdatateam@montefiore.org" readonly>
+                    <hr class="my-2">
 
-                    <label class="form-label">File Storage Path</label>
-                    <input type="text" class="form-control mb-2" name="file_storage_path" value="{{ settings.files.file_storage_path }}" placeholder="\\server\share\SavingsTracker or local path">
+                    <div class="mb-2">
+                        <label class="form-label mb-1">File Storage Path</label>
+                        <input type="text" class="form-control form-control-sm" name="file_storage_path" value="{{ settings.files.file_storage_path }}" placeholder="\\server\share\SavingsTracker or local path">
+                    </div>
 
-                    <label class="form-label">Uploads Fallback Path</label>
-                    <input type="text" class="form-control mb-2" name="uploads_fallback_path" value="{{ settings.files.uploads_fallback_path }}">
+                    <div class="mb-2">
+                        <label class="form-label mb-1">Uploads Fallback Path</label>
+                        <input type="text" class="form-control form-control-sm" name="uploads_fallback_path" value="{{ settings.files.uploads_fallback_path }}">
+                    </div>
 
-                    <label class="form-label">Rebate Attachments Folder</label>
-                    <input type="text" class="form-control mb-2" name="rebate_attachments_folder" value="{{ settings.files.rebate_attachments_folder }}">
+                    <div class="mb-2">
+                        <label class="form-label mb-1">Rebate Attachments Folder</label>
+                        <input type="text" class="form-control form-control-sm" name="rebate_attachments_folder" value="{{ settings.files.rebate_attachments_folder }}">
+                    </div>
 
-                    <label class="form-label">Logs Path</label>
-                    <input type="text" class="form-control mb-3" name="logs_path" value="{{ settings.files.logs_path }}">
+                    <div class="mb-3">
+                        <label class="form-label mb-1">Logs Path</label>
+                        <input type="text" class="form-control form-control-sm" name="logs_path" value="{{ settings.files.logs_path }}">
+                    </div>
 
-                    <button type="submit" class="btn btn-primary w-100">
+                    <button type="submit" class="btn btn-sm btn-primary w-100">
                         <i class="fas fa-save me-1"></i>Save Static Config
                     </button>
                 </form>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header">
+        <div class="card mt-3">
+            <div class="card-header py-2">
                 <i class="fas fa-gear me-2"></i>Required Env Vars
             </div>
-            <div class="card-body">
-                <code class="d-block mb-2">MS_GRAPH_TENANT_ID</code>
-                <code class="d-block mb-2">MS_GRAPH_CLIENT_ID</code>
-                <code class="d-block mb-2">MS_GRAPH_CLIENT_SECRET</code>
-                <div class="form-text mt-2">Only the mailbox addresses and file paths are saved in the static config file. Graph secrets stay in environment variables.</div>
+            <div class="card-body py-2 small">
+                <code class="d-block mb-1">MS_GRAPH_TENANT_ID</code>
+                <code class="d-block mb-1">MS_GRAPH_CLIENT_ID</code>
+                <code class="d-block mb-1">MS_GRAPH_CLIENT_SECRET</code>
+                <div class="text-muted mt-2">Graph secrets stay in environment variables; only mailbox addresses and file paths are saved in static config.</div>
             </div>
         </div>
     </div>
