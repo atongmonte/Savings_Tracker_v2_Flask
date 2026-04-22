@@ -539,7 +539,7 @@ function populateInitiativeModal(data, editMode) {
     const reviewSection = document.getElementById('mf_review_section');
     if (data.review_comments || data.reviewed_by) {
         reviewSection.classList.remove('d-none');
-        setVal('mf_reviewed_by',      data.reviewed_by  || '');
+        setVal('mf_reviewed_by',      (data.reviewed_by && data.reviewed_by.full_name) ? data.reviewed_by.full_name : (data.reviewed_by || ''));
         setVal('mf_review_date',      data.review_date  ? new Date(data.review_date).toLocaleDateString() : '');
         setVal('mf_review_comments',  data.review_comments || '');
     } else {
