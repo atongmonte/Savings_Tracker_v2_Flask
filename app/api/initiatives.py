@@ -326,10 +326,11 @@ def approve_initiative(initiative_id):
     try:
         # Update initiative
         old_status = initiative.status
+        data = request.get_json(silent=True) or {}
         initiative.status = 'Approved'
         initiative.reviewed_by_id = user.id
         initiative.review_date = now_eastern()
-        initiative.review_comments = request.json.get('comments', '')
+        initiative.review_comments = data.get('comments', '')
         initiative.updated_at = now_eastern()
         
         # Create audit log
@@ -661,8 +662,11 @@ def get_initiative_audit_log(initiative_id):
     if not initiative:
         return jsonify({'error': 'Initiative not found'}), 404
     
-    audit_logs = AuditLog.query.filter_by(initiative_id=initiative_id)\
-        .order_by(AuditLog.created_at.desc()).all()
+    reviewer_actions = ('APPROVE', 'REJECT', 'REVERT', 'UNAPPROVE')
+    audit_logs = AuditLog.query.filter(
+        AuditLog.initiative_id == initiative_id,
+        AuditLog.action.in_(reviewer_actions)
+    ).order_by(AuditLog.created_at.desc()).all()
     
     return jsonify({
         'audit_logs': [log.to_dict() for log in audit_logs]
