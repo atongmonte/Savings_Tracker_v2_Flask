@@ -380,8 +380,8 @@ def reject_initiative(initiative_id):
     if not initiative:
         return jsonify({'error': 'Initiative not found'}), 404
     
-    if initiative.status != 'Pending Review':
-        return jsonify({'error': 'Initiative is not pending review'}), 400
+    if initiative.status not in ('Pending Review', 'Approved'):
+        return jsonify({'error': 'Only Pending Review or Approved initiatives can be rejected'}), 400
     
     try:
         # Update initiative
@@ -421,6 +421,64 @@ def reject_initiative(initiative_id):
             'initiative': initiative.to_dict(include_details=True)
         }), 200
         
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@initiatives_bp.route('/<int:initiative_id>/unapprove', methods=['POST'])
+@login_required
+def unapprove_initiative(initiative_id):
+    """Revert an Approved initiative back to Pending Review (reviewer/admin only)."""
+    user = g.current_user
+    if not (user.has_permission('approve') or user.has_permission('review')):
+        return jsonify({'error': 'Permission denied'}), 403
+
+    initiative = Initiative.query.filter_by(id=initiative_id, is_deleted=False).first()
+    if not initiative:
+        return jsonify({'error': 'Initiative not found'}), 404
+
+    if initiative.status != 'Approved':
+        return jsonify({'error': 'Only approved initiatives can be reverted to pending'}), 400
+
+    try:
+        data = request.get_json() or {}
+        old_status = initiative.status
+        initiative.status = 'Pending Review'
+        initiative.reviewed_by_id = user.id
+        initiative.review_date = now_eastern()
+        initiative.review_comments = data.get('comments', '')
+        initiative.updated_at = now_eastern()
+
+        # Ensure the status change is recorded in audit log
+        existing = AuditLog.query.filter_by(
+            initiative_id=initiative.id, action='UNAPPROVE'
+        ).first()
+        audit = AuditLog(
+            initiative_id=initiative.id,
+            action='UNAPPROVE',
+            table_name='initiatives',
+            record_id=initiative.id,
+            user_id=user.id,
+            ip_address=request.remote_addr,
+            user_agent=request.user_agent.string
+        )
+        audit.set_old_values({'status': old_status})
+        audit.set_new_values({
+            'status': 'Pending Review',
+            'reviewed_by_id': user.id,
+            'review_date': initiative.review_date.isoformat(),
+            'review_comments': data.get('comments', '')
+        })
+
+        db.session.add(audit)
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Initiative reverted to Pending Review',
+            'initiative': initiative.to_dict(include_details=True)
+        }), 200
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500

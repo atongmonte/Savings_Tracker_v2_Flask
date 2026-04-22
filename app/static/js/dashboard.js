@@ -226,6 +226,14 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('modalForm')?.classList.remove('d-none');
             document.getElementById('mf_goBackBtn')?.classList.add('d-none');
             document.getElementById('mf_confirmSaveBtn')?.classList.add('d-none');
+            // Hide Approved-status action buttons
+            document.getElementById('modalUnapproveBtn')?.classList.add('d-none');
+            document.getElementById('modalRevokeBtn')?.classList.add('d-none');
+            // Reset audit section
+            document.getElementById('mf_audit_section')?.classList.add('d-none');
+            document.getElementById('mf_audit_log_container')?.classList.add('d-none');
+            const atb = document.getElementById('mf_audit_toggle_btn');
+            if (atb) atb.innerHTML = '<i class="fas fa-chevron-down"></i> Show';
             window._pendingPayload  = null;
             window._pendingEndpoint = null;
         });
@@ -542,12 +550,32 @@ function populateInitiativeModal(data, editMode) {
     const canActOnReview = window._currentUser && (window._currentUser.can_approve || window._currentUser.can_review);
     const isPendingReview = data.status === 'Pending Review';
     const isRejected      = data.status === 'Rejected';
-    const approveBtn = document.getElementById('modalApproveBtn');
-    const rejectBtn  = document.getElementById('modalRejectBtn');
-    const revertBtn  = document.getElementById('modalRevertBtn');
-    if (approveBtn) approveBtn.classList.toggle('d-none', !(canActOnReview && isPendingReview && !editMode));
-    if (rejectBtn)  rejectBtn.classList.toggle('d-none',  !(canActOnReview && isPendingReview && !editMode));
-    if (revertBtn)  revertBtn.classList.toggle('d-none',  !(canActOnReview && isRejected && !editMode));
+    const isApproved      = data.status === 'Approved';
+    const approveBtn    = document.getElementById('modalApproveBtn');
+    const rejectBtn     = document.getElementById('modalRejectBtn');
+    const revertBtn     = document.getElementById('modalRevertBtn');
+    const unapproveBtn  = document.getElementById('modalUnapproveBtn');
+    const revokeBtn     = document.getElementById('modalRevokeBtn');
+    if (approveBtn)   approveBtn.classList.toggle('d-none',   !(canActOnReview && isPendingReview && !editMode));
+    if (rejectBtn)    rejectBtn.classList.toggle('d-none',    !(canActOnReview && isPendingReview && !editMode));
+    if (revertBtn)    revertBtn.classList.toggle('d-none',    !(canActOnReview && isRejected && !editMode));
+    if (unapproveBtn) unapproveBtn.classList.toggle('d-none', !(canActOnReview && isApproved && !editMode));
+    if (revokeBtn)    revokeBtn.classList.toggle('d-none',    !(canActOnReview && isApproved && !editMode));
+
+    // Audit History section — visible to reviewer/admin in view mode
+    const auditSection = document.getElementById('mf_audit_section');
+    if (auditSection) {
+        if (canActOnReview && !editMode) {
+            auditSection.classList.remove('d-none');
+            // Collapse and reset the panel for the new initiative
+            const auditContainer = document.getElementById('mf_audit_log_container');
+            const auditToggleBtn = document.getElementById('mf_audit_toggle_btn');
+            if (auditContainer) auditContainer.classList.add('d-none');
+            if (auditToggleBtn) auditToggleBtn.innerHTML = '<i class="fas fa-chevron-down"></i> Show';
+        } else {
+            auditSection.classList.add('d-none');
+        }
+    }
 
     // Files / Attachments — clear staged state and render
     window._stagedFiles        = [];
@@ -1197,6 +1225,114 @@ function revertInitiativeFromModal() {
     }
 }
 
+// Reopen an approved initiative back to Pending Review
+function unapproveInitiativeFromModal() {
+    const id = window._modalInitiativeId;
+    if (!id) return;
+    if (confirm('Reopen this approved initiative back to Pending Review?')) {
+        fetch(`/api/initiatives/${id}/unapprove`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.message) {
+                bootstrap.Modal.getInstance(document.getElementById('actionModal'))?.hide();
+                showAlert('Initiative reopened to Pending Review', 'success');
+                loadInitiatives();
+            } else {
+                showModalAlert(data.error || 'Error reopening initiative', 'danger');
+            }
+        })
+        .catch(() => showModalAlert('Error reopening initiative', 'danger'));
+    }
+}
+
+// Revoke approval (Approved → Rejected) — opens reject modal with revoke context
+function revokeApprovalFromModal() {
+    const id = window._modalInitiativeId;
+    if (!id) return;
+    window._rejectIsRevoke = true;
+    rejectInitiative(id);
+}
+
+// Toggle Audit History panel in view modal
+function toggleAuditLog() {
+    const container = document.getElementById('mf_audit_log_container');
+    const btn = document.getElementById('mf_audit_toggle_btn');
+    if (!container) return;
+    if (container.classList.contains('d-none')) {
+        container.classList.remove('d-none');
+        if (btn) btn.innerHTML = '<i class="fas fa-chevron-up"></i> Hide';
+        loadAuditLog(window._modalInitiativeId);
+    } else {
+        container.classList.add('d-none');
+        if (btn) btn.innerHTML = '<i class="fas fa-chevron-down"></i> Show';
+    }
+}
+
+// Fetch and render the audit log for an initiative
+function loadAuditLog(id) {
+    const body = document.getElementById('mf_audit_log_body');
+    if (!body || !id) return;
+    body.innerHTML = '<small class="text-muted">Loading...</small>';
+    fetch(`/api/initiatives/${id}/audit-log`)
+        .then(r => r.json())
+        .then(data => {
+            const logs = data.audit_logs || [];
+            if (!logs.length) {
+                body.innerHTML = '<small class="text-muted fst-italic">No audit history found.</small>';
+                return;
+            }
+            const actionBadge = {
+                CREATE:    'secondary', UPDATE:  'primary',  DELETE:  'danger',
+                APPROVE:   'success',  REJECT:   'danger',   REVERT:  'warning',
+                UNAPPROVE: 'warning',  RESTORE:  'info'
+            };
+            const rows = logs.map(log => {
+                const ov = log.old_values || {};
+                const nv = log.new_values || {};
+                const color = actionBadge[log.action] || 'secondary';
+                const dt = log.created_at
+                    ? new Date(log.created_at).toLocaleString('en-US', {
+                        timeZone: 'America/New_York', month: '2-digit', day: '2-digit',
+                        year: 'numeric', hour: '2-digit', minute: '2-digit'
+                      })
+                    : '';
+                const userName = log.user ? (log.user.full_name || log.user.username) : 'System';
+                const comments = nv.review_comments || '';
+                return `<tr>
+                    <td class="text-nowrap small">${dt}</td>
+                    <td><span class="badge bg-${color}">${log.action}</span></td>
+                    <td class="small">${userName}</td>
+                    <td class="small">${ov.status || ''}</td>
+                    <td class="small">${nv.status || ''}</td>
+                    <td class="small text-muted">${comments}</td>
+                </tr>`;
+            }).join('');
+            body.innerHTML = `
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date (ET)</th>
+                                <th>Action</th>
+                                <th>By</th>
+                                <th>Old Status</th>
+                                <th>New Status</th>
+                                <th>Comments</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+        })
+        .catch(() => {
+            body.innerHTML = '<small class="text-danger">Error loading audit history.</small>';
+        });
+}
+
 // Approve initiative from modal footer
 function approveInitiativeFromModal() {
     const id = window._modalInitiativeId;
@@ -1248,6 +1384,28 @@ function approveInitiative(id) {
 // Reject initiative
 function rejectInitiative(id) {
     currentInitiativeId = id;
+    // Update modal title/label based on context (revoke vs. reject)
+    const isRevoke = !!window._rejectIsRevoke;
+    const modalTitle = document.getElementById('rejectModalTitle');
+    const commentLabel = document.getElementById('rejectCommentLabel');
+    const submitBtn = document.getElementById('rejectSubmitBtn');
+    const contextDiv = document.getElementById('rejectModalContext');
+    if (modalTitle) modalTitle.textContent = isRevoke ? 'Revoke Approval' : 'Reject Initiative';
+    if (commentLabel) commentLabel.innerHTML = isRevoke
+        ? 'Reason for revoking approval <span class="form-required">*</span>'
+        : 'Rejection Reason <span class="form-required">*</span>';
+    if (submitBtn) submitBtn.innerHTML = isRevoke
+        ? '<i class="fas fa-ban"></i> Revoke Approval'
+        : '<i class="fas fa-times-circle"></i> Reject';
+    if (contextDiv) {
+        if (isRevoke) {
+            contextDiv.innerHTML = '<div class="alert alert-warning py-2 small mb-0"><i class="fas fa-exclamation-triangle me-1"></i>This will revoke the approval and set the initiative back to <strong>Rejected</strong> status.</div>';
+            contextDiv.classList.remove('d-none');
+        } else {
+            contextDiv.classList.add('d-none');
+        }
+    }
+    document.getElementById('rejectComment').value = '';
     // close action modal if open so reject modal can show cleanly
     const actionModalInst = bootstrap.Modal.getInstance(document.getElementById('actionModal'));
     if (actionModalInst) {
@@ -1261,14 +1419,16 @@ function rejectInitiative(id) {
     }
 }
 
-// Submit rejection
+// Submit rejection (also handles revoke-approval context)
 function submitRejection() {
     const comment = document.getElementById('rejectComment').value.trim();
     
     if (!comment) {
-        showAlert('Please enter a rejection reason', 'warning');
+        showAlert('Please enter a reason', 'warning');
         return;
     }
+
+    const isRevoke = !!window._rejectIsRevoke;
     
     fetch(`/api/initiatives/${currentInitiativeId}/reject`, {
         method: 'POST',
@@ -1280,17 +1440,19 @@ function submitRejection() {
     .then(response => response.json())
     .then(data => {
         if (data.message) {
-            showAlert('Initiative rejected', 'success');
+            const msg = isRevoke ? 'Approval revoked — initiative set to Rejected' : 'Initiative rejected';
+            showAlert(msg, 'success');
             bootstrap.Modal.getInstance(document.getElementById('rejectModal')).hide();
             document.getElementById('rejectComment').value = '';
+            window._rejectIsRevoke = false;
             loadInitiatives();
         } else {
-            showAlert(data.error || 'Error rejecting initiative', 'danger');
+            showAlert(data.error || 'Error', 'danger');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showAlert('Error rejecting initiative', 'danger');
+        showAlert('Error processing request', 'danger');
     });
 }
 
