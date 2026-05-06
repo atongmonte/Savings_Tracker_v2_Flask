@@ -2,6 +2,7 @@
 
 let editInitiativeId = null;
 let existingFileCount = 0;
+let stagedNewFiles = [];
 
 document.addEventListener('DOMContentLoaded', async function() {
     await loadContractCategorySelect('contractCategory');
@@ -31,9 +32,16 @@ function setupFileUpload() {
     const fileList = document.getElementById('fileList');
     
     fileInput.addEventListener('change', function(e) {
-        const files = Array.from(e.target.files);
-        displayFileList(files, fileList);
-        if (files.length > 0) fileInput.classList.remove('is-invalid');
+        const newFiles = Array.from(e.target.files);
+        newFiles.forEach(f => {
+            if (!stagedNewFiles.some(s => s.name === f.name && s.size === f.size)) {
+                stagedNewFiles.push(f);
+            }
+        });
+        // Clear input so the same file can be re-selected after removal
+        fileInput.value = '';
+        displayFileList(stagedNewFiles, fileList);
+        if (stagedNewFiles.length > 0) fileInput.classList.remove('is-invalid');
     });
 }
 
@@ -105,16 +113,8 @@ function formatFileSize(bytes) {
 }
 
 function removeFile(index) {
-    const fileInput = document.getElementById('fileUpload');
-    const dt = new DataTransfer();
-    const files = Array.from(fileInput.files);
-    
-    files.forEach((file, i) => {
-        if (i !== index) dt.items.add(file);
-    });
-    
-    fileInput.files = dt.files;
-    displayFileList(Array.from(dt.files), document.getElementById('fileList'));
+    stagedNewFiles.splice(index, 1);
+    displayFileList(stagedNewFiles, document.getElementById('fileList'));
 }
 
 function setupFacilityAllocation() {
@@ -296,7 +296,7 @@ function validateForm() {
     // Require at least one file attachment (new upload or existing)
     const fileInput = document.getElementById('fileUpload');
     const existingRows = document.querySelectorAll('#fileList [id^="existing-file-"]').length;
-    const newFileCount = fileInput ? fileInput.files.length : 0;
+    const newFileCount = stagedNewFiles.length;
     if (existingRows + newFileCount === 0) {
         showAlert('At least one supporting document must be attached before submitting.', 'warning');
         if (fileInput) {
@@ -358,9 +358,8 @@ function handleSubmit(e) {
         hideLoading();
         if (data.initiative) {
             // Handle file uploads if any
-            const files = document.getElementById('fileUpload').files;
-            if (files.length > 0) {
-                uploadFiles(data.initiative.id, files);
+            if (stagedNewFiles.length > 0) {
+                uploadFiles(data.initiative.id, stagedNewFiles);
             } else {
                 showAlert('Rebate initiative created successfully!', 'success');
                 setTimeout(() => {
@@ -495,6 +494,11 @@ function hideLoading() {
 }
 
 function showAlert(message, type) {
+    if (window.showGlobalPopup && (type === 'danger' || type === 'error')) {
+        window.showGlobalPopup(message, type, { autoDismissMs: 5000 });
+        return;
+    }
+
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
     alertDiv.innerHTML = `

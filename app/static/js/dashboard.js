@@ -1671,6 +1671,11 @@ async function flushStagedFileChanges(initiativeId) {
 }
 
 function showModalAlert(message, type) {
+    if (window.showGlobalPopup && (type === 'danger' || type === 'error')) {
+        window.showGlobalPopup(message, type, { autoDismissMs: 5000 });
+        return;
+    }
+
     const container = document.getElementById('modalAlertContainer');
     if (!container) { showAlert(message, type); return; }
     container.innerHTML = `
@@ -1683,6 +1688,11 @@ function showModalAlert(message, type) {
 }
 
 function showAlert(message, type) {
+    if (window.showGlobalPopup && (type === 'danger' || type === 'error')) {
+        window.showGlobalPopup(message, type, { autoDismissMs: 5000 });
+        return;
+    }
+
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
     alertDiv.innerHTML = `

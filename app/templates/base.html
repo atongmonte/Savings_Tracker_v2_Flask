@@ -238,6 +238,25 @@
         .alert-warning { background-color: #FEF9EE; border-color: #D4820A; color: #7A4A06; }
         .alert-info    { background-color: #EFF5FC; border-color: #0072BC; color: #004D80; }
 
+        /* Top-center error popup stack */
+        #topErrorAlertStack {
+            position: fixed;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(92vw, 720px);
+            z-index: 2100;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            pointer-events: none;
+        }
+        #topErrorAlertStack .alert {
+            margin: 0;
+            pointer-events: auto;
+            box-shadow: 0 6px 16px rgba(17, 43, 70, 0.18);
+        }
+
         /* ── Form elements ── */
         .form-required { color: var(--danger-color); font-weight: 600; }
         .form-control, .form-select {
@@ -480,6 +499,74 @@
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 
     <script>
+        (function () {
+            function normalizeType(type) {
+                return type === 'error' ? 'danger' : type;
+            }
+
+            function isErrorType(type) {
+                return normalizeType(type) === 'danger';
+            }
+
+            function getOrCreateErrorStack() {
+                let stack = document.getElementById('topErrorAlertStack');
+                if (!stack) {
+                    stack = document.createElement('div');
+                    stack.id = 'topErrorAlertStack';
+                    document.body.appendChild(stack);
+                }
+                return stack;
+            }
+
+            function getAlertMessageText(alertEl) {
+                const clone = alertEl.cloneNode(true);
+                const closeButton = clone.querySelector('.btn-close');
+                if (closeButton) closeButton.remove();
+                return (clone.textContent || '').trim();
+            }
+
+            window.showGlobalPopup = function (message, type = 'danger', options = {}) {
+                const bsType = normalizeType(type);
+                const autoDismissMs = Number(options.autoDismissMs) || 5000;
+                const stack = getOrCreateErrorStack();
+
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-${bsType} alert-dismissible fade show`;
+                alertDiv.setAttribute('role', 'alert');
+                alertDiv.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+
+                stack.appendChild(alertDiv);
+
+                setTimeout(() => {
+                    const bsAlert = bootstrap.Alert.getOrCreateInstance(alertDiv);
+                    bsAlert.close();
+                }, autoDismissMs);
+
+                alertDiv.addEventListener('closed.bs.alert', () => {
+                    alertDiv.remove();
+                });
+
+                return alertDiv;
+            };
+
+            window.showGlobalErrorPopup = function (message, options = {}) {
+                return window.showGlobalPopup(message, 'danger', options);
+            };
+
+            window.routeInlineErrorsToTopPopups = function () {
+                document.querySelectorAll('.alert.alert-danger').forEach((alertEl) => {
+                    const message = getAlertMessageText(alertEl);
+                    if (message) {
+                        window.showGlobalErrorPopup(message, { autoDismissMs: 5000 });
+                    }
+                    alertEl.remove();
+                });
+            };
+        })();
+
         function logout() {
             if (confirm('Are you sure you want to logout?')) {
                 window.location.href = '/logout';
@@ -494,6 +581,10 @@
                     l.style.color = 'var(--monte-navy)';
                 }
             });
+
+            if (window.routeInlineErrorsToTopPopups) {
+                window.routeInlineErrorsToTopPopups();
+            }
         });
     </script>
 
