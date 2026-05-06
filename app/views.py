@@ -79,6 +79,19 @@ def _parse_filter_date(value):
         return None
 
 
+def _get_template_current_user_name():
+    """Return the current user's display name for templates."""
+    user = getattr(g, 'current_user', None)
+    if user is None:
+        try:
+            user = get_current_user()
+        except Exception:
+            user = None
+    if not user:
+        return None
+    return user.full_name or user.username
+
+
 def _get_allocation_numeric_value(allocation, rebate_amount=0):
     """Return an allocation as a numeric amount for export formatting."""
     if allocation.allocation_amount is not None:
@@ -342,28 +355,25 @@ def index():
 @main_bp.route('/dashboard')
 def dashboard():
     """Serve the dashboard page."""
-    # TEMPORARY: Use test user for local development
-    return render_template('dashboard.html', current_user='Andrew Tong')
+    return render_template('dashboard.html', current_user=_get_template_current_user_name())
 
 
 @main_bp.route('/savings-dashboard')
 def savings_dashboard():
     """Serve the savings analytics dashboard (reviewer / admin)."""
-    return render_template('savings_dashboard.html', current_user='Andrew Tong')
+    return render_template('savings_dashboard.html', current_user=_get_template_current_user_name())
 
 
 @main_bp.route('/cost-savings/form')
 def cost_savings_form():
     """Serve the cost savings form page."""
-    # TEMPORARY: Use test user for local development
-    return render_template('cost_savings_form.html', current_user='Andrew Tong')
+    return render_template('cost_savings_form.html', current_user=_get_template_current_user_name())
 
 
 @main_bp.route('/rebate/form')
 def rebate_form():
     """Serve the rebate form page."""
-    # TEMPORARY: Use test user for local development
-    return render_template('rebate_form.html', current_user='Andrew Tong')
+    return render_template('rebate_form.html', current_user=_get_template_current_user_name())
 
 
 @main_bp.route('/rebate/extraction')
@@ -385,7 +395,7 @@ def rebate_extraction():
 
     return render_template(
         'rebate_extraction.html',
-        current_user='Andrew Tong',
+        current_user=_get_template_current_user_name(),
         rebate_rows=rebate_rows,
         rebate_count=len(rebate_rows),
         total_rebate_amount=total_rebate_amount,
@@ -475,8 +485,7 @@ def rebate_extraction_export():
 @main_bp.route('/cost-avoidance/form')
 def cost_avoidance_form():
     """Serve the cost avoidance form page."""
-    # TEMPORARY: Use test user for local development
-    return render_template('cost_avoidance_form.html', current_user='Andrew Tong')
+    return render_template('cost_avoidance_form.html', current_user=_get_template_current_user_name())
 
 
 def _is_admin_user(user):

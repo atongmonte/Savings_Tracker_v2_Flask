@@ -25,6 +25,26 @@ function initializeForm() {
 function setupEventListeners() {
     const form = document.getElementById('rebateForm');
     form.addEventListener('submit', handleSubmit);
+    installInvalidHighlightClearers(form);
+}
+
+function installInvalidHighlightClearers(form) {
+    const fields = form.querySelectorAll('input, select, textarea');
+    fields.forEach(field => {
+        const eventName = field.type === 'radio' || field.type === 'checkbox' || field.tagName === 'SELECT'
+            ? 'change'
+            : 'input';
+        field.addEventListener(eventName, () => {
+            if (field.type === 'radio' || field.type === 'checkbox') {
+                const groupElem = field.closest('.mb-3') || field.closest('.col-md-6') || field.closest('.form-section');
+                if (groupElem) {
+                    groupElem.classList.remove('invalid-field-group');
+                }
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+    });
 }
 
 function setupFileUpload() {
@@ -265,14 +285,71 @@ function validateForm() {
     
     // Check required fields
     const requiredFields = form.querySelectorAll('[required]');
+    const missingFields = [];
+    const seenGroups = new Set();
+    let firstInvalidField = null;
+
     requiredFields.forEach(field => {
-        if (!field.value.trim()) {
-            field.classList.add('is-invalid');
-            isValid = false;
-        } else {
-            field.classList.remove('is-invalid');
+        if ((field.type === 'radio' || field.type === 'checkbox') && seenGroups.has(field.name)) {
+            return;
         }
+
+        const isEmpty = field.type === 'radio' || field.type === 'checkbox'
+            ? !form.querySelector(`[name="${field.name}"]:checked`)
+            : !field.value.trim();
+
+        if (!isEmpty) {
+            if (field.type === 'radio' || field.type === 'checkbox') {
+                const groupElem = field.closest('.mb-3') || field.closest('.col-md-6') || field.closest('.form-section');
+                if (groupElem) {
+                    groupElem.classList.remove('invalid-field-group');
+                }
+            } else {
+                field.classList.remove('is-invalid');
+            }
+            return;
+        }
+
+        if (field.type === 'radio' || field.type === 'checkbox') {
+            seenGroups.add(field.name);
+            const groupElem = field.closest('.mb-3') || field.closest('.col-md-6') || field.closest('.form-section');
+            if (groupElem) {
+                groupElem.classList.add('invalid-field-group');
+            }
+        } else {
+            field.classList.add('is-invalid');
+        }
+
+        if (!firstInvalidField) {
+            firstInvalidField = field;
+        }
+
+        const labelText = (() => {
+            if (field.id) {
+                const label = form.querySelector(`label[for="${field.id}"]`);
+                if (label) return label.textContent.trim();
+            }
+            const group = field.closest('.mb-3, .col-md-6, .col-md-4, .row, .form-section');
+            if (group) {
+                const label = group.querySelector('label.form-label');
+                if (label) return label.textContent.trim();
+            }
+            if (field.name) {
+                return field.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            }
+            return 'Required field';
+        })();
+
+        missingFields.push(labelText.replace(/\s*\*+$/, '').trim());
     });
+
+    if (missingFields.length > 0) {
+        showAlert(`Please complete the required fields before submitting: ${missingFields.join(', ')}.`, 'warning');
+        if (firstInvalidField) {
+            firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        isValid = false;
+    }
 
     // Validate facility allocation is fully allocated (submit only, not draft)
     const allocType = document.querySelector('input[name="allocationType"]:checked')?.value || 'amount';
@@ -494,7 +571,7 @@ function hideLoading() {
 }
 
 function showAlert(message, type) {
-    if (window.showGlobalPopup && (type === 'danger' || type === 'error')) {
+    if (window.showGlobalPopup) {
         window.showGlobalPopup(message, type, { autoDismissMs: 5000 });
         return;
     }

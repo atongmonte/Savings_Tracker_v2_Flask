@@ -238,23 +238,74 @@
         .alert-warning { background-color: #FEF9EE; border-color: #D4820A; color: #7A4A06; }
         .alert-info    { background-color: #EFF5FC; border-color: #0072BC; color: #004D80; }
 
-        /* Top-center error popup stack */
-        #topErrorAlertStack {
+        #globalFlashModal.top-flash {
             position: fixed;
             top: 1rem;
             left: 50%;
             transform: translateX(-50%);
-            width: min(92vw, 720px);
-            z-index: 2100;
+            width: min(92vw, 640px);
+            z-index: 2200;
+            display: none;
+        }
+        #globalFlashModal .flash-message-body {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
-            pointer-events: none;
+            gap: 0.75rem;
         }
-        #topErrorAlertStack .alert {
-            margin: 0;
-            pointer-events: auto;
-            box-shadow: 0 6px 16px rgba(17, 43, 70, 0.18);
+        #globalFlashModal .flash-message-box {
+            position: relative;
+            padding: 1.25rem 1.25rem 1rem;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            border-left: 4px solid transparent;
+            box-shadow: 0 8px 20px rgba(17, 43, 70, 0.12);
+            background: #FEF9EE;
+        }
+        #globalFlashModal .flash-message-box .btn-close {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            width: 1rem;
+            height: 1rem;
+            padding: 0;
+            opacity: 0.6;
+        }
+        #globalFlashModal .flash-message-box .btn-close:hover {
+            opacity: 1;
+        }
+        #globalFlashModal .flash-message-box.warning {
+            background: #FEF9EE;
+            color: #7A4A06;
+            border-color: #D4820A;
+        }
+        #globalFlashModal .flash-message-box.success {
+            background: #F0FBF5;
+            color: #0E4D2D;
+            border-color: #1A7A4A;
+        }
+        #globalFlashModal .flash-message-box.danger {
+            background: #FDF3F2;
+            color: #7B2218;
+            border-color: #C0392B;
+        }
+        #globalFlashModal .flash-message-box.info {
+            background: #EFF5FC;
+            color: #004D80;
+            border-color: #0072BC;
+        }
+        .invalid-field-group {
+            border: 1px solid var(--danger-color);
+            border-radius: 0.65rem;
+            padding: 0.9rem 0.95rem;
+            margin-bottom: 0.75rem;
+        }
+        .invalid-field-group .form-check + .form-check {
+            margin-top: 0.5rem;
+        }
+        .form-check-input.is-invalid {
+            border-color: initial !important;
+            box-shadow: none !important;
         }
 
         /* ── Form elements ── */
@@ -434,8 +485,8 @@
         </div>
     </nav>
 
-    <!-- Flash Messages -->
-    <div class="page-shell mt-3">
+    <!-- Flash Messages (routed into top-layer popup stack on load) -->
+    <div id="flashMessageContainer" class="page-shell mt-3">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -508,14 +559,19 @@
                 return normalizeType(type) === 'danger';
             }
 
-            function getOrCreateErrorStack() {
-                let stack = document.getElementById('topErrorAlertStack');
-                if (!stack) {
-                    stack = document.createElement('div');
-                    stack.id = 'topErrorAlertStack';
-                    document.body.appendChild(stack);
+            function getOrCreateGlobalFlashModal() {
+                let modal = document.getElementById('globalFlashModal');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'globalFlashModal';
+                    modal.className = 'top-flash';
+                    modal.innerHTML = `
+                        <div class="flash-message-body"></div>
+                    `;
+                    document.body.appendChild(modal);
                 }
-                return stack;
+
+                return modal;
             }
 
             function getAlertMessageText(alertEl) {
@@ -527,43 +583,66 @@
 
             window.showGlobalPopup = function (message, type = 'danger', options = {}) {
                 const bsType = normalizeType(type);
-                const autoDismissMs = Number(options.autoDismissMs) || 5000;
-                const stack = getOrCreateErrorStack();
+                const modal = getOrCreateGlobalFlashModal();
+                const modalBody = modal.querySelector('.flash-message-body');
 
-                const alertDiv = document.createElement('div');
-                alertDiv.className = `alert alert-${bsType} alert-dismissible fade show`;
-                alertDiv.setAttribute('role', 'alert');
-                alertDiv.innerHTML = `
+                const messageBox = document.createElement('div');
+                messageBox.className = `flash-message-box ${bsType}`;
+                messageBox.innerHTML = `
+                    <button type="button" class="btn-close" aria-label="Close"></button>
                     ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 `;
+                modalBody.appendChild(messageBox);
+                modal.style.display = 'block';
 
-                stack.appendChild(alertDiv);
-
-                setTimeout(() => {
-                    const bsAlert = bootstrap.Alert.getOrCreateInstance(alertDiv);
-                    bsAlert.close();
-                }, autoDismissMs);
-
-                alertDiv.addEventListener('closed.bs.alert', () => {
-                    alertDiv.remove();
+                const closeBtn = messageBox.querySelector('.btn-close');
+                closeBtn.addEventListener('click', () => {
+                    messageBox.remove();
+                    if (modalBody.children.length === 0) {
+                        modal.style.display = 'none';
+                    }
                 });
 
-                return alertDiv;
+                return messageBox;
             };
 
             window.showGlobalErrorPopup = function (message, options = {}) {
                 return window.showGlobalPopup(message, 'danger', options);
             };
 
-            window.routeInlineErrorsToTopPopups = function () {
-                document.querySelectorAll('.alert.alert-danger').forEach((alertEl) => {
+            window.routeInlineFlashAlertsToModal = function () {
+                const modal = getOrCreateGlobalFlashModal();
+                const modalBody = modal.querySelector('.flash-message-body');
+
+                document.querySelectorAll('#flashMessageContainer .alert').forEach((alertEl) => {
                     const message = getAlertMessageText(alertEl);
+                    const bsType = alertEl.classList.contains('alert-danger') ? 'danger'
+                        : alertEl.classList.contains('alert-success') ? 'success'
+                        : alertEl.classList.contains('alert-warning') ? 'warning'
+                        : 'info';
+
                     if (message) {
-                        window.showGlobalErrorPopup(message, { autoDismissMs: 5000 });
+                        const messageBox = document.createElement('div');
+                        messageBox.className = `flash-message-box ${bsType}`;
+                        messageBox.innerHTML = `
+                            <button type="button" class="btn-close" aria-label="Close"></button>
+                            ${message}
+                        `;
+                        modalBody.appendChild(messageBox);
+                        const closeBtn = messageBox.querySelector('.btn-close');
+                        closeBtn.addEventListener('click', () => {
+                            messageBox.remove();
+                            if (modalBody.children.length === 0) {
+                                modal.style.display = 'none';
+                            }
+                        });
                     }
                     alertEl.remove();
                 });
+
+                if (modalBody.children.length > 0) {
+                    modal.style.display = 'block';
+                }
             };
         })();
 
@@ -582,8 +661,8 @@
                 }
             });
 
-            if (window.routeInlineErrorsToTopPopups) {
-                window.routeInlineErrorsToTopPopups();
+            if (window.routeInlineFlashAlertsToModal) {
+                window.routeInlineFlashAlertsToModal();
             }
         });
     </script>
