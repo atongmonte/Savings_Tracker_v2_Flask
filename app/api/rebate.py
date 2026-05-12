@@ -8,7 +8,7 @@ from app import db
 from app.api import rebate_bp
 from app.models import Initiative, Rebate, FacilityAllocation, Facility, AuditLog, User, UserRole
 from app.utils.decorators import login_required, permission_required
-from app.utils.validators import validate_facility_allocations, validate_rebate_duplicate
+from app.utils.validators import validate_facility_allocations, validate_rebate_duplicate, validate_positive_amount
 from app.utils.email import send_initiative_created_notification
 
 
@@ -31,11 +31,16 @@ def create_rebate():
         return jsonify({'error': 'No data provided'}), 400
     
     # Validate required fields
-    required_fields = ['rebate_type', 'contract_number', 'vendor_name', 'transaction_number']
+    required_fields = ['rebate_type', 'contract_number', 'vendor_name', 'transaction_number', 'rebate_amount']
     for field in required_fields:
         if not has_required_value(field):
             return jsonify({'error': f'Missing required field: {field}'}), 400
-    
+
+    # Validate amount values
+    is_valid, error = validate_positive_amount(data.get('rebate_amount'), 'rebate_amount')
+    if not is_valid:
+        return jsonify({'error': error}), 400
+
     # Validate facility allocations
     allocations = data.get('facility_allocations', [])
     is_valid, error = validate_facility_allocations(allocations)
@@ -173,6 +178,11 @@ def update_rebate(initiative_id):
             return jsonify({'error': 'Missing required field: contract_number'}), 400
 
         # Validate if rebate type/vendor/transaction number are being changed
+        if 'rebate_amount' in data:
+            is_valid, error = validate_positive_amount(data['rebate_amount'], 'rebate_amount')
+            if not is_valid:
+                return jsonify({'error': error}), 400
+
         if ('rebate_type' in data or 'vendor_name' in data or 'transaction_number' in data):
             rebate_type = data.get('rebate_type', rebate.rebate_type)
             vendor_name = data.get('vendor_name', rebate.vendor_name)

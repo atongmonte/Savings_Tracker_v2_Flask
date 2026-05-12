@@ -8,7 +8,7 @@ from app import db
 from app.api import cost_avoidance_bp
 from app.models import Initiative, CostAvoidance, FacilityAllocation, Facility, AuditLog, User, UserRole
 from app.utils.decorators import login_required, permission_required
-from app.utils.validators import validate_facility_allocations, validate_cost_avoidance_duplicate
+from app.utils.validators import validate_facility_allocations, validate_cost_avoidance_duplicate, validate_positive_amount
 from app.utils.email import send_initiative_created_notification
 
 
@@ -31,11 +31,16 @@ def create_cost_avoidance():
         return jsonify({'error': 'No data provided'}), 400
     
     # Validate required fields
-    required_fields = ['avoidance_type', 'contract_number', 'vendor_name', 'po_number']
+    required_fields = ['avoidance_type', 'contract_number', 'vendor_name', 'po_number', 'avoidance_amount']
     for field in required_fields:
         if not has_required_value(field):
             return jsonify({'error': f'Missing required field: {field}'}), 400
-    
+
+    # Validate amount values
+    is_valid, error = validate_positive_amount(data.get('avoidance_amount'), 'avoidance_amount')
+    if not is_valid:
+        return jsonify({'error': error}), 400
+
     # Validate facility allocations
     allocations = data.get('facility_allocations', [])
     is_valid, error = validate_facility_allocations(allocations)
@@ -175,6 +180,11 @@ def update_cost_avoidance(initiative_id):
             return jsonify({'error': 'Missing required field: contract_number'}), 400
 
         # Validate if avoidance type/vendor/PO are being changed
+        if 'avoidance_amount' in data:
+            is_valid, error = validate_positive_amount(data['avoidance_amount'], 'avoidance_amount')
+            if not is_valid:
+                return jsonify({'error': error}), 400
+
         if ('avoidance_type' in data or 'vendor_name' in data or 'po_number' in data):
             avoidance_type = data.get('avoidance_type', cost_avoidance.avoidance_type)
             vendor_name = data.get('vendor_name', cost_avoidance.vendor_name)

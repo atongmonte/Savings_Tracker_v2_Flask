@@ -367,6 +367,12 @@ function validateForm() {
         isValid = false;
     }
     
+    const avoidanceAmountVal = numVal(document.getElementById('avoidanceAmount')?.value || '0');
+    if (avoidanceAmountVal <= 0) {
+        showAlert('Cost Avoidance Amount must be greater than 0 before submitting.', 'warning');
+        isValid = false;
+    }
+
     // Validate facility allocation is fully allocated (submit only, not draft)
     const allocType = document.querySelector('input[name="allocationType"]:checked')?.value || 'amount';
     let allocTotal = 0;

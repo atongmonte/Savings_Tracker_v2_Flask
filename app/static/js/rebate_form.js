@@ -351,6 +351,12 @@ function validateForm() {
         isValid = false;
     }
 
+    const rebateAmountVal = numVal(document.getElementById('rebateAmount')?.value || '0');
+    if (rebateAmountVal <= 0) {
+        showAlert('Rebate Amount must be greater than 0 before submitting.', 'warning');
+        isValid = false;
+    }
+
     // Validate facility allocation is fully allocated (submit only, not draft)
     const allocType = document.querySelector('input[name="allocationType"]:checked')?.value || 'amount';
     let allocTotal = 0;

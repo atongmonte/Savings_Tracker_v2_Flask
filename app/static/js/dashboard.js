@@ -655,6 +655,16 @@ function populateInitiativeModal(data, editMode) {
 // Set up auto-calculations inside the view/edit modal
 function setupModalCalculations(type) {
     const fmt2 = n => n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const shiftIsoDate = (isoDate, days) => {
+        if (!isoDate) return '';
+        const parts = isoDate.split('-').map(Number);
+        if (parts.length !== 3 || parts.some(Number.isNaN)) return '';
+        const shifted = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + days));
+        const y = shifted.getUTCFullYear();
+        const m = String(shifted.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(shifted.getUTCDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    };
 
     // ── Cost Savings ──────────────────────────────────────────────────
     if (type === 'Cost Savings') {
@@ -665,6 +675,36 @@ function setupModalCalculations(type) {
         const hint        = document.getElementById('mf_total_savings_hint');
         const startDate   = document.getElementById('mf_start_date');
         const endDate     = document.getElementById('mf_end_date');
+
+        function applyCostSavingsModalDateBounds(changedFieldId = null) {
+            const startValue = startDate.value;
+            const endValue = endDate.value;
+
+            startDate.removeAttribute('max');
+            endDate.removeAttribute('min');
+
+            if (endValue) {
+                startDate.max = shiftIsoDate(endValue, -1);
+            }
+            if (startValue) {
+                endDate.min = shiftIsoDate(startValue, 1);
+            }
+
+            if (startValue && endValue && startValue >= endValue) {
+                if (changedFieldId === 'mf_start_date') {
+                    endDate.value = '';
+                } else {
+                    startDate.value = '';
+                }
+
+                const nextStart = startDate.value;
+                const nextEnd = endDate.value;
+                startDate.removeAttribute('max');
+                endDate.removeAttribute('min');
+                if (nextEnd) startDate.max = shiftIsoDate(nextEnd, -1);
+                if (nextStart) endDate.min = shiftIsoDate(nextStart, 1);
+            }
+        }
 
         function getDurationYears() {
             if (!startDate.value || !endDate.value) return null;
@@ -698,11 +738,18 @@ function setupModalCalculations(type) {
         baseline.addEventListener('input',  calcSavings);
         expected.addEventListener('input',  calcSavings);
         annual.addEventListener('input',    calcTotal);
-        startDate.addEventListener('change', calcTotal);
-        endDate.addEventListener('change',   calcTotal);
+        startDate.addEventListener('change', function() {
+            applyCostSavingsModalDateBounds('mf_start_date');
+            calcTotal();
+        });
+        endDate.addEventListener('change', function() {
+            applyCostSavingsModalDateBounds('mf_end_date');
+            calcTotal();
+        });
         total.addEventListener('input', updateAllocTotal);
 
         // Trigger on open
+        applyCostSavingsModalDateBounds();
         calcTotal();
     }
 
@@ -1011,6 +1058,15 @@ function validateModalForm(type) {
         reqNum('mf_expected_spend',  'Expected Spend');
         reqNum('mf_annual_savings',  'Annual Savings');
         reqNum('mf_total_savings',   'Total Savings');
+        const totalSavingsVal = numVal(document.getElementById('mf_total_savings')?.value || '0');
+        if (totalSavingsVal <= 0) {
+            errors.push('Total Savings must be greater than 0');
+        }
+        const startDateVal = document.getElementById('mf_start_date')?.value || '';
+        const endDateVal = document.getElementById('mf_end_date')?.value || '';
+        if (startDateVal && endDateVal && endDateVal <= startDateVal) {
+            errors.push('End Date must be later than Start Date');
+        }
     } else if (type === 'Cost Avoidance') {
         reqRadio('mf_avoidance_type', 'Avoidance Type');
         req('mf_po_number',           'PO Number');
@@ -1019,9 +1075,17 @@ function validateModalForm(type) {
         reqNum('mf_original_quote',   'Original Quote');
         reqNum('mf_new_quote',        'New Quote');
         reqNum('mf_avoidance_amount', 'Avoidance Amount');
+        const avoidanceAmountVal = numVal(document.getElementById('mf_avoidance_amount')?.value || '0');
+        if (avoidanceAmountVal <= 0) {
+            errors.push('Avoidance Amount must be greater than 0');
+        }
     } else if (type === 'Rebate') {
         req('mf_rebate_type',            'Rebate Type');
         reqNum('mf_rebate_amount',       'Rebate Amount');
+        const rebateAmountVal = numVal(document.getElementById('mf_rebate_amount')?.value || '0');
+        if (rebateAmountVal <= 0) {
+            errors.push('Rebate Amount must be greater than 0');
+        }
         req('mf_transaction_date',       'Transaction Date');
         reqRadio('mf_transaction_type',  'Transaction Type');
         req('mf_transaction_number',     'Transaction Number');
@@ -1671,11 +1735,6 @@ async function flushStagedFileChanges(initiativeId) {
 }
 
 function showModalAlert(message, type) {
-    if (window.showGlobalPopup && (type === 'danger' || type === 'error')) {
-        window.showGlobalPopup(message, type, { autoDismissMs: 5000 });
-        return;
-    }
-
     const container = document.getElementById('modalAlertContainer');
     if (!container) { showAlert(message, type); return; }
     container.innerHTML = `
@@ -1683,8 +1742,12 @@ function showModalAlert(message, type) {
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>`;
-    // Auto-dismiss after 8 seconds
-    setTimeout(() => { container.innerHTML = ''; }, 8000);
+
+    const modalBody = container.closest('.modal-body');
+    if (modalBody) {
+        modalBody.scrollTop = 0;
+    }
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function showAlert(message, type) {

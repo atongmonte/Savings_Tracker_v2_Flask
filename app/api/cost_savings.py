@@ -10,7 +10,8 @@ from app.models import Initiative, CostSavings, FacilityAllocation, Facility, Au
 from app.utils.decorators import login_required, permission_required
 from app.utils.validators import (
     validate_facility_allocations,
-    validate_cost_savings_duplicate
+    validate_cost_savings_duplicate,
+    validate_positive_amount
 )
 from app.utils.email import send_initiative_created_notification
 
@@ -34,11 +35,16 @@ def create_cost_savings():
         return jsonify({'error': 'No data provided'}), 400
     
     # Validate required fields
-    required_fields = ['contract_number', 'vendor_name', 'start_date', 'end_date']
+    required_fields = ['contract_number', 'vendor_name', 'start_date', 'end_date', 'total_savings_amount']
     for field in required_fields:
         if not has_required_value(field):
             return jsonify({'error': f'Missing required field: {field}'}), 400
-    
+
+    # Validate amount values
+    is_valid, error = validate_positive_amount(data.get('total_savings_amount'), 'total_savings_amount')
+    if not is_valid:
+        return jsonify({'error': error}), 400
+
     # Validate facility allocations
     allocations = data.get('facility_allocations', [])
     is_valid, error = validate_facility_allocations(allocations)
@@ -178,6 +184,11 @@ def update_cost_savings(initiative_id):
     try:
         if 'contract_number' in data and not str(data['contract_number']).strip():
             return jsonify({'error': 'Missing required field: contract_number'}), 400
+
+        if 'total_savings_amount' in data:
+            is_valid, error = validate_positive_amount(data['total_savings_amount'], 'total_savings_amount')
+            if not is_valid:
+                return jsonify({'error': error}), 400
 
         # Validate if contract/vendor/dates are being changed
         if ('contract_number' in data or 'vendor_name' in data or 

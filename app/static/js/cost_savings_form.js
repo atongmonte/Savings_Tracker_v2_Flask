@@ -4,6 +4,51 @@ let editInitiativeId = null;
 let existingFileCount = 0;
 let stagedNewFiles = [];
 
+function shiftIsoDate(isoDate, days) {
+    if (!isoDate) return '';
+    const parts = isoDate.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return '';
+    const shifted = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + days));
+    const y = shifted.getUTCFullYear();
+    const m = String(shifted.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(shifted.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function applyCostSavingsDateBounds(changedFieldId = null) {
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+    if (!startDateInput || !endDateInput) return;
+
+    const startValue = startDateInput.value;
+    const endValue = endDateInput.value;
+
+    startDateInput.removeAttribute('max');
+    endDateInput.removeAttribute('min');
+
+    if (endValue) {
+        startDateInput.max = shiftIsoDate(endValue, -1);
+    }
+    if (startValue) {
+        endDateInput.min = shiftIsoDate(startValue, 1);
+    }
+
+    if (startValue && endValue && startValue >= endValue) {
+        if (changedFieldId === 'startDate') {
+            endDateInput.value = '';
+        } else {
+            startDateInput.value = '';
+        }
+
+        const nextStart = startDateInput.value;
+        const nextEnd = endDateInput.value;
+        startDateInput.removeAttribute('max');
+        endDateInput.removeAttribute('min');
+        if (nextEnd) startDateInput.max = shiftIsoDate(nextEnd, -1);
+        if (nextStart) endDateInput.min = shiftIsoDate(nextStart, 1);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
     await loadContractCategorySelect('contractCategory');
     await initializePrimeContractLookup({
@@ -65,8 +110,19 @@ function initializeForm() {
     
     baselineSpend.addEventListener('input', calculateSavings);
     newContractSpend.addEventListener('input', calculateSavings);
-    if (startDateInput) startDateInput.addEventListener('change', calculateTotal);
-    if (endDateInput) endDateInput.addEventListener('change', calculateTotal);
+    if (startDateInput) {
+        startDateInput.addEventListener('change', function() {
+            applyCostSavingsDateBounds('startDate');
+            calculateTotal();
+        });
+    }
+    if (endDateInput) {
+        endDateInput.addEventListener('change', function() {
+            applyCostSavingsDateBounds('endDate');
+            calculateTotal();
+        });
+    }
+    applyCostSavingsDateBounds();
     
     // File upload handling
     setupFileUpload();
@@ -505,6 +561,12 @@ function validateForm() {
         }
     }
 
+    const totalSavingsVal = numVal(document.getElementById('totalSavingsAmount')?.value || '0');
+    if (totalSavingsVal <= 0) {
+        showAlert('Total Expected Savings must be greater than 0 before submitting.', 'warning');
+        isValid = false;
+    }
+
     // Validate facility allocation is fully allocated (submit only, not draft)
     const allocationType = document.querySelector('input[name="allocationType"]:checked')?.value || 'amount';
     let allocTotal = 0;
@@ -793,6 +855,7 @@ async function loadInitiativeData(id) {
         setField('vendorName', cs.vendor_name);
         setField('startDate', cs.start_date);
         setField('endDate', cs.end_date);
+        applyCostSavingsDateBounds();
         setField('baselineSpend', cs.baseline_spend);
         setField('newContractSpend', cs.expected_spend);
         setField('savingsAmount', cs.annual_savings_amount);

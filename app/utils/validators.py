@@ -42,6 +42,21 @@ def validate_facility_allocations(allocations):
     return True, None
 
 
+def validate_positive_amount(value, field_name):
+    """
+    Validate a submitted amount is a positive number.
+    """
+    if value is None:
+        return False, f"Missing required field: {field_name}"
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return False, f"{field_name.replace('_', ' ').title()} must be a valid number."
+    if amount <= 0:
+        return False, f"{field_name.replace('_', ' ').title()} must be greater than 0."
+    return True, None
+
+
 def validate_cost_savings_duplicate(contract_number, vendor_name, start_date, end_date, initiative_id=None):
     """
     Check for duplicate/overlapping Cost Savings initiatives.
