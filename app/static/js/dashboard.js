@@ -748,7 +748,24 @@ function setupModalCalculations(type) {
         });
         total.addEventListener('input', updateAllocTotal);
 
+        // Show/hide detail fields based on savings type (mirrors new cost savings form behavior)
+        function updateSavingsDetailsVisibility() {
+            const selectedType = (document.querySelector('input[name="mf_savings_type"]:checked') || {}).value || '';
+            const detailsSection = document.getElementById('mf_savings_details');
+            if (!detailsSection) return;
+            if (selectedType === 'Demand/Utilization Reduction') {
+                detailsSection.classList.add('d-none');
+            } else {
+                detailsSection.classList.remove('d-none');
+            }
+        }
+
+        document.querySelectorAll('input[name="mf_savings_type"]').forEach(function(radio) {
+            radio.addEventListener('change', updateSavingsDetailsVisibility);
+        });
+
         // Trigger on open
+        updateSavingsDetailsVisibility();
         applyCostSavingsModalDateBounds();
         calcTotal();
     }
@@ -1052,20 +1069,23 @@ function validateModalForm(type) {
 
     if (type === 'Cost Savings') {
         reqRadio('mf_savings_type',  'Savings Type');
-        req('mf_start_date',         'Start Date');
-        req('mf_end_date',           'End Date');
-        reqNum('mf_baseline_spend',  'Baseline Spend');
-        reqNum('mf_expected_spend',  'Expected Spend');
-        reqNum('mf_annual_savings',  'Annual Savings');
-        reqNum('mf_total_savings',   'Total Savings');
-        const totalSavingsVal = numVal(document.getElementById('mf_total_savings')?.value || '0');
-        if (totalSavingsVal <= 0) {
-            errors.push('Total Savings must be greater than 0');
-        }
-        const startDateVal = document.getElementById('mf_start_date')?.value || '';
-        const endDateVal = document.getElementById('mf_end_date')?.value || '';
-        if (startDateVal && endDateVal && endDateVal <= startDateVal) {
-            errors.push('End Date must be later than Start Date');
+        const savingsType = (document.querySelector('input[name="mf_savings_type"]:checked') || {}).value || '';
+        if (savingsType !== 'Demand/Utilization Reduction') {
+            req('mf_start_date',         'Start Date');
+            req('mf_end_date',           'End Date');
+            reqNum('mf_baseline_spend',  'Baseline Spend');
+            reqNum('mf_expected_spend',  'Expected Spend');
+            reqNum('mf_annual_savings',  'Annual Savings');
+            reqNum('mf_total_savings',   'Total Savings');
+            const totalSavingsVal = numVal(document.getElementById('mf_total_savings')?.value || '0');
+            if (totalSavingsVal <= 0) {
+                errors.push('Total Savings must be greater than 0');
+            }
+            const startDateVal = document.getElementById('mf_start_date')?.value || '';
+            const endDateVal = document.getElementById('mf_end_date')?.value || '';
+            if (startDateVal && endDateVal && endDateVal <= startDateVal) {
+                errors.push('End Date must be later than Start Date');
+            }
         }
     } else if (type === 'Cost Avoidance') {
         reqRadio('mf_avoidance_type', 'Avoidance Type');
@@ -1145,15 +1165,17 @@ function saveModalChanges() {
 
     // Type-specific fields
     if (type === 'Cost Savings') {
+        const savingsType = getRadio('mf_savings_type');
+        const isDemand = savingsType === 'Demand/Utilization Reduction';
         Object.assign(payload, {
-            savings_type:          getRadio('mf_savings_type'),
-            gpo_tier:              getVal('mf_gpo_tier_cs'),
-            start_date:            getVal('mf_start_date'),
-            end_date:              getVal('mf_end_date'),
-            baseline_spend:        numVal(getVal('mf_baseline_spend')),
-            expected_spend:        numVal(getVal('mf_expected_spend')),
-            annual_savings_amount: numVal(getVal('mf_annual_savings')),
-            total_savings_amount:  numVal(getVal('mf_total_savings'))
+            savings_type:          savingsType,
+            gpo_tier:              isDemand ? null : getVal('mf_gpo_tier_cs'),
+            start_date:            isDemand ? null : getVal('mf_start_date'),
+            end_date:              isDemand ? null : getVal('mf_end_date'),
+            baseline_spend:        isDemand ? null : numVal(getVal('mf_baseline_spend')),
+            expected_spend:        isDemand ? null : numVal(getVal('mf_expected_spend')),
+            annual_savings_amount: isDemand ? null : numVal(getVal('mf_annual_savings')),
+            total_savings_amount:  isDemand ? null : numVal(getVal('mf_total_savings'))
         });
     } else if (type === 'Cost Avoidance') {
         Object.assign(payload, {
