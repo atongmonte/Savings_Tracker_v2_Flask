@@ -430,7 +430,7 @@ function handleSubmit(e) {
     showLoading();
     
     fetch(editInitiativeId ? `/api/rebates/${editInitiativeId}` : '/api/rebates', {
-        method: editInitiativeId ? 'PUT' : 'POST',
+        method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
@@ -510,7 +510,7 @@ function saveDraft() {
     showLoading();
 
     fetch(editInitiativeId ? `/api/rebates/${editInitiativeId}` : '/api/rebates', {
-        method: editInitiativeId ? 'PUT' : 'POST',
+        method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },

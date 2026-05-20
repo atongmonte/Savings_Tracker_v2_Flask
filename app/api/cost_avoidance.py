@@ -135,7 +135,7 @@ def create_cost_avoidance():
         return jsonify({'error': str(e)}), 500
 
 
-@cost_avoidance_bp.route('/<int:initiative_id>', methods=['PUT'])
+@cost_avoidance_bp.route('/<int:initiative_id>', methods=['POST'])
 @login_required
 def update_cost_avoidance(initiative_id):
     """Update a Cost Avoidance initiative."""

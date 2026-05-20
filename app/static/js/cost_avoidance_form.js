@@ -460,7 +460,7 @@ function handleSubmit(e) {
     showLoading();
     
     fetch(editInitiativeId ? `/api/cost-avoidance/${editInitiativeId}` : '/api/cost-avoidance', {
-        method: editInitiativeId ? 'PUT' : 'POST',
+        method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
@@ -546,7 +546,7 @@ function saveDraft() {
     showLoading();
     
     fetch(editInitiativeId ? `/api/cost-avoidance/${editInitiativeId}` : '/api/cost-avoidance', {
-        method: editInitiativeId ? 'PUT' : 'POST',
+        method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },

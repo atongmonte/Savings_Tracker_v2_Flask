@@ -133,7 +133,7 @@ def create_rebate():
         return jsonify({'error': str(e)}), 500
 
 
-@rebate_bp.route('/<int:initiative_id>', methods=['PUT'])
+@rebate_bp.route('/<int:initiative_id>', methods=['POST'])
 @login_required
 def update_rebate(initiative_id):
     """Update a Rebate initiative."""

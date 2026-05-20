@@ -1230,7 +1230,7 @@ function confirmAndSave() {
     confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
 
     fetch(`/api/${endpoint}/${id}`, {
-        method: 'PUT',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     })
