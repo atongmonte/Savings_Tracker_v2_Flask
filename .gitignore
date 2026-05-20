@@ -46,6 +46,11 @@ dist/
 Thumbs.db
 Desktop.ini
 
+# IIS config
+web.config
+web.config1
+web.config2
+
 # macOS
 .DS_Store
 
