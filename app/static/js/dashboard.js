@@ -1773,7 +1773,7 @@ function showModalAlert(message, type) {
 }
 
 function showAlert(message, type) {
-    if (window.showGlobalPopup && (type === 'danger' || type === 'error')) {
+    if (window.showGlobalPopup) {
         window.showGlobalPopup(message, type, { autoDismissMs: 5000 });
         return;
     }

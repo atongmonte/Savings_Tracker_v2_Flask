@@ -240,7 +240,7 @@
 
         #globalFlashModal.top-flash {
             position: fixed;
-            top: 1rem;
+            top: 0;
             left: 50%;
             transform: translateX(-50%);
             width: min(92vw, 640px);
@@ -581,27 +581,57 @@
                 return (clone.textContent || '').trim();
             }
 
+            function dismissMessageBox(messageBox, modal) {
+                const modalBody = modal.querySelector('.flash-message-body');
+                messageBox.remove();
+                if (modalBody.children.length === 0) {
+                    modal.style.display = 'none';
+                }
+            }
+
             window.showGlobalPopup = function (message, type = 'danger', options = {}) {
                 const bsType = normalizeType(type);
                 const modal = getOrCreateGlobalFlashModal();
                 const modalBody = modal.querySelector('.flash-message-body');
+                const dismissMs = options.autoDismissMs !== undefined ? options.autoDismissMs : 5000;
+                const messageKey = bsType + ':' + message;
 
-                const messageBox = document.createElement('div');
-                messageBox.className = `flash-message-box ${bsType}`;
-                messageBox.innerHTML = `
-                    <button type="button" class="btn-close" aria-label="Close"></button>
-                    ${message}
-                `;
-                modalBody.appendChild(messageBox);
-                modal.style.display = 'block';
-
-                const closeBtn = messageBox.querySelector('.btn-close');
-                closeBtn.addEventListener('click', () => {
-                    messageBox.remove();
-                    if (modalBody.children.length === 0) {
-                        modal.style.display = 'none';
+                // Deduplicate: reuse existing box with the same message+type
+                let messageBox = null;
+                for (const existing of modalBody.querySelectorAll('.flash-message-box')) {
+                    if (existing.dataset.messageKey === messageKey) {
+                        messageBox = existing;
+                        break;
                     }
-                });
+                }
+
+                if (!messageBox) {
+                    messageBox = document.createElement('div');
+                    messageBox.className = `flash-message-box ${bsType}`;
+                    messageBox.dataset.messageKey = messageKey;
+                    messageBox.innerHTML = `
+                        <button type="button" class="btn-close" aria-label="Close"></button>
+                        ${message}
+                    `;
+                    modalBody.appendChild(messageBox);
+                    modal.style.display = 'block';
+
+                    const closeBtn = messageBox.querySelector('.btn-close');
+                    closeBtn.addEventListener('click', () => {
+                        clearTimeout(messageBox._dismissTimer);
+                        dismissMessageBox(messageBox, modal);
+                    });
+                }
+
+                // Reset the auto-dismiss timer (new or existing box)
+                if (dismissMs > 0) {
+                    clearTimeout(messageBox._dismissTimer);
+                    messageBox._dismissTimer = setTimeout(() => {
+                        if (messageBox.isConnected) {
+                            dismissMessageBox(messageBox, modal);
+                        }
+                    }, dismissMs);
+                }
 
                 return messageBox;
             };
@@ -630,12 +660,12 @@
                         `;
                         modalBody.appendChild(messageBox);
                         const closeBtn = messageBox.querySelector('.btn-close');
-                        closeBtn.addEventListener('click', () => {
-                            messageBox.remove();
-                            if (modalBody.children.length === 0) {
-                                modal.style.display = 'none';
+                        closeBtn.addEventListener('click', () => dismissMessageBox(messageBox, modal));
+                        setTimeout(() => {
+                            if (messageBox.isConnected) {
+                                dismissMessageBox(messageBox, modal);
                             }
-                        });
+                        }, 5000);
                     }
                     alertEl.remove();
                 });
