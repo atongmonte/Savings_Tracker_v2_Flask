@@ -213,6 +213,16 @@ function setupTemplateSection() {
                     // Make fields required
                     toggleInitiativeDetailsRequired(true);
                 }
+
+                // Hide Facility Allocation section for Demand/Utilization Reduction
+                const facilityAllocSection = document.getElementById('facilityAllocationSection');
+                if (facilityAllocSection) {
+                    if (type === 'Demand/Utilization Reduction') {
+                        facilityAllocSection.classList.add('d-none');
+                    } else {
+                        facilityAllocSection.classList.remove('d-none');
+                    }
+                }
             }
         });
     });
@@ -568,21 +578,25 @@ function validateForm() {
     }
 
     // Validate facility allocation is fully allocated (submit only, not draft)
-    const allocationType = document.querySelector('input[name="allocationType"]:checked')?.value || 'amount';
-    let allocTotal = 0;
-    document.querySelectorAll('.facility-allocation').forEach(inp => { allocTotal += numVal(inp.value); });
-    allocTotal = Math.round(allocTotal * 100) / 100;
-    const allocTolerance = 0.01;
-    if (allocationType === 'percentage') {
-        if (Math.abs(allocTotal - 100) > allocTolerance) {
-            showAlert('Facility allocations must total 100% before submitting.', 'warning');
-            isValid = false;
-        }
-    } else {
-        const mainAmt = numVal(document.getElementById('totalSavingsAmount')?.value || '0');
-        if (mainAmt > 0 && Math.abs(mainAmt - allocTotal) > allocTolerance) {
-            showAlert('Facility allocation must equal the Total Savings amount before submitting. Please fully allocate the remaining amount.', 'warning');
-            isValid = false;
+    // Skip for Demand/Utilization Reduction — no allocation required for that type
+    const selectedSavingsType = document.querySelector('input[name="cost_savings_type"]:checked')?.value || '';
+    if (selectedSavingsType !== 'Demand/Utilization Reduction') {
+        const allocationType = document.querySelector('input[name="allocationType"]:checked')?.value || 'amount';
+        let allocTotal = 0;
+        document.querySelectorAll('.facility-allocation').forEach(inp => { allocTotal += numVal(inp.value); });
+        allocTotal = Math.round(allocTotal * 100) / 100;
+        const allocTolerance = 0.01;
+        if (allocationType === 'percentage') {
+            if (Math.abs(allocTotal - 100) > allocTolerance) {
+                showAlert('Facility allocations must total 100% before submitting.', 'warning');
+                isValid = false;
+            }
+        } else {
+            const mainAmt = numVal(document.getElementById('totalSavingsAmount')?.value || '0');
+            if (mainAmt > 0 && Math.abs(mainAmt - allocTotal) > allocTolerance) {
+                showAlert('Facility allocation must equal the Total Savings amount before submitting. Please fully allocate the remaining amount.', 'warning');
+                isValid = false;
+            }
         }
     }
 

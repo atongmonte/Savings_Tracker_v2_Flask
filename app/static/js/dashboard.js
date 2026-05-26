@@ -752,11 +752,14 @@ function setupModalCalculations(type) {
         function updateSavingsDetailsVisibility() {
             const selectedType = (document.querySelector('input[name="mf_savings_type"]:checked') || {}).value || '';
             const detailsSection = document.getElementById('mf_savings_details');
+            const allocSection   = document.getElementById('mf_section_alloc');
             if (!detailsSection) return;
             if (selectedType === 'Demand/Utilization Reduction') {
                 detailsSection.classList.add('d-none');
+                if (allocSection) allocSection.classList.add('d-none');
             } else {
                 detailsSection.classList.remove('d-none');
+                if (allocSection) allocSection.classList.remove('d-none');
             }
         }
 
@@ -1112,20 +1115,25 @@ function validateModalForm(type) {
     }
 
     // Validate facility allocation is fully allocated (amount mode only in modal)
+    // Skip for Demand/Utilization Reduction — no allocation required for that type
     {
-        let allocTotal = 0;
-        document.querySelectorAll('.modal-alloc').forEach(inp => { allocTotal += numVal(inp.value); });
-        allocTotal = Math.round(allocTotal * 100) / 100;
-        const allocTolerance = 0.01;
-        const mainAmtId = type === 'Cost Savings'   ? 'mf_total_savings'
-                        : type === 'Cost Avoidance' ? 'mf_avoidance_amount'
-                        : type === 'Rebate'         ? 'mf_rebate_amount'
-                        : null;
-        if (mainAmtId) {
-            const mainAmt = numVal(document.getElementById(mainAmtId)?.value || '0');
-            if (mainAmt > 0 && Math.abs(mainAmt - allocTotal) > allocTolerance) {
-                errors.push('Facility Allocation (must be fully allocated)');
-                document.getElementById('mf_alloc_remaining')?.scrollIntoView({behavior: 'smooth', block: 'center'});
+        const isDemandType = type === 'Cost Savings' &&
+            (document.querySelector('input[name="mf_savings_type"]:checked') || {}).value === 'Demand/Utilization Reduction';
+        if (!isDemandType) {
+            let allocTotal = 0;
+            document.querySelectorAll('.modal-alloc').forEach(inp => { allocTotal += numVal(inp.value); });
+            allocTotal = Math.round(allocTotal * 100) / 100;
+            const allocTolerance = 0.01;
+            const mainAmtId = type === 'Cost Savings'   ? 'mf_total_savings'
+                            : type === 'Cost Avoidance' ? 'mf_avoidance_amount'
+                            : type === 'Rebate'         ? 'mf_rebate_amount'
+                            : null;
+            if (mainAmtId) {
+                const mainAmt = numVal(document.getElementById(mainAmtId)?.value || '0');
+                if (mainAmt > 0 && Math.abs(mainAmt - allocTotal) > allocTolerance) {
+                    errors.push('Facility Allocation (must be fully allocated)');
+                    document.getElementById('mf_alloc_remaining')?.scrollIntoView({behavior: 'smooth', block: 'center'});
+                }
             }
         }
     }
