@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Savings Tracker v2.0 - Application Presentation</title>
+  <style>
+    :root {
+      --brand-primary: #112b46;
+      --brand-accent: #00a8e1;
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #d8e0ea;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      background: radial-gradient(circle at top right, #e7f6fc 0%, var(--bg) 35%, #eef2f7 100%);
+      color: var(--text);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: linear-gradient(135deg, var(--brand-primary) 0%, #17456e 65%, #1a5e8d 100%);
+      color: #fff;
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 18px;
+      box-shadow: 0 8px 20px rgba(17, 43, 70, 0.2);
+    }
+
+    .header h1 {
+      margin: 0 0 8px;
+      font-size: 1.9rem;
+    }
+
+    .header p {
+      margin: 0;
+      color: #dbeafe;
+    }
+
+    .slide {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-left: 6px solid var(--brand-accent);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 14px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+    }
+
+    .slide h2 {
+      margin: 0 0 10px;
+      color: var(--brand-primary);
+      font-size: 1.25rem;
+    }
+
+    .slide h3 {
+      margin: 14px 0 6px;
+      color: #0f4f73;
+      font-size: 1.05rem;
+    }
+
+    ul, ol {
+      margin: 8px 0 0 22px;
+      padding: 0;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .diagram-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .footer-note {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+
+      .header,
+      .slide {
+        padding: 14px;
+      }
+
+      .header h1 {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      securityLevel: "loose",
+      theme: "base",
+      themeVariables: {
+        primaryColor: "#d9eff8",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#0f4f73",
+        lineColor: "#0f4f73",
+        secondaryColor: "#eef6fb",
+        tertiaryColor: "#f8fbff"
+      }
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>Savings Tracker v2.0 - Application Presentation</h1>
+      <p>Flask application overview, key features, workflow, and data model diagrams.</p>
+    </header>
+
+    <section class="slide">
+      <h2>Slide 1: Overview</h2>
+      <p><strong>Savings Tracker v2.0</strong> is a Flask-based enterprise web application for tracking procurement value across three initiative types:</p>
+      <ul>
+        <li>Cost Savings</li>
+        <li>Rebates</li>
+        <li>Cost Avoidance</li>
+      </ul>
+      <p>It modernizes data capture, approval workflows, reporting, and accountability for procurement teams.</p>
+    </section>
+
+    <section class="slide">
+      <h2>Slide 2: Business Goals</h2>
+      <ul>
+        <li>Centralize initiative intake and lifecycle management</li>
+        <li>Standardize review and approval processes</li>
+        <li>Improve financial transparency and reporting accuracy</li>
+        <li>Maintain auditability for compliance and governance</li>
+        <li>Enable faster decision-making with dashboard analytics</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <h2>Slide 3: Main Features</h2>
+      <ul>
+        <li>Role-based access control (Admin, Reviewer, User, Read-Only)</li>
+        <li>IIS Windows Authentication integration for SSO-style sign-in</li>
+        <li>Dashboard with statistics, filtering, and initiative status tracking</li>
+        <li>Separate forms for Cost Savings, Rebates, and Cost Avoidance</li>
+        <li>Facility allocation support with 100% total validation</li>
+        <li>Draft save and submit-for-review workflows</li>
+        <li>Initiative approve/reject actions</li>
+        <li>Audit logs for traceability of changes</li>
+        <li>File attachment tracking</li>
+        <li>REST API for CRUD and workflow actions</li>
+        <li>Email notification integration (Microsoft Graph)</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <h2>Slide 4: Initiative Types Supported</h2>
+      <h3>Cost Savings</h3>
+      <ul>
+        <li>Baseline vs expected spend tracking</li>
+        <li>Automatic savings calculations</li>
+        <li>Contract and vendor metadata capture</li>
+      </ul>
+      <h3>Rebates</h3>
+      <ul>
+        <li>Rebate type and amount capture</li>
+        <li>Check date, payment type, and check number tracking</li>
+        <li>Rebate extraction/export support</li>
+      </ul>
+      <h3>Cost Avoidance</h3>
+      <ul>
+        <li>Original vs new quote analysis</li>
+        <li>Automatic avoidance calculations</li>
+        <li>Contract, PO, and baseline context capture</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <h2>Slide 5: Workflow and Controls</h2>
+      <ol>
+        <li>User creates or updates initiative data</li>
+        <li>User saves as draft or submits for review</li>
+        <li>Reviewer/Admin evaluates submission</li>
+        <li>Reviewer/Admin approves or rejects</li>
+        <li>System records actions in audit trail</li>
+        <li>Stakeholders receive notification emails</li>
+      </ol>
+    </section>
+
+    <section class="slide">
+      <h2>Slide 6: Technology Stack</h2>
+      <ul>
+        <li><strong>Backend:</strong> Flask 3.x, SQLAlchemy ORM, pyodbc</li>
+        <li><strong>Database:</strong> Microsoft SQL Server</li>
+        <li><strong>Frontend:</strong> Jinja templates, Bootstrap, JavaScript</li>
+        <li><strong>Grid/UI:</strong> AG-Grid, responsive forms, status indicators</li>
+        <li><strong>Auth:</strong> IIS Windows Authentication</li>
+        <li><strong>Notifications:</strong> Microsoft Graph API</li>
+        <li><strong>Deployment Target:</strong> IIS + FastCGI</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <h2>Slide 7: API Capability Highlights</h2>
+      <ul>
+        <li>Authentication status and current user endpoints</li>
+        <li>Initiative listing with filtering and pagination</li>
+        <li>Initiative detail, delete, approve, and reject endpoints</li>
+        <li>Type-specific create/update endpoints: /api/cost-savings, /api/rebates, /api/cost-avoidance</li>
+        <li>Audit history and statistics endpoints</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <h2>Slide 8: Operational Benefits</h2>
+      <ul>
+        <li>Better visibility into procurement impact</li>
+        <li>Stronger data integrity through validation rules</li>
+        <li>Clear ownership and review accountability</li>
+        <li>Faster reporting and export readiness</li>
+        <li>Improved compliance via audit history</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <h2>Slide 9: Future Opportunities</h2>
+      <ul>
+        <li>Expanded analytics and KPI trend views</li>
+        <li>Additional export/report automation</li>
+        <li>Deeper role-based policy controls</li>
+        <li>Enhanced notification templates and routing</li>
+        <li>Extended integration with enterprise systems</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <h2>Slide 10: Summary</h2>
+      <p>Savings Tracker v2.0 provides a structured, secure, and scalable platform for tracking procurement initiatives from submission to approval, while improving reporting quality and governance.</p>
+    </section>
+
+    <section class="slide">
+      <h2>Slide 11: ORM Modeling (SQLAlchemy)</h2>
+      <div class="diagram-wrap">
+        <pre class="mermaid">
+classDiagram
+    class UserRole {
+      +int id
+      +string name
+      +bool can_create
+      +bool can_review
+      +bool can_approve
+    }
+
+    class User {
+      +int id
+      +string username
+      +string full_name
+      +string email
+      +int role_id
+      +bool is_active
+    }
+
+    class Initiative {
+      +int id
+      +string initiative_type
+      +string status
+      +int owner_id
+      +int created_by_id
+      +int reviewed_by_id
+      +bool is_deleted
+    }
+
+    class CostSavings {
+      +int id
+      +int initiative_id
+      +string contract_number
+      +decimal baseline_spend
+      +decimal expected_spend
+      +decimal annual_savings_amount
+      +decimal total_savings_amount
+    }
+
+    class Rebate {
+      +int id
+      +int initiative_id
+      +string rebate_type
+      +string contract_number
+      +date rebate_check_date
+      +decimal rebate_amount
+    }
+
+    class CostAvoidance {
+      +int id
+      +int initiative_id
+      +string avoidance_type
+      +string po_number
+      +decimal original_quote
+      +decimal new_quote
+      +decimal avoidance_amount
+    }
+
+    class Facility {
+      +int id
+      +string code
+      +string name
+      +bool is_active
+    }
+
+    class FacilityAllocation {
+      +int id
+      +int initiative_id
+      +int facility_id
+      +decimal allocation_percentage
+      +decimal allocation_amount
+    }
+
+    class FileTracking {
+      +int id
+      +int initiative_id
+      +int uploaded_by_id
+      +int deleted_by_id
+      +string file_name
+      +string file_path
+      +bool is_deleted
+    }
+
+    class AuditLog {
+      +int id
+      +int initiative_id
+      +int user_id
+      +string action
+      +string table_name
+      +int record_id
+      +datetime created_at
+    }
+
+    UserRole "1" --> "*" User : role
+    User "1" --> "*" Initiative : owner
+    User "1" --> "*" Initiative : creator
+    User "1" --> "*" Initiative : reviewer
+
+    Initiative "1" --> "0..1" CostSavings : cost_savings
+    Initiative "1" --> "0..1" Rebate : rebate
+    Initiative "1" --> "0..1" CostAvoidance : cost_avoidance
+
+    Initiative "1" --> "*" FacilityAllocation : allocations
+    Facility "1" --> "*" FacilityAllocation : allocations
+
+    Initiative "1" --> "*" FileTracking : files
+    User "1" --> "*" FileTracking : uploaded_by
+    User "1" --> "*" FileTracking : deleted_by
+
+    Initiative "1" --> "*" AuditLog : audit_logs
+    User "1" --> "*" AuditLog : user
+        </pre>
+      </div>
+    </section>
+
+    <section class="slide">
+      <h2>Slide 12: Authentication and Authorization Flow</h2>
+      <p>This flow shows how IIS handles Windows authentication, while the application and database enforce role-based authorization.</p>
+      <div class="diagram-wrap">
+        <pre class="mermaid">
+flowchart TD
+    A[User Browser Request] --> B[IIS Site]
+    B --> C{Windows Authentication Enabled?}
+    C -->|No| D[Reject Request<br/>401 Unauthorized]
+    C -->|Yes| E[Validate AD Credentials<br/>Kerberos or NTLM]
+    E --> F{Identity Valid?}
+    F -->|No| D
+    F -->|Yes| G[Forward Request to Flask App<br/>FastCGI wfastcgi]
+
+    G --> H[App Resolves Current User<br/>from IIS Identity]
+    H --> I[Load or Auto-provision User]
+    I --> J[(SQL Server users)]
+    J --> K[(SQL Server user_roles)]
+
+    H --> L[Route-level Auth Decorator<br/>login_required]
+    L --> M{User Active and Authenticated?}
+    M -->|No| N[Redirect or 403]
+    M -->|Yes| O[Permission Check<br/>can_create, can_review, can_approve]
+    O --> P{Role Allows Action?}
+    P -->|No| Q[Return 403 Forbidden]
+    P -->|Yes| R[Execute API or View Logic]
+
+    R --> S[(SQL Server initiatives and related tables)]
+    R --> T[(SQL Server audit_logs)]
+    S --> U[Return Authorized Response]
+    T --> U
+        </pre>
+      </div>
+    </section>
+
+    <p class="muted">Tip: Open this file in a browser to view rendered diagrams.</p>
+
+    <p class="footer-note">Savings Tracker v2.0 Presentation</p>
+  </div>
+</body>
+</html>
