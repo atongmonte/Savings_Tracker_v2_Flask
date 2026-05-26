@@ -18,7 +18,6 @@ class CostSavings(db.Model):
     
     # Cost savings details
     savings_type = db.Column(db.String(100))
-    wave_initiative_id = db.Column(db.String(255))
     
     # Contract information
     contract_number = db.Column(db.String(100), index=True)
@@ -53,7 +52,6 @@ class CostSavings(db.Model):
             'id': self.id,
             'initiative_id': self.initiative_id,
             'savings_type': self.savings_type,
-            'wave_initiative_id': self.wave_initiative_id,
             'contract_number': self.contract_number,
             'contract_category': self.contract_category,
             'contract_source': self.contract_source,

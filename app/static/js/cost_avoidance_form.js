@@ -441,11 +441,11 @@ function handleSubmit(e) {
     
     const jsonData = {
         initiative_type: 'Cost Avoidance',
+        wave_id: formData.get('wave_id'),
         contract_category: formData.get('contract_category'),
         contract_number: formData.get('contract_id'),
         contract_source: formData.get('contract_source'),
         strata_project_id: formData.get('strata_project_id'),
-        wave_initiative_id: formData.get('wave_initiative_id'),
         vendor_name: formData.get('vendor_name'),
         description: formData.get('description'),
         avoidance_type: formData.get('avoidance_type'),
@@ -509,11 +509,11 @@ function saveDraft() {
     
     const jsonData = {
         initiative_type: 'Cost Avoidance',
+        wave_id: formData.get('wave_id'),
         contract_category: formData.get('contract_category'),
         contract_number: formData.get('contract_id'),
         contract_source: formData.get('contract_source'),
         strata_project_id: formData.get('strata_project_id'),
-        wave_initiative_id: formData.get('wave_initiative_id'),
         vendor_name: formData.get('vendor_name'),
         description: formData.get('description'),
         avoidance_type: formData.get('avoidance_type'),
@@ -651,10 +651,10 @@ async function loadInitiativeData(id) {
         const response = await fetch(`/api/initiatives/${id}`);
         const data = await response.json();
         const ca = data.cost_avoidance || {};
+        setField('waveId', data.wave_id);
         setField('description', data.description);
         setRadio('avoidance_type', ca.avoidance_type);
         setField('strataProjectId', ca.strata_project_id);
-        setField('waveInitiativeId', ca.wave_initiative_id);
         setSelect('contractCategory', ca.contract_category);
         setField('contractId', ca.contract_number);
         await loadPrimeVendorOptions(ca.contract_number, 'vendorNameOptions');

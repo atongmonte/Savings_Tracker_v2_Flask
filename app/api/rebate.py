@@ -12,6 +12,14 @@ from app.utils.validators import validate_facility_allocations, validate_rebate_
 from app.utils.email import send_initiative_created_notification
 
 
+def _normalize_wave_id(value):
+    """Normalize wave_id so empty values persist as N/A."""
+    if value is None:
+        return 'N/A'
+    text = str(value).strip()
+    return text or 'N/A'
+
+
 @rebate_bp.route('', methods=['POST'])
 @permission_required('create')
 def create_rebate():
@@ -61,7 +69,7 @@ def create_rebate():
         initiative = Initiative(
             initiative_type='Rebate',
             description=data.get('description', ''),
-            wave_id=data.get('wave_id', ''),
+            wave_id=_normalize_wave_id(data.get('wave_id')),
             status='Pending Review',
             owner_id=data.get('owner_id', user.id),
             created_by_id=user.id
@@ -73,7 +81,6 @@ def create_rebate():
         rebate = Rebate(
             initiative_id=initiative.id,
             rebate_type=data.get('rebate_type') or '',
-            wave_initiative_id=data.get('wave_initiative_id') or '',
             contract_category=data.get('contract_category') or '',
             contract_source=data.get('contract_source') or '',
             contract_number=data.get('contract_number') or '',
@@ -199,7 +206,7 @@ def update_rebate(initiative_id):
         
         # Update rebate fields
         updateable_fields = [
-            'rebate_type', 'wave_initiative_id', 'contract_category', 'contract_source', 'contract_number',
+            'rebate_type', 'contract_category', 'contract_source', 'contract_number',
             'vendor_name', 'gpo_tier', 'rebate_amount'
         ]
         
@@ -220,7 +227,7 @@ def update_rebate(initiative_id):
         if 'description' in data:
             initiative.description = data['description']
         if 'wave_id' in data:
-            initiative.wave_id = data['wave_id']
+            initiative.wave_id = _normalize_wave_id(data['wave_id'])
         
         # If previously Rejected, resubmit for Pending Review
         if initiative.status == 'Rejected':

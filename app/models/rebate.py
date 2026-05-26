@@ -18,7 +18,6 @@ class Rebate(db.Model):
     
     # Rebate details
     rebate_type = db.Column(db.String(100))
-    wave_initiative_id = db.Column(db.String(255))
     
     # Contract information (ordered by form appearance)
     contract_category = db.Column(db.String(100), index=True)
@@ -53,7 +52,6 @@ class Rebate(db.Model):
             'id': self.id,
             'initiative_id': self.initiative_id,
             'rebate_type': self.rebate_type,
-            'wave_initiative_id': self.wave_initiative_id,
             'contract_number': self.contract_number,
             'contract_category': self.contract_category,
             'contract_source': self.contract_source,

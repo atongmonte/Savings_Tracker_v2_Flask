@@ -649,11 +649,11 @@ function handleSubmit(e) {
     
     const jsonData = {
         initiative_type: 'Cost Savings',
+        wave_id: formData.get('wave_id'),
         contract_category: formData.get('contract_category'),
         contract_number: formData.get('contract_id'),
         contract_source: formData.get('contract_source'),
         vendor_name: formData.get('vendor_name'),
-        wave_initiative_id: formData.get('wave_initiative_id'),
         description: formData.get('description'),
         savings_type: formData.get('cost_savings_type'),
         gpo_tier: formData.get('gpo_tier'),
@@ -718,11 +718,11 @@ function saveDraft() {
     
     const jsonData = {
         initiative_type: 'Cost Savings',
+        wave_id: formData.get('wave_id'),
         contract_category: formData.get('contract_category'),
         contract_number: formData.get('contract_id'),
         contract_source: formData.get('contract_source'),
         vendor_name: formData.get('vendor_name'),
-        wave_initiative_id: formData.get('wave_initiative_id'),
         description: formData.get('description'),
         savings_type: formData.get('cost_savings_type'),
         gpo_tier: formData.get('gpo_tier'),
@@ -860,9 +860,9 @@ async function loadInitiativeData(id) {
         const response = await fetch(`/api/initiatives/${id}`);
         const data = await response.json();
         const cs = data.cost_savings || {};
+        setField('waveId', data.wave_id);
         setField('description', data.description);
         setRadio('cost_savings_type', cs.savings_type);
-        setField('waveInitiativeId', cs.wave_initiative_id);
         setSelect('contractCategory', cs.contract_category);
         setField('contractId', cs.contract_number);
         await loadPrimeVendorOptions(cs.contract_number, 'vendorNameOptions');

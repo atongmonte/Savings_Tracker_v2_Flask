@@ -79,15 +79,8 @@
                                placeholder="">
                     </div>
 
-                    <!-- Wave Initiative ID and Contract Category -->
+                    <!-- Contract Category -->
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Wave Initiative ID (if applicable)</label>
-                            <input type="text" class="form-control" id="waveInitiativeId" name="wave_initiative_id" 
-                                   placeholder="Please enter the wave initiative id if this was logged in wave">
-                            <small class="form-text text-muted">Please enter the wave initiative id if this was logged in wave.</small>
-                        </div>
-                        
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Contract Category <span class="form-required">*</span></label>
                             <select class="form-select" id="contractCategory" name="contract_category" required disabled>
@@ -126,12 +119,18 @@
                         </div>
                     </div>
 
-                    <!-- Vendor Name -->
-                    <div class="mb-3">
-                        <label class="form-label">Vendor Name <span class="form-required">*</span></label>
-                        <input type="text" class="form-control" id="vendorName" name="vendor_name" 
-                               placeholder="Enter Vendor Name" required list="vendorNameOptions">
-                        <datalist id="vendorNameOptions"></datalist>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Vendor Name <span class="form-required">*</span></label>
+                            <input type="text" class="form-control" id="vendorName" name="vendor_name" 
+                                   placeholder="Enter Vendor Name" required list="vendorNameOptions">
+                            <datalist id="vendorNameOptions"></datalist>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Wave Initiative ID (if applicable)</label>
+                            <input type="text" class="form-control" id="waveId" name="wave_id"
+                                   placeholder="Enter Wave Initiative ID if applicable">
+                        </div>
                     </div>
                 </div>
 

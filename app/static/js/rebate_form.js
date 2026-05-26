@@ -414,11 +414,11 @@ function handleSubmit(e) {
 
     const jsonData = {
         initiative_type: 'Rebate',
+        wave_id: formData.get('wave_id'),
         contract_category: formData.get('contract_category'),
         contract_number: formData.get('contract_id'),
         contract_source: formData.get('contract_source'),
         vendor_name: formData.get('vendor_name'),
-        wave_initiative_id: formData.get('wave_initiative_id'),
         description: formData.get('description'),
         rebate_type: formData.get('rebate_type'),
         transaction_number: formData.get('transaction_number'),
@@ -476,11 +476,11 @@ function saveDraft() {
 
     const jsonData = {
         initiative_type: 'Rebate',
+        wave_id: formData.get('wave_id'),
         contract_category: formData.get('contract_category'),
         contract_number: formData.get('contract_id'),
         contract_source: formData.get('contract_source'),
         vendor_name: formData.get('vendor_name'),
-        wave_initiative_id: formData.get('wave_initiative_id'),
         description: formData.get('description'),
         rebate_type: formData.get('rebate_type'),
         transaction_number: formData.get('transaction_number'),
@@ -615,9 +615,9 @@ async function loadInitiativeData(id) {
         const response = await fetch(`/api/initiatives/${id}`);
         const data = await response.json();
         const rb = data.rebate || {};
+        setField('waveId', data.wave_id);
         setField('description', data.description);
         setSelect('rebateType', rb.rebate_type);
-        setField('waveInitiativeId', rb.wave_initiative_id);
         setSelect('contractCategory', rb.contract_category);
         setField('contractId', rb.contract_number);
         await loadPrimeVendorOptions(rb.contract_number, 'vendorNameOptions');

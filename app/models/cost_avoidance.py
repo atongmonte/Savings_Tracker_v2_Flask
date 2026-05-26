@@ -21,7 +21,6 @@ class CostAvoidance(db.Model):
     
     # Project details
     strata_project_id = db.Column(db.String(100))
-    wave_initiative_id = db.Column(db.String(255))
     
     # Contract information
     contract_category = db.Column(db.String(100), index=True)
@@ -58,7 +57,6 @@ class CostAvoidance(db.Model):
             'initiative_id': self.initiative_id,
             'avoidance_type': self.avoidance_type,
             'strata_project_id': self.strata_project_id,
-            'wave_initiative_id': self.wave_initiative_id,
             'contract_number': self.contract_number,
             'contract_category': self.contract_category,
             'contract_source': self.contract_source,

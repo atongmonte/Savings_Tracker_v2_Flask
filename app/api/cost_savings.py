@@ -16,6 +16,14 @@ from app.utils.validators import (
 from app.utils.email import send_initiative_created_notification
 
 
+def _normalize_wave_id(value):
+    """Normalize wave_id so empty values persist as N/A."""
+    if value is None:
+        return 'N/A'
+    text = str(value).strip()
+    return text or 'N/A'
+
+
 @cost_savings_bp.route('', methods=['POST'])
 @permission_required('create')
 def create_cost_savings():
@@ -66,7 +74,7 @@ def create_cost_savings():
         initiative = Initiative(
             initiative_type='Cost Savings',
             description=data.get('description', ''),
-            wave_id=data.get('wave_id', ''),
+            wave_id=_normalize_wave_id(data.get('wave_id')),
             status='Pending Review',
             owner_id=data.get('owner_id', user.id),
             created_by_id=user.id
@@ -78,7 +86,6 @@ def create_cost_savings():
         cost_savings = CostSavings(
             initiative_id=initiative.id,
             savings_type=data.get('savings_type') or '',
-            wave_initiative_id=data.get('wave_initiative_id') or '',
             contract_number=data.get('contract_number') or '',
             contract_category=data.get('contract_category') or '',
             contract_source=data.get('contract_source') or '',
@@ -221,7 +228,7 @@ def update_cost_savings(initiative_id):
         
         # Update cost savings fields
         updateable_fields = [
-            'savings_type', 'wave_initiative_id', 'contract_number', 'contract_category', 'contract_source',
+            'savings_type', 'contract_number', 'contract_category', 'contract_source',
             'gpo_tier', 'vendor_name', 'baseline_spend', 'expected_spend',
             'annual_savings_amount', 'total_savings_amount', 'is_fixed_cost'
         ]
@@ -234,7 +241,7 @@ def update_cost_savings(initiative_id):
         if 'description' in data:
             initiative.description = data['description']
         if 'wave_id' in data:
-            initiative.wave_id = data['wave_id']
+            initiative.wave_id = _normalize_wave_id(data['wave_id'])
         
         # If previously Rejected, resubmit for Pending Review
         if initiative.status == 'Rejected':

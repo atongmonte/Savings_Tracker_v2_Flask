@@ -472,8 +472,8 @@ function populateInitiativeModal(data, editMode) {
     setVal('mf_contract_number',     raw.contract_number);
     loadPrimeVendorOptions(raw.contract_number, 'mf_vendor_name_options');
     setRadio('mf_contract_source_r', raw.contract_source);
+    setVal('mf_wave_id',             data.wave_id);
     setVal('mf_vendor_name',         raw.vendor_name);
-    setVal('mf_wave_initiative_id',  raw.wave_initiative_id);
 
     // Always hide text fallback for contract_source, show radios
     document.getElementById('mf_contract_source').style.display = 'none';
@@ -851,11 +851,11 @@ function captureModalSnapshot(type) {
 
     const snap = {
         description:        getVal('mf_description'),
+        wave_id:            getVal('mf_wave_id'),
         contract_category:  getVal('mf_contract_category'),
         contract_number:    getVal('mf_contract_number'),
         contract_source:    getRadio('mf_contract_source_r'),
         vendor_name:        getVal('mf_vendor_name'),
-        wave_initiative_id: getVal('mf_wave_initiative_id'),
     };
     if (type === 'Cost Savings') {
         Object.assign(snap, {
@@ -898,11 +898,11 @@ function captureModalSnapshot(type) {
 
 const _FIELD_LABELS = {
     description:           { label: 'Description' },
+    wave_id:               { label: 'Wave Initiative ID (if applicable)' },
     contract_category:     { label: 'Contract Category' },
     contract_number:       { label: 'Contract ID' },
     contract_source:       { label: 'Contract Source' },
     vendor_name:           { label: 'Vendor Name' },
-    wave_initiative_id:    { label: 'Wave Initiative ID' },
     savings_type:          { label: 'Savings Type' },
     gpo_tier:              { label: 'GPO Tier' },
     start_date:            { label: 'Start Date' },
@@ -1159,11 +1159,11 @@ function saveModalChanges() {
     // Common editable field
     const payload = {
         description:       getVal('mf_description'),
+        wave_id:           getVal('mf_wave_id'),
         contract_category: getVal('mf_contract_category'),
         contract_number:   getVal('mf_contract_number'),
         contract_source:   getRadio('mf_contract_source_r'),
-        vendor_name:       getVal('mf_vendor_name'),
-        wave_initiative_id: getVal('mf_wave_initiative_id')
+        vendor_name:       getVal('mf_vendor_name')
     };
 
     // Rejected initiatives resubmit for Pending Review on save
