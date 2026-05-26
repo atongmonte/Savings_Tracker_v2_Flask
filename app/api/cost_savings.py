@@ -42,32 +42,40 @@ def create_cost_savings():
     if not data:
         return jsonify({'error': 'No data provided'}), 400
     
+    savings_type = (data.get('savings_type') or '').strip()
+    is_utilization_reduction = savings_type == 'Demand/Utilization Reduction'
+
     # Validate required fields
-    required_fields = ['contract_number', 'vendor_name', 'start_date', 'end_date', 'total_savings_amount']
+    required_fields = ['contract_number', 'vendor_name']
+    if not is_utilization_reduction:
+        required_fields.extend(['start_date', 'end_date', 'total_savings_amount'])
     for field in required_fields:
         if not has_required_value(field):
             return jsonify({'error': f'Missing required field: {field}'}), 400
 
     # Validate amount values
-    is_valid, error = validate_positive_amount(data.get('total_savings_amount'), 'total_savings_amount')
-    if not is_valid:
-        return jsonify({'error': error}), 400
+    if not is_utilization_reduction:
+        is_valid, error = validate_positive_amount(data.get('total_savings_amount'), 'total_savings_amount')
+        if not is_valid:
+            return jsonify({'error': error}), 400
 
     # Validate facility allocations
-    allocations = data.get('facility_allocations', [])
-    is_valid, error = validate_facility_allocations(allocations)
-    if not is_valid:
-        return jsonify({'error': error}), 400
+    allocations = [] if is_utilization_reduction else data.get('facility_allocations', [])
+    if not is_utilization_reduction:
+        is_valid, error = validate_facility_allocations(allocations)
+        if not is_valid:
+            return jsonify({'error': error}), 400
     
-    # Check for duplicates
-    is_valid, error = validate_cost_savings_duplicate(
-        data['contract_number'],
-        data['vendor_name'],
-        datetime.fromisoformat(data['start_date']).date(),
-        datetime.fromisoformat(data['end_date']).date()
-    )
-    if not is_valid:
-        return jsonify({'error': error}), 400
+    # Check for duplicates (date-window based, so skip for utilization reduction)
+    if not is_utilization_reduction:
+        is_valid, error = validate_cost_savings_duplicate(
+            data['contract_number'],
+            data['vendor_name'],
+            datetime.fromisoformat(data['start_date']).date(),
+            datetime.fromisoformat(data['end_date']).date()
+        )
+        if not is_valid:
+            return jsonify({'error': error}), 400
     
     try:
         # Create initiative
@@ -85,18 +93,18 @@ def create_cost_savings():
         # Create cost savings details
         cost_savings = CostSavings(
             initiative_id=initiative.id,
-            savings_type=data.get('savings_type') or '',
+            savings_type=savings_type,
             contract_number=data.get('contract_number') or '',
             contract_category=data.get('contract_category') or '',
             contract_source=data.get('contract_source') or '',
             gpo_tier=data.get('gpo_tier') or '',
-            start_date=datetime.fromisoformat(data['start_date']).date() if data.get('start_date') else None,
-            end_date=datetime.fromisoformat(data['end_date']).date() if data.get('end_date') else None,
+            start_date=None if is_utilization_reduction else (datetime.fromisoformat(data['start_date']).date() if data.get('start_date') else None),
+            end_date=None if is_utilization_reduction else (datetime.fromisoformat(data['end_date']).date() if data.get('end_date') else None),
             vendor_name=data.get('vendor_name') or '',
-            baseline_spend=data.get('baseline_spend'),
-            expected_spend=data.get('expected_spend'),
-            annual_savings_amount=data.get('annual_savings_amount'),
-            total_savings_amount=data.get('total_savings_amount'),
+            baseline_spend=None if is_utilization_reduction else data.get('baseline_spend'),
+            expected_spend=None if is_utilization_reduction else data.get('expected_spend'),
+            annual_savings_amount=None if is_utilization_reduction else data.get('annual_savings_amount'),
+            total_savings_amount=None if is_utilization_reduction else data.get('total_savings_amount'),
             is_fixed_cost=data.get('is_fixed_cost', False)
         )
         db.session.add(cost_savings)
@@ -189,17 +197,22 @@ def update_cost_savings(initiative_id):
     old_values = cost_savings.to_dict()
     
     try:
+        requested_savings_type = data.get('savings_type', cost_savings.savings_type)
+        is_utilization_reduction = (requested_savings_type or '').strip() == 'Demand/Utilization Reduction'
+
         if 'contract_number' in data and not str(data['contract_number']).strip():
             return jsonify({'error': 'Missing required field: contract_number'}), 400
 
-        if 'total_savings_amount' in data:
+        if 'total_savings_amount' in data and not is_utilization_reduction:
             is_valid, error = validate_positive_amount(data['total_savings_amount'], 'total_savings_amount')
             if not is_valid:
                 return jsonify({'error': error}), 400
 
         # Validate if contract/vendor/dates are being changed
-        if ('contract_number' in data or 'vendor_name' in data or 
-            'start_date' in data or 'end_date' in data):
+        if (not is_utilization_reduction and (
+            'contract_number' in data or 'vendor_name' in data or
+            'start_date' in data or 'end_date' in data
+        )):
             
             contract_number = data.get('contract_number', cost_savings.contract_number)
             vendor_name = data.get('vendor_name', cost_savings.vendor_name)
@@ -225,6 +238,11 @@ def update_cost_savings(initiative_id):
                 cost_savings.end_date = end_date
             elif 'end_date' in data:
                 cost_savings.end_date = None
+
+        if is_utilization_reduction:
+            # Utilization reduction has no initiative detail date window.
+            cost_savings.start_date = None
+            cost_savings.end_date = None
         
         # Update cost savings fields
         updateable_fields = [
@@ -236,6 +254,13 @@ def update_cost_savings(initiative_id):
         for field in updateable_fields:
             if field in data:
                 setattr(cost_savings, field, data[field])
+
+        if is_utilization_reduction:
+            # Clear initiative detail numeric fields for utilization reduction.
+            cost_savings.baseline_spend = None
+            cost_savings.expected_spend = None
+            cost_savings.annual_savings_amount = None
+            cost_savings.total_savings_amount = None
         
         # Update initiative fields
         if 'description' in data:
@@ -253,15 +278,16 @@ def update_cost_savings(initiative_id):
         initiative.updated_at = now_eastern()
         
         # Update facility allocations if provided
-        if 'facility_allocations' in data:
-            allocations = data['facility_allocations']
-            is_valid, error = validate_facility_allocations(allocations)
-            if not is_valid:
-                return jsonify({'error': error}), 400
-            
+        if 'facility_allocations' in data or is_utilization_reduction:
+            allocations = [] if is_utilization_reduction else data.get('facility_allocations', [])
+            if not is_utilization_reduction:
+                is_valid, error = validate_facility_allocations(allocations)
+                if not is_valid:
+                    return jsonify({'error': error}), 400
+
             # Delete old allocations
             FacilityAllocation.query.filter_by(initiative_id=initiative.id).delete()
-            
+
             # Create new allocations
             facility_lookup = {f.code: f.id for f in Facility.query.filter_by(is_active=True).all()}
             for alloc_data in allocations:

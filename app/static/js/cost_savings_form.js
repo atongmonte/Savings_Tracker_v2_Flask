@@ -230,6 +230,8 @@ function setupTemplateSection() {
 
 function toggleInitiativeDetailsRequired(isRequired) {
     const fields = [
+        'startDate',
+        'endDate',
         'baselineSpend',
         'newContractSpend',
         'savingsAmount',
@@ -492,6 +494,7 @@ function setupFacilityAllocation() {
 function validateForm() {
     const form = document.getElementById('costSavingsForm');
     let isValid = true;
+    const selectedSavingsType = document.querySelector('input[name="cost_savings_type"]:checked')?.value || '';
     
     // Check required fields
     const requiredFields = form.querySelectorAll('[required]');
@@ -564,7 +567,7 @@ function validateForm() {
     // Validate dates
     const startDateEl = document.getElementById('startDate');
     const endDateEl = document.getElementById('endDate');
-    if (startDateEl && endDateEl && startDateEl.value && endDateEl.value) {
+    if (selectedSavingsType !== 'Demand/Utilization Reduction' && startDateEl && endDateEl && startDateEl.value && endDateEl.value) {
         const startDate = new Date(startDateEl.value);
         const endDate = new Date(endDateEl.value);
         if (endDate <= startDate) {
@@ -573,15 +576,16 @@ function validateForm() {
         }
     }
 
-    const totalSavingsVal = numVal(document.getElementById('totalSavingsAmount')?.value || '0');
-    if (totalSavingsVal <= 0) {
-        showAlert('Total Expected Savings must be greater than 0 before submitting.', 'warning');
-        isValid = false;
+    if (selectedSavingsType !== 'Demand/Utilization Reduction') {
+        const totalSavingsVal = numVal(document.getElementById('totalSavingsAmount')?.value || '0');
+        if (totalSavingsVal <= 0) {
+            showAlert('Total Expected Savings must be greater than 0 before submitting.', 'warning');
+            isValid = false;
+        }
     }
 
     // Validate facility allocation is fully allocated (submit only, not draft)
     // Skip for Demand/Utilization Reduction — no allocation required for that type
-    const selectedSavingsType = document.querySelector('input[name="cost_savings_type"]:checked')?.value || '';
     if (selectedSavingsType !== 'Demand/Utilization Reduction') {
         const allocationType = document.querySelector('input[name="allocationType"]:checked')?.value || 'amount';
         let allocTotal = 0;
