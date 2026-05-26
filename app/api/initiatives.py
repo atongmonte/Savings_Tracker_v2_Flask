@@ -635,12 +635,22 @@ def delete_file(initiative_id, file_id):
     if remaining <= 1:
         return jsonify({'error': 'At least one file attachment is required. Upload a replacement before deleting this one.'}), 400
 
-    # Physically remove from disk
-    try:
-        if file_record.file_path and os.path.exists(file_record.file_path):
-            os.remove(file_record.file_path)
-    except OSError as e:
-        return jsonify({'error': f'Could not delete file from disk: {e}'}), 500
+    # Physically remove from disk, but only when no other active record shares
+    # the same path.  This guards against the upload-first replacement flow
+    # (dashboard modal) where a same-name upload already overwrote the physical
+    # file — removing it here would delete the newly uploaded content.
+    has_path_conflict = file_record.file_path and FileTracking.query.filter(
+        FileTracking.initiative_id == initiative_id,
+        FileTracking.is_deleted == False,
+        FileTracking.file_path == file_record.file_path,
+        FileTracking.id != file_id
+    ).count() > 0
+    if not has_path_conflict:
+        try:
+            if file_record.file_path and os.path.exists(file_record.file_path):
+                os.remove(file_record.file_path)
+        except OSError as e:
+            return jsonify({'error': f'Could not delete file from disk: {e}'}), 500
 
     file_record.is_deleted = True
     file_record.deleted_at = now_eastern()

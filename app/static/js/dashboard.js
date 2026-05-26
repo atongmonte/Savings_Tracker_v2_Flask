@@ -1736,19 +1736,13 @@ function removeStagedFile(idx) {
 async function flushStagedFileChanges(initiativeId) {
     const errors = [];
 
-    // Delete staged files FIRST — important for replacements: the old physical
-    // file must be removed before the new upload writes to the same path.
-    for (const fileId of window._stagedDeletes) {
-        try {
-            const r = await fetch(`/api/initiatives/${initiativeId}/files/${fileId}`, { method: 'DELETE' });
-            const d = await r.json();
-            if (d.error) errors.push(d.error);
-            else window._serverFiles = d.files || [];
-        } catch (e) { errors.push(`Delete file ${fileId} failed`); }
-    }
-    window._stagedDeletes.clear();
-
-    // Upload new files after deletions so replacements are saved cleanly
+    // Upload new files FIRST so that:
+    // 1. Same-name replacements: f.save() overwrites the physical file; the
+    //    subsequent delete then skips os.remove (handled server-side) and only
+    //    soft-deletes the old DB record.
+    // 2. Different-name additions: the new file exists before the old one is
+    //    removed, so the server's "last file" guard passes when the user is
+    //    replacing the only existing file.
     if (window._stagedFiles.length) {
         const formData = new FormData();
         window._stagedFiles.forEach(f => formData.append('files', f));
@@ -1760,6 +1754,18 @@ async function flushStagedFileChanges(initiativeId) {
         } catch (e) { errors.push('File upload failed'); }
         window._stagedFiles = [];
     }
+
+    // Delete staged files AFTER uploads so the "last file" guard does not
+    // block removal when a replacement was just uploaded above.
+    for (const fileId of window._stagedDeletes) {
+        try {
+            const r = await fetch(`/api/initiatives/${initiativeId}/files/${fileId}`, { method: 'DELETE' });
+            const d = await r.json();
+            if (d.error) errors.push(d.error);
+            else window._serverFiles = d.files || [];
+        } catch (e) { errors.push(`Delete file ${fileId} failed`); }
+    }
+    window._stagedDeletes.clear();
 
     return errors;
 }

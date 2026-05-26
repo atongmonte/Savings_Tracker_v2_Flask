@@ -82,8 +82,10 @@ function setupFileUpload() {
 }
 
 function displayFileList(files, container) {
-    container.innerHTML = '';
-    
+    // Only remove staged (non-existing) file items so that existing file rows
+    // (which have id="existing-file-*") are preserved when new files are staged.
+    container.querySelectorAll('.file-item:not([id^="existing-file-"])').forEach(el => el.remove());
+
     files.forEach((file, index) => {
         const fileItem = document.createElement('div');
         fileItem.className = 'file-item';
@@ -123,8 +125,8 @@ function displayExistingFiles(files) {
 
 function deleteExistingFile(fileId, rowEl) {
     if (!editInitiativeId) return;
-    const fileInput = document.getElementById('fileUpload');
-    const pendingUploads = fileInput ? fileInput.files.length : 0;
+    // Use stagedNewFiles.length — fileInput is always cleared after staging so .files.length is always 0
+    const pendingUploads = stagedNewFiles.length;
     if (existingFileCount <= 1 && pendingUploads === 0) {
         showAlert('At least one file attachment is required. Upload a replacement before deleting this one.', 'warning');
         return;
