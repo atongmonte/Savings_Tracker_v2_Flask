@@ -57,3 +57,6 @@ web.config2
 # Temporary files
 *.tmp
 *.bak
+
+# Local presentation docs
+APPLICATION_PRESENTATION.md
