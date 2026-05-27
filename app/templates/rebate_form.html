@@ -25,11 +25,19 @@
                 <div class="form-section">
                     <h5 class="section-title"><i class="fas fa-file-invoice-dollar"></i> Rebate Information</h5>
                     
-                    <div class="mb-3">
-                        <label class="form-label">Contract Category <span class="form-required">*</span></label>
-                        <select class="form-select" id="contractCategory" name="contract_category" required disabled>
-                            <option value="">Loading contract categories...</option>
-                        </select>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Contract Category <span class="form-required">*</span></label>
+                            <select class="form-select" id="contractCategory" name="contract_category" required disabled>
+                                <option value="">Loading contract categories...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Wave Category</label>
+                            <select class="form-select" id="waveCategory" name="wave_category" disabled>
+                                <option value="">Loading wave categories...</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="mb-3">

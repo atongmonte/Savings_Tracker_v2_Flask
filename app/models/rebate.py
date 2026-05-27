@@ -21,6 +21,7 @@ class Rebate(db.Model):
     
     # Contract information (ordered by form appearance)
     contract_category = db.Column(db.String(100), index=True)
+    wave_category = db.Column(db.String(100), index=True)
     contract_source = db.Column(db.String(100))
     contract_number = db.Column(db.String(100), index=True)
     vendor_name = db.Column(db.String(255), index=True)
@@ -54,6 +55,7 @@ class Rebate(db.Model):
             'rebate_type': self.rebate_type,
             'contract_number': self.contract_number,
             'contract_category': self.contract_category,
+            'wave_category': self.wave_category,
             'contract_source': self.contract_source,
             'gpo_tier': self.gpo_tier,
             'vendor_name': self.vendor_name,

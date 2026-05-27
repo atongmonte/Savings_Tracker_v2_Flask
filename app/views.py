@@ -171,6 +171,7 @@ def _get_rebate_extraction_data(start_date=None, end_date=None, search_term=''):
             'rebate_type': rebate.rebate_type or '—',
             'contract_number': rebate.contract_number or '—',
             'contract_category': rebate.contract_category or '—',
+            'wave_category': rebate.wave_category or '—',
             'contract_source': rebate.contract_source or '—',
             'vendor_name': rebate.vendor_name or '—',
             'rebate_check_date': rebate.rebate_check_date.strftime('%Y-%m-%d') if rebate.rebate_check_date else '—',
@@ -189,6 +190,7 @@ def _get_rebate_extraction_data(start_date=None, end_date=None, search_term=''):
                 row['rebate_type'],
                 row['contract_number'],
                 row['contract_category'],
+                row['wave_category'],
                 row['contract_source'],
                 row['vendor_name'],
                 row['rebate_check_date'],
@@ -218,6 +220,7 @@ def _build_rebate_excel_workbook(rebate_rows, allocation_headers, attachments_fo
         'Rebates_Type',
         'Contract_Number',
         'Contract_Category',
+        'Wave_Category',
         'Contract_Source',
         'Vendor_Name',
         'Rebate_Check_Date',
@@ -254,7 +257,7 @@ def _build_rebate_excel_workbook(rebate_rows, allocation_headers, attachments_fo
     for col_idx in range(1, len(display_headers) + 1):
         worksheet.cell(row=1, column=col_idx).font = header_font
 
-    parent_folder_col = 11 + len(allocation_headers) + 1
+    parent_folder_col = 12 + len(allocation_headers) + 1
     worksheet.column_dimensions[get_column_letter(parent_folder_col)].width = 19.86
     worksheet.column_dimensions[get_column_letter(parent_folder_col)].hidden = True
 
@@ -284,6 +287,7 @@ def _build_rebate_excel_workbook(rebate_rows, allocation_headers, attachments_fo
             row['rebate_type'],
             row['contract_number'],
             row['contract_category'],
+            row['wave_category'],
             row['contract_source'],
             row['vendor_name'],
             row['rebate_check_date'],
@@ -302,12 +306,12 @@ def _build_rebate_excel_workbook(rebate_rows, allocation_headers, attachments_fo
         for col_idx in range(1, worksheet.max_column + 1):
             worksheet.cell(row=row_idx, column=col_idx).font = default_font
 
-        rebate_amount_cell = worksheet.cell(row=row_idx, column=11)
+        rebate_amount_cell = worksheet.cell(row=row_idx, column=12)
         rebate_amount_cell.number_format = accounting_format
         rebate_amount_cell.fill = rebate_fill
         rebate_amount_cell.font = rebate_font
 
-        for col_idx in range(12, 12 + len(allocation_headers)):
+        for col_idx in range(13, 13 + len(allocation_headers)):
             alloc_cell = worksheet.cell(row=row_idx, column=col_idx)
             alloc_cell.number_format = accounting_format
             alloc_cell.fill = alloc_fill

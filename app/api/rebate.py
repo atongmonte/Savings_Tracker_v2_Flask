@@ -20,6 +20,19 @@ def _normalize_wave_id(value):
     return text or 'N/A'
 
 
+def _normalize_rebate_categories(contract_category, wave_category):
+    """Keep wave-prefixed values in wave_category and out of contract_category."""
+    normalized_contract = (contract_category or '').strip()
+    normalized_wave = (wave_category or '').strip()
+
+    if normalized_contract.lower().startswith('wave -'):
+        if not normalized_wave:
+            normalized_wave = normalized_contract
+        normalized_contract = ''
+
+    return normalized_contract, normalized_wave
+
+
 @rebate_bp.route('', methods=['POST'])
 @permission_required('create')
 def create_rebate():
@@ -65,6 +78,11 @@ def create_rebate():
         return jsonify({'error': error}), 400
     
     try:
+        contract_category, wave_category = _normalize_rebate_categories(
+            data.get('contract_category'),
+            data.get('wave_category')
+        )
+
         # Create initiative
         initiative = Initiative(
             initiative_type='Rebate',
@@ -81,7 +99,8 @@ def create_rebate():
         rebate = Rebate(
             initiative_id=initiative.id,
             rebate_type=data.get('rebate_type') or '',
-            contract_category=data.get('contract_category') or '',
+            contract_category=contract_category,
+            wave_category=wave_category,
             contract_source=data.get('contract_source') or '',
             contract_number=data.get('contract_number') or '',
             vendor_name=data.get('vendor_name') or '',
@@ -206,13 +225,21 @@ def update_rebate(initiative_id):
         
         # Update rebate fields
         updateable_fields = [
-            'rebate_type', 'contract_category', 'contract_source', 'contract_number',
+            'rebate_type', 'contract_source', 'contract_number',
             'vendor_name', 'gpo_tier', 'rebate_amount'
         ]
         
         for field in updateable_fields:
             if field in data:
                 setattr(rebate, field, data[field])
+
+        if 'contract_category' in data or 'wave_category' in data:
+            contract_category, wave_category = _normalize_rebate_categories(
+                data.get('contract_category', rebate.contract_category),
+                data.get('wave_category', rebate.wave_category),
+            )
+            rebate.contract_category = contract_category
+            rebate.wave_category = wave_category
         
         if data.get('transaction_date'):
             rebate.rebate_check_date = datetime.fromisoformat(data['transaction_date']).date()

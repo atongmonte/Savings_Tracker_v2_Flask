@@ -5,7 +5,9 @@ let existingFileCount = 0;
 let stagedNewFiles = [];
 
 document.addEventListener('DOMContentLoaded', async function() {
-    await loadContractCategorySelect('contractCategory');
+    const allCategories = await loadContractCategorySelect('contractCategory');
+    populateContractCategorySelect('contractCategory', allCategories);
+    populateWaveCategorySelect('waveCategory', allCategories);
     await initializePrimeContractLookup({
         contractInputId: 'contractId',
         vendorInputId: 'vendorName',
@@ -16,6 +18,70 @@ document.addEventListener('DOMContentLoaded', async function() {
     setupEventListeners();
     checkEditMode();
 });
+
+function isWaveCategory(category) {
+    return /^wave\s*-/i.test((category || '').trim());
+}
+
+function populateContractCategorySelect(selectId, categories) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    const contractCategories = (categories || []).filter(category => !isWaveCategory(category));
+    const pendingValue = select.dataset.pendingValue || select.value || '';
+
+    select.innerHTML = '';
+    const placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.text = 'Please Select';
+    select.appendChild(placeholderOption);
+
+    contractCategories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.text = category;
+        select.appendChild(option);
+    });
+
+    if (pendingValue) {
+        const match = Array.from(select.options || []).find(option => option.value === pendingValue);
+        if (match) {
+            select.value = pendingValue;
+        }
+    }
+
+    select.disabled = false;
+}
+
+function populateWaveCategorySelect(selectId, categories) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    const waveCategories = (categories || []).filter(isWaveCategory);
+    const pendingValue = select.dataset.pendingValue || select.value || '';
+
+    select.innerHTML = '';
+    const placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.text = 'Please Select';
+    select.appendChild(placeholderOption);
+
+    waveCategories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.text = category;
+        select.appendChild(option);
+    });
+
+    if (pendingValue) {
+        const match = Array.from(select.options || []).find(option => option.value === pendingValue);
+        if (match) {
+            select.value = pendingValue;
+        }
+    }
+
+    select.disabled = false;
+}
 
 function initializeForm() {
     setupFileUpload();
@@ -412,10 +478,18 @@ function handleSubmit(e) {
         });
     });
 
-    const jsonData = {
+    const rawContractCategory = formData.get('contract_category');
+    const normalizedContractCategory = isWaveCategory(rawContractCategory)
+        ? ''
+        : rawContractCategory;
+    const normalizedWaveCategory = formData.get('wave_category')
+        || (isWaveCategory(rawContractCategory) ? rawContractCategory : '');
+
+    const requestData = {
         initiative_type: 'Rebate',
         wave_id: formData.get('wave_id'),
-        contract_category: formData.get('contract_category'),
+        contract_category: normalizedContractCategory,
+        wave_category: normalizedWaveCategory,
         contract_number: formData.get('contract_id'),
         contract_source: formData.get('contract_source'),
         vendor_name: formData.get('vendor_name'),
@@ -436,7 +510,7 @@ function handleSubmit(e) {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify(jsonData)
+        body: JSON.stringify(requestData)
     })
     .then(response => response.json())
     .then(data => {
@@ -474,10 +548,18 @@ function saveDraft() {
         });
     });
 
+    const rawContractCategory = formData.get('contract_category');
+    const normalizedContractCategory = isWaveCategory(rawContractCategory)
+        ? ''
+        : rawContractCategory;
+    const normalizedWaveCategory = formData.get('wave_category')
+        || (isWaveCategory(rawContractCategory) ? rawContractCategory : '');
+
     const jsonData = {
         initiative_type: 'Rebate',
         wave_id: formData.get('wave_id'),
-        contract_category: formData.get('contract_category'),
+        contract_category: normalizedContractCategory,
+        wave_category: normalizedWaveCategory,
         contract_number: formData.get('contract_id'),
         contract_source: formData.get('contract_source'),
         vendor_name: formData.get('vendor_name'),
@@ -615,10 +697,15 @@ async function loadInitiativeData(id) {
         const response = await fetch(`/api/initiatives/${id}`);
         const data = await response.json();
         const rb = data.rebate || {};
+        const waveCategory = rb.wave_category || (isWaveCategory(rb.contract_category) ? rb.contract_category : '');
+        const contractCategory = waveCategory && isWaveCategory(rb.contract_category)
+            ? ''
+            : rb.contract_category;
         setField('waveId', data.wave_id);
         setField('description', data.description);
         setSelect('rebateType', rb.rebate_type);
-        setSelect('contractCategory', rb.contract_category);
+        setSelect('contractCategory', contractCategory);
+        setSelect('waveCategory', waveCategory);
         setField('contractId', rb.contract_number);
         await loadPrimeVendorOptions(rb.contract_number, 'vendorNameOptions');
         setRadio('contract_source', rb.contract_source);

@@ -109,6 +109,7 @@ def get_initiatives():
                     CostSavings.vendor_name.ilike(search_term),
                     Rebate.contract_number.ilike(search_term),
                     Rebate.contract_category.ilike(search_term),
+                    Rebate.wave_category.ilike(search_term),
                     Rebate.vendor_name.ilike(search_term),
                     CostAvoidance.contract_number.ilike(search_term),
                     CostAvoidance.contract_category.ilike(search_term),

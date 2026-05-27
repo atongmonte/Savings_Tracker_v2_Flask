@@ -176,6 +176,7 @@
                             <th>Rebate Type</th>
                             <th>Contract Num</th>
                             <th>Contract Category</th>
+                            <th>Wave Category</th>
                             <th>Contract Source</th>
                             <th>Vendor Name</th>
                             <th>Rebate Check Date</th>
@@ -195,6 +196,7 @@
                             <td>{{ row.rebate_type }}</td>
                             <td>{{ row.contract_number }}</td>
                             <td>{{ row.contract_category }}</td>
+                            <td>{{ row.wave_category }}</td>
                             <td>{{ row.contract_source }}</td>
                             <td>{{ row.vendor_name }}</td>
                             <td class="date-cell">{{ row.rebate_check_date }}</td>
@@ -207,7 +209,7 @@
                         </tr>
                         {% endfor %}
                         <tr id="rebateEmptyState" {% if rebate_rows %}style="display:none;"{% endif %}>
-                            <td colspan="19" class="empty-state">No rebate initiatives match the current search.</td>
+                            <td colspan="20" class="empty-state">No rebate initiatives match the current search.</td>
                         </tr>
                     </tbody>
                 </table>

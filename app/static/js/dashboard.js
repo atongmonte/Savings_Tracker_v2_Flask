@@ -371,6 +371,70 @@ function editInitiative(id) {
     showInitiativeModal(id, true);
 }
 
+function isWaveCategory(value) {
+    return /^wave\s*-/i.test((value || '').toString().trim());
+}
+
+function populateModalContractCategorySelect(selectId, categories) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    const contractCategories = (categories || []).filter(category => !isWaveCategory(category));
+    const pendingValue = select.dataset.pendingValue || select.value || '';
+
+    select.innerHTML = '';
+    const placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.text = 'Please Select';
+    select.appendChild(placeholderOption);
+
+    contractCategories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.text = category;
+        select.appendChild(option);
+    });
+
+    if (pendingValue) {
+        const match = Array.from(select.options || []).find(option => option.value === pendingValue);
+        if (match) {
+            select.value = pendingValue;
+        }
+    }
+
+    select.disabled = false;
+}
+
+function populateModalWaveCategorySelect(selectId, categories) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    const waveCategories = (categories || []).filter(isWaveCategory);
+    const pendingValue = select.dataset.pendingValue || select.value || '';
+
+    select.innerHTML = '';
+    const placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.text = 'Please Select';
+    select.appendChild(placeholderOption);
+
+    waveCategories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.text = category;
+        select.appendChild(option);
+    });
+
+    if (pendingValue) {
+        const match = Array.from(select.options || []).find(option => option.value === pendingValue);
+        if (match) {
+            select.value = pendingValue;
+        }
+    }
+
+    select.disabled = false;
+}
+
 // Open the initiative modal (view or edit mode)
 function showInitiativeModal(id, editMode) {
     Promise.all([
@@ -383,7 +447,9 @@ function showInitiativeModal(id, editMode) {
             vendorListId: 'mf_vendor_name_options',
         }),
     ])
-        .then(([data]) => {
+        .then(([data, categories]) => {
+            populateModalContractCategorySelect('mf_contract_category', categories || []);
+            populateModalWaveCategorySelect('mf_wave_category', categories || []);
             populateInitiativeModal(data, editMode);
             const modal = new bootstrap.Modal(document.getElementById('actionModal'));
             modal.show();
@@ -468,12 +534,30 @@ function populateInitiativeModal(data, editMode) {
             if (o.dataset && o.dataset.dynamic === 'true') o.remove();
         });
     }
-    setSelectNormalized('mf_contract_category', raw.contract_category);
+    const wc = document.getElementById('mf_wave_category');
+    if (wc) {
+        Array.from(wc.options || []).forEach(o => {
+            if (o.dataset && o.dataset.dynamic === 'true') o.remove();
+        });
+    }
+
+    const normalizedWaveCategory = raw.wave_category || (isWaveCategory(raw.contract_category) ? raw.contract_category : '');
+    const normalizedContractCategory = normalizedWaveCategory && isWaveCategory(raw.contract_category)
+        ? ''
+        : raw.contract_category;
+
+    setSelectNormalized('mf_contract_category', normalizedContractCategory);
+    setSelectNormalized('mf_wave_category', normalizedWaveCategory);
     setVal('mf_contract_number',     raw.contract_number);
     loadPrimeVendorOptions(raw.contract_number, 'mf_vendor_name_options');
     setRadio('mf_contract_source_r', raw.contract_source);
     setVal('mf_wave_id',             data.wave_id);
     setVal('mf_vendor_name',         raw.vendor_name);
+
+    const waveCategoryGroup = document.getElementById('mf_wave_category_group');
+    if (waveCategoryGroup) {
+        waveCategoryGroup.classList.toggle('d-none', type !== 'Rebate');
+    }
 
     // Always hide text fallback for contract_source, show radios
     document.getElementById('mf_contract_source').style.display = 'none';
@@ -853,6 +937,7 @@ function captureModalSnapshot(type) {
         description:        getVal('mf_description'),
         wave_id:            getVal('mf_wave_id'),
         contract_category:  getVal('mf_contract_category'),
+        wave_category:      getVal('mf_wave_category'),
         contract_number:    getVal('mf_contract_number'),
         contract_source:    getRadio('mf_contract_source_r'),
         vendor_name:        getVal('mf_vendor_name'),
@@ -900,6 +985,7 @@ const _FIELD_LABELS = {
     description:           { label: 'Description' },
     wave_id:               { label: 'Wave Initiative ID (if applicable)' },
     contract_category:     { label: 'Contract Category' },
+    wave_category:         { label: 'Wave Category' },
     contract_number:       { label: 'Contract ID' },
     contract_source:       { label: 'Contract Source' },
     vendor_name:           { label: 'Vendor Name' },
@@ -1065,10 +1151,21 @@ function validateModalForm(type) {
 
     // Common — all types
     req('mf_description',     'Description');
-    req('mf_contract_category', 'Contract Category');
     req('mf_contract_number', 'Contract ID');
     req('mf_vendor_name',     'Vendor Name');
     reqRadio('mf_contract_source_r', 'Contract Source', 'mf_contract_source_radios');
+
+    if (type === 'Rebate') {
+        const contractCategoryVal = (document.getElementById('mf_contract_category')?.value || '').trim();
+        const waveCategoryVal = (document.getElementById('mf_wave_category')?.value || '').trim();
+        if (!contractCategoryVal && !waveCategoryVal) {
+            errors.push('Contract Category or Wave Category');
+            document.getElementById('mf_contract_category')?.classList.add('is-invalid');
+            document.getElementById('mf_wave_category')?.classList.add('is-invalid');
+        }
+    } else {
+        req('mf_contract_category', 'Contract Category');
+    }
 
     if (type === 'Cost Savings') {
         reqRadio('mf_savings_type',  'Savings Type');
@@ -1161,10 +1258,23 @@ function saveModalChanges() {
         description:       getVal('mf_description'),
         wave_id:           getVal('mf_wave_id'),
         contract_category: getVal('mf_contract_category'),
+        wave_category:     getVal('mf_wave_category'),
         contract_number:   getVal('mf_contract_number'),
         contract_source:   getRadio('mf_contract_source_r'),
         vendor_name:       getVal('mf_vendor_name')
     };
+
+    if (type === 'Rebate') {
+        const contractCategory = (payload.contract_category || '').trim();
+        const waveCategory = (payload.wave_category || '').trim();
+
+        if (isWaveCategory(contractCategory)) {
+            payload.contract_category = '';
+            if (!waveCategory) {
+                payload.wave_category = contractCategory;
+            }
+        }
+    }
 
     // Rejected initiatives resubmit for Pending Review on save
     if (window._modalInitiativeStatus === 'Rejected') {
