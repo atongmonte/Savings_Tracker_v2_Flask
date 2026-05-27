@@ -22,7 +22,16 @@
     .role-badge-Finance  { background-color: #1A7A4A; color: #fff; }
     .role-badge-Reviewer { background-color: #0072BC; color: #fff; }
     .role-badge-User     { background-color: #00A8A8; color: #fff; }
-    .role-badge-Read-Only{ background-color: #5E6E82; color: #fff; }
+    .role-badge-Read-Only,
+    .role-badge-ReadOnly,
+    .badge.role-badge-Read-Only,
+    .badge.role-badge-ReadOnly {
+        --bs-badge-bg: #E8EEF5;
+        --bs-badge-color: #334155;
+        background-color: #E8EEF5 !important;
+        color: #334155 !important;
+        border: 1px solid #CBD5E1;
+    }
 
     .status-dot {
         width: 9px; height: 9px;
@@ -33,6 +42,19 @@
     }
     .status-dot.active   { background-color: #1A7A4A; }
     .status-dot.inactive { background-color: #C0392B; }
+
+    .status-toggle {
+        background: transparent !important;
+        border-width: 1px;
+    }
+    .status-toggle.active {
+        color: #1A7A4A;
+        border-color: #1A7A4A;
+    }
+    .status-toggle.inactive {
+        color: #C0392B;
+        border-color: #C0392B;
+    }
 
     .permission-grid {
         display: flex;
@@ -60,6 +82,10 @@
 
     /* Inline role form */
     .role-form select { min-width: 130px; }
+
+    .table-filter-select {
+        min-width: 150px;
+    }
 </style>
 {% endblock %}
 
@@ -110,7 +136,21 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="fas fa-users me-2"></i>All Users</span>
-                <span class="badge bg-secondary">{{ users | length }}</span>
+                <div class="d-flex align-items-center gap-2">
+                    <select id="roleFilter" class="form-select form-select-sm table-filter-select" aria-label="Filter users by role">
+                        <option value="">All roles</option>
+                        {% for role in roles %}
+                        {% set normalized_role_name = role.name | lower | replace(' ', '') | replace('-', '') %}
+                        <option value="{{ role.id }}">{{ 'Read-only' if normalized_role_name == 'readonly' else role.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="statusFilter" class="form-select form-select-sm table-filter-select" aria-label="Filter users by status">
+                        <option value="">All statuses</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                    <span id="usersCountBadge" class="badge bg-secondary">{{ users | length }}</span>
+                </div>
             </div>
             <div class="card-body p-0">
                 {% if users %}
@@ -128,7 +168,7 @@
                         </thead>
                         <tbody>
                             {% for u in users %}
-                            <tr id="user-row-{{ u.id }}">
+                            <tr id="user-row-{{ u.id }}" data-role-id="{{ u.role_id }}" data-status="{{ 'active' if u.is_active else 'inactive' }}">
                                 {# Avatar #}
                                 <td>
                                     <span class="user-avatar">
@@ -152,9 +192,10 @@
                                                 title="Assign role"
                                                 onchange="this.form.submit()">
                                             {% for role in roles %}
+                                            {% set normalized_role_name = role.name | lower | replace(' ', '') | replace('-', '') %}
                                             <option value="{{ role.id }}"
                                                 {{ 'selected' if u.role_id == role.id else '' }}>
-                                                {{ role.name }}
+                                                {{ 'Read-only' if normalized_role_name == 'readonly' else role.name }}
                                             </option>
                                             {% endfor %}
                                         </select>
@@ -167,7 +208,7 @@
                                           action="{{ url_for('main.user_toggle_status', user_id=u.id) }}"
                                           class="d-inline">
                                         <button type="submit"
-                                                class="btn btn-sm {{ 'btn-outline-danger' if u.is_active else 'btn-outline-success' }} d-flex align-items-center gap-1"
+                                                class="btn btn-sm status-toggle {{ 'active' if u.is_active else 'inactive' }} d-flex align-items-center gap-1"
                                                 title="{{ 'Deactivate user' if u.is_active else 'Activate user' }}">
                                             <span class="status-dot {{ 'active' if u.is_active else 'inactive' }}"></span>
                                             {{ 'Active' if u.is_active else 'Inactive' }}
@@ -206,6 +247,9 @@
                         </tbody>
                     </table>
                 </div>
+                <div id="usersFilterEmpty" class="p-3 text-center text-muted d-none">
+                    No users match the selected filters.
+                </div>
                 {% else %}
                 <div class="p-4 text-center text-muted">
                     <i class="fas fa-users fa-2x mb-2 d-block" style="opacity:.3;"></i>
@@ -227,14 +271,18 @@
             <div class="card-body p-0">
                 <div class="list-group list-group-flush">
                     {% for role in roles %}
+                    {% set normalized_role_name = role.name | lower | replace(' ', '') | replace('-', '') %}
+                    {% set role_display_name = 'Read-only' if normalized_role_name == 'readonly' else role.name %}
+                    {% set role_css_name = 'Read-Only' if normalized_role_name == 'readonly' else role.name.replace(' ', '-') %}
                     <div class="list-group-item px-3 py-3">
                         <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="badge role-badge-{{ role.name.replace(' ', '-') }} px-2 py-1"
+                            <span class="badge role-badge-{{ role_css_name }} px-2 py-1"
                                   style="font-size:0.78rem;">
-                                {{ role.name }}
+                                {{ role_display_name }}
                             </span>
                             <span class="text-muted" style="font-size:0.75rem;">
-                                {{ role.users.count() }} user{{ 's' if role.users.count() != 1 else '' }}
+                                {% set active_role_users = role.users.filter_by(is_active=True).count() %}
+                                {{ active_role_users }} active user{{ 's' if active_role_users != 1 else '' }}
                             </span>
                         </div>
                         {% if role.description %}
@@ -309,6 +357,38 @@
     const deleteUsernameHint = document.getElementById('deleteUsernameHint');
     const deleteConfirmInput = document.getElementById('deleteConfirmInput');
     const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    const roleFilter = document.getElementById('roleFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const usersTable = document.getElementById('usersTable');
+    const usersCountBadge = document.getElementById('usersCountBadge');
+    const usersFilterEmpty = document.getElementById('usersFilterEmpty');
+
+    function applyUserFilters() {
+        if (!usersTable) return;
+
+        const selectedRoleId = roleFilter ? roleFilter.value : '';
+        const selectedStatus = statusFilter ? statusFilter.value : '';
+        const rows = usersTable.querySelectorAll('tbody tr[id^="user-row-"]');
+        let visibleCount = 0;
+
+        rows.forEach(function (row) {
+            const rowRoleId = row.getAttribute('data-role-id') || '';
+            const rowStatus = row.getAttribute('data-status') || '';
+            const matchesRole = !selectedRoleId || rowRoleId === selectedRoleId;
+            const matchesStatus = !selectedStatus || rowStatus === selectedStatus;
+            const isVisible = matchesRole && matchesStatus;
+
+            row.style.display = isVisible ? '' : 'none';
+            if (isVisible) visibleCount += 1;
+        });
+
+        if (usersCountBadge) {
+            usersCountBadge.textContent = String(visibleCount);
+        }
+        if (usersFilterEmpty) {
+            usersFilterEmpty.classList.toggle('d-none', visibleCount !== 0);
+        }
+    }
 
     deleteModal.addEventListener('show.bs.modal', function (event) {
         const btn = event.relatedTarget;
@@ -332,6 +412,14 @@
     confirmDeleteBtn.addEventListener('click', function () {
         deleteForm.submit();
     });
+
+    if (roleFilter) {
+        roleFilter.addEventListener('change', applyUserFilters);
+    }
+    if (statusFilter) {
+        statusFilter.addEventListener('change', applyUserFilters);
+    }
+    applyUserFilters();
 
     // Auto-dismiss flash alerts
     setTimeout(function () {

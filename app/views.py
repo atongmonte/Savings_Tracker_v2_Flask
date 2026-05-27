@@ -28,6 +28,8 @@ from app.utils.timezone import now_eastern
 
 main_bp = Blueprint('main', __name__)
 
+_REVIEW_NOTIFICATION_DEFAULT_EMAIL = 'procurementdatateam@montefiore.org'
+
 _FINANCE_ALLOWED_ENDPOINTS = {
     'main.rebate_extraction',
     'main.rebate_extraction_export',
@@ -614,6 +616,58 @@ def _can_access_email_testing(user):
     return _is_admin_user(user)
 
 
+def _normalize_email_list(values):
+    """Return a de-duplicated list of trimmed email addresses."""
+    normalized = []
+    seen = set()
+    for value in values or []:
+        address = (value or '').strip()
+        if not address:
+            continue
+        key = address.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(address)
+    return normalized
+
+
+def _get_review_notification_options():
+    """Return the allowed recipients for review notification settings."""
+    eligible_users = (
+        User.query
+        .join(UserRole)
+        .filter(
+            User.is_active == True,
+            UserRole.name.in_(['Reviewer', 'Admin']),
+        )
+        .order_by(UserRole.name.asc(), User.full_name.asc())
+        .all()
+    )
+
+    options = [{
+        'value': _REVIEW_NOTIFICATION_DEFAULT_EMAIL,
+        'label': f'{_REVIEW_NOTIFICATION_DEFAULT_EMAIL} (default)',
+    }]
+
+    seen = {_REVIEW_NOTIFICATION_DEFAULT_EMAIL.lower()}
+    for user in eligible_users:
+        email = (user.email or '').strip()
+        if not email:
+            continue
+        email_key = email.lower()
+        if email_key in seen:
+            continue
+        seen.add(email_key)
+        role_name = getattr(getattr(user, 'role', None), 'name', '') or 'User'
+        options.append({
+            'value': email,
+            'label': f'{user.full_name} <{email}> ({role_name})',
+        })
+
+    return options
+
+
 @main_bp.route('/admin/email-notifications')
 @login_required
 def email_notifications_admin():
@@ -632,6 +686,16 @@ def email_notifications_admin():
     )
 
     current_settings = current_app.config.get('STATIC_APP_SETTINGS') or load_static_settings(current_app.config)
+    review_notification_options = _get_review_notification_options()
+    weekly_reminder_options = review_notification_options
+    stored_review_recipients = _normalize_email_list(
+        (current_settings.get('email', {}) or {}).get('review_notification_to', '').replace(';', ',').split(',')
+    )
+    stored_review_recipient_keys = {email.lower() for email in stored_review_recipients}
+    stored_weekly_recipients = _normalize_email_list(
+        (current_settings.get('email', {}) or {}).get('weekly_reminder_to', '').replace(';', ',').split(',')
+    )
+    stored_weekly_recipient_keys = {email.lower() for email in stored_weekly_recipients}
 
     return render_template(
         'email_notifications.html',
@@ -644,6 +708,18 @@ def email_notifications_admin():
         selected_id=request.args.get('selected_id', type=int),
         settings=current_settings,
         settings_file_path=current_app.config.get('STATIC_CONFIG_FILE'),
+        review_notification_options=review_notification_options,
+        review_notification_selected=[
+            option['value']
+            for option in review_notification_options
+            if option['value'].lower() in stored_review_recipient_keys
+        ] or [_REVIEW_NOTIFICATION_DEFAULT_EMAIL],
+        weekly_reminder_options=weekly_reminder_options,
+        weekly_reminder_selected=[
+            option['value']
+            for option in weekly_reminder_options
+            if option['value'].lower() in stored_weekly_recipient_keys
+        ] or [_REVIEW_NOTIFICATION_DEFAULT_EMAIL],
     )
 
 
@@ -715,15 +791,41 @@ def save_static_config():
         flash('Admin access is required to update settings.', 'error')
         return redirect(url_for('main.dashboard'))
 
-    fixed_mailbox = 'procurementdatateam@montefiore.org'
+    fixed_mailbox = _REVIEW_NOTIFICATION_DEFAULT_EMAIL
+    allowed_review_addresses = {
+        option['value'].lower(): option['value']
+        for option in _get_review_notification_options()
+    }
+    selected_review_addresses = []
+    for address in request.form.getlist('review_notification_to'):
+        normalized_address = (address or '').strip()
+        if not normalized_address:
+            continue
+        allowed_value = allowed_review_addresses.get(normalized_address.lower())
+        if allowed_value:
+            selected_review_addresses.append(allowed_value)
+    if not selected_review_addresses:
+        selected_review_addresses = [fixed_mailbox]
+
+    selected_weekly_addresses = []
+    for address in request.form.getlist('weekly_reminder_to'):
+        normalized_address = (address or '').strip()
+        if not normalized_address:
+            continue
+        allowed_value = allowed_review_addresses.get(normalized_address.lower())
+        if allowed_value:
+            selected_weekly_addresses.append(allowed_value)
+    if not selected_weekly_addresses:
+        selected_weekly_addresses = [fixed_mailbox]
+
     settings = load_static_settings(current_app.config)
     settings['email'] = {
         'from_email': fixed_mailbox,
         'graph_sender_user_id': fixed_mailbox,
         'creator_notification_to': (request.form.get('creator_notification_to') or '').strip(),
-        'review_notification_to': (request.form.get('review_notification_to') or '').strip(),
+        'review_notification_to': ', '.join(_normalize_email_list(selected_review_addresses)),
         'approval_notification_to': (request.form.get('approval_notification_to') or '').strip(),
-        'weekly_reminder_to': (request.form.get('weekly_reminder_to') or '').strip(),
+        'weekly_reminder_to': ', '.join(_normalize_email_list(selected_weekly_addresses)),
         'cc_addresses': fixed_mailbox,
     }
     settings['files'] = {
@@ -735,7 +837,10 @@ def save_static_config():
 
     save_static_settings(settings)
     apply_static_settings(current_app)
-    flash(f'Static configuration updated successfully. Sender and CC remain fixed to {fixed_mailbox}.', 'success')
+    flash(
+        f'Static configuration updated successfully. Review notification and weekly reminder recipients are limited to {fixed_mailbox} and active Reviewer/Admin users. Sender and CC remain fixed to {fixed_mailbox}.',
+        'success'
+    )
     return redirect(url_for('main.email_notifications_admin'))
 
 
