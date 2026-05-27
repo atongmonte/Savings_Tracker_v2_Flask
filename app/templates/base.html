@@ -142,6 +142,24 @@
             color: #fff;
             border-color: rgba(255,255,255,.5);
         }
+        .env-badge {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 0.18rem 0.65rem;
+            border-radius: 3px;
+            border: 1px solid currentColor;
+            white-space: nowrap;
+            z-index: 1;
+        }
+        .env-badge.env-development { color: #6edfa0; border-color: rgba(110,223,160,.45); background: rgba(110,223,160,.1); }
+        .env-badge.env-testing     { color: #ffc96b; border-color: rgba(255,201,107,.45); background: rgba(255,201,107,.1); }
 
         /* ── Layout ── */
         :root { --page-gutter: 3rem; }
@@ -390,7 +408,10 @@
 </head>
 <body>
     <!-- ── Single Navy Navigation Bar ── -->
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom" style="position:relative;">
+        {% if template_environment and template_environment != 'production' %}
+        <span class="env-badge env-{{ template_environment }}" title="Running in {{ template_environment }} environment">{{ template_environment }}</span>
+        {% endif %}
         <div class="container-fluid">
             <!-- Brand -->
             <a class="navbar-brand" href="{{ url_for('main.index') }}">

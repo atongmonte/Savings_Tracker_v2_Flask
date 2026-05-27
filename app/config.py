@@ -6,6 +6,21 @@ from datetime import timedelta
 from urllib.parse import quote_plus
 
 
+def build_sqlalchemy_uri(server, database, driver, trusted_connection='yes', user='', password=''):
+    """Build a SQL Server SQLAlchemy URI."""
+    if trusted_connection.lower() == 'yes':
+        connection_string = 'Driver={};Server={};Database={};Trusted_Connection=yes;'.format(
+            driver, server, database
+        )
+    else:
+        connection_string = 'Driver={};Server={};Database={};UID={};PWD={};'.format(
+            driver, server, database, user, password
+        )
+
+    # Don't use quote_plus as it double-escapes the backslash in server instance names
+    return f'mssql+pyodbc:///?odbc_connect={connection_string}'
+
+
 class Config:
     """Base configuration."""
     
@@ -15,6 +30,7 @@ class Config:
     # Database
     DB_SERVER = os.getenv('DB_SERVER', 'localhost')
     DB_NAME = os.getenv('DB_NAME', 'savingstracker_v2')
+    DB_NAME_TESTDEV = os.getenv('DB_NAME_TESTDEV', 'savingstracker_v2_testdev')
     DB_DRIVER = os.getenv('DB_DRIVER', 'ODBC Driver 17 for SQL Server')
     DB_TRUSTED_CONNECTION = os.getenv('DB_TRUSTED_CONNECTION', 'yes')
     DB_USER = os.getenv('DB_USER', '')
@@ -26,15 +42,14 @@ class Config:
     PRIME_DB_USER = os.getenv('PRIME_DB_USER', DB_USER)
     PRIME_DB_PASSWORD = os.getenv('PRIME_DB_PASSWORD', DB_PASSWORD)
     PRIME_DB_TIMEOUT = int(os.getenv('PRIME_DB_TIMEOUT', '5'))
-    
-    # Build connection string (use format() instead of f-string to avoid backslash escaping)
-    if DB_TRUSTED_CONNECTION.lower() == 'yes':
-        connection_string = 'Driver={};Server={};Database={};Trusted_Connection=yes;'.format(DB_DRIVER, DB_SERVER, DB_NAME)
-    else:
-        connection_string = 'Driver={};Server={};Database={};UID={};PWD={};'.format(DB_DRIVER, DB_SERVER, DB_NAME, DB_USER, DB_PASSWORD)
-    
-    # Don't use quote_plus as it double-escapes the backslash in server instance names
-    SQLALCHEMY_DATABASE_URI = f'mssql+pyodbc:///?odbc_connect={connection_string}'
+    SQLALCHEMY_DATABASE_URI = build_sqlalchemy_uri(
+        DB_SERVER,
+        DB_NAME,
+        DB_DRIVER,
+        DB_TRUSTED_CONNECTION,
+        DB_USER,
+        DB_PASSWORD,
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ECHO = False
     
@@ -74,6 +89,15 @@ class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
     SQLALCHEMY_ECHO = True
+    DB_NAME = Config.DB_NAME_TESTDEV
+    SQLALCHEMY_DATABASE_URI = build_sqlalchemy_uri(
+        Config.DB_SERVER,
+        DB_NAME,
+        Config.DB_DRIVER,
+        Config.DB_TRUSTED_CONNECTION,
+        Config.DB_USER,
+        Config.DB_PASSWORD,
+    )
     # In development, recipients can still be redirected, but sender and CC stay fixed.
     REVIEW_NOTIFICATION_TO = os.getenv('REVIEW_NOTIFICATION_TO', Config.PROCUREMENT_DATA_TEAM_EMAIL)
 
@@ -81,7 +105,15 @@ class DevelopmentConfig(Config):
 class TestingConfig(Config):
     """Testing configuration."""
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    DB_NAME = Config.DB_NAME_TESTDEV
+    SQLALCHEMY_DATABASE_URI = build_sqlalchemy_uri(
+        Config.DB_SERVER,
+        DB_NAME,
+        Config.DB_DRIVER,
+        Config.DB_TRUSTED_CONNECTION,
+        Config.DB_USER,
+        Config.DB_PASSWORD,
+    )
 
 
 class ProductionConfig(Config):
@@ -108,7 +140,11 @@ def test_database_connection():
     
     # Get config values
     db_server = os.getenv('DB_SERVER', 'localhost')
-    db_name = os.getenv('DB_NAME', 'savingstracker_v2')
+    env_name = os.getenv('ENVIRONMENT', os.getenv('FLASK_ENV', 'development')).lower()
+    if env_name in ('development', 'testing'):
+        db_name = os.getenv('DB_NAME_TESTDEV', 'savingstracker_v2_testdev')
+    else:
+        db_name = os.getenv('DB_NAME', 'savingstracker_v2')
     db_driver = os.getenv('DB_DRIVER', 'ODBC Driver 17 for SQL Server')
     db_trusted = os.getenv('DB_TRUSTED_CONNECTION', 'yes')
     

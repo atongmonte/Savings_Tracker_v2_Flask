@@ -41,17 +41,19 @@ _FINANCE_ALLOWED_ENDPOINTS = {
 
 @main_bp.app_context_processor
 def inject_template_user():
-    """Expose the signed-in user object to Jinja templates."""
+    """Expose the signed-in user object and current environment to Jinja templates."""
     user = getattr(g, 'current_user', None)
     if user is None:
         try:
             user = get_current_user()
         except Exception:
             user = None
+    env_name = os.getenv('ENVIRONMENT', os.getenv('FLASK_ENV', 'production')).lower()
     return {
         'template_current_user': user,
         'template_is_readonly_user': _is_read_only_user(user),
         'template_role_request_mailto': _build_role_request_mailto(user),
+        'template_environment': env_name,
     }
 
 
