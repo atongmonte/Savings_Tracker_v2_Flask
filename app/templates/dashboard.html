@@ -251,18 +251,16 @@
             <div class="col-md-3">
                 <label class="form-label"><i class="fas fa-tasks"></i> Status</label>
                 <select class="form-select" id="filterStatus">
-                    <option value="">All Status</option>
+                    <option value="">All (excluding deleted)</option>
                     <option value="Pending Review">Pending Review</option>
                     <option value="Approved">Approved</option>
                     <option value="Rejected">Rejected</option>
+                    <option value="Deleted">Deleted</option>
                 </select>
             </div>
-            <div class="col-md-3 d-flex align-items-end gap-2">
+            <div class="col-md-3 d-flex align-items-end">
                 <button class="btn btn-primary flex-fill" onclick="applyFilters()">
                     <i class="fas fa-sync-alt"></i> Refresh
-                </button>
-                <button class="btn btn-outline-danger flex-fill d-none" id="toggleDeletedBtn" onclick="toggleShowDeleted()">
-                    <i class="fas fa-trash-alt"></i> Show Deleted
                 </button>
             </div>
         </div>

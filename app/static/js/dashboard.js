@@ -1,7 +1,6 @@
 // Dashboard functionality
 
 let currentInitiativeId = null;
-window._showDeleted = false;
 
 // ── Sorting & pagination state ────────────────────────
 let _sortColumn  = 'initiative_date';   // default: newest initiative year first
@@ -208,14 +207,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load current user permissions
     fetch('/api/auth/current-user')
         .then(r => r.json())
-        .then(u => {
-            window._currentUser = u;
-            // Show the "Show Deleted" toggle only for admins
-            if (u.can_delete_all) {
-                const btn = document.getElementById('toggleDeletedBtn');
-                if (btn) btn.classList.remove('d-none');
-            }
-        })
+        .then(u => { window._currentUser = u; })
         .catch(() => { window._currentUser = {}; });
 
     syncStatsYearFromFilter();
@@ -252,6 +244,7 @@ function loadInitiatives() {
     showLoading();
 
     const status = document.getElementById('filterStatus').value;
+    const deletedOnly = status === 'Deleted';
     const search = document.getElementById('searchBox').value;
     const filterYear = document.getElementById('filterYear')?.value || '';
 
@@ -269,7 +262,7 @@ function loadInitiatives() {
     if (status)              params.set('status', status);
     if (search)              params.set('search', search);
     if (filterYear)          params.set('initiative_year', filterYear);
-    if (window._showDeleted) params.set('include_deleted', 'true');
+    if (deletedOnly)         params.set('include_deleted', 'true');
 
     fetch(`/api/initiatives?${params}`)
         .then(r => r.json())
@@ -297,6 +290,7 @@ function loadInitiatives() {
 // Load only the aggregate stats (called on year-tab switch too)
 function loadStats() {
     const status = document.getElementById('filterStatus').value;
+    const deletedOnly = status === 'Deleted';
     const search = document.getElementById('searchBox').value;
     const filterYear = document.getElementById('filterYear')?.value || '';
 
@@ -306,7 +300,7 @@ function loadStats() {
     if (status)              statsParams.set('status', status);
     if (search)              statsParams.set('search', search);
     if (filterYear)          statsParams.set('initiative_year', filterYear);
-    if (window._showDeleted) statsParams.set('include_deleted', 'true');
+    if (deletedOnly)         statsParams.set('include_deleted', 'true');
     if (_statsYear)          statsParams.set('stats_year', _statsYear);
 
     fetch(`/api/initiatives/dashboard-stats?${statsParams}`)
@@ -1664,22 +1658,6 @@ function submitRejection() {
         console.error('Error:', error);
         showAlert('Error processing request', 'danger');
     });
-}
-
-// Toggle show-deleted view (admin only)
-function toggleShowDeleted() {
-    window._showDeleted = !window._showDeleted;
-    const btn = document.getElementById('toggleDeletedBtn');
-    if (btn) {
-        if (window._showDeleted) {
-            btn.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Deleted';
-            btn.classList.replace('btn-outline-danger', 'btn-danger');
-        } else {
-            btn.innerHTML = '<i class="fas fa-trash-alt"></i> Show Deleted';
-            btn.classList.replace('btn-danger', 'btn-outline-danger');
-        }
-    }
-    loadInitiatives();
 }
 
 // Delete (soft-delete) an initiative

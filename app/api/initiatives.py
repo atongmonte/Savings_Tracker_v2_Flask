@@ -48,15 +48,21 @@ def get_initiatives():
     sort_order = request.args.get('sort_order', 'desc')
     include_deleted = request.args.get('include_deleted', 'false').lower() == 'true'
     initiative_year = request.args.get('initiative_year', type=int)
+    deleted_only = (status or '').strip().lower() == 'deleted'
     
-    # Build query — admins with delete_all can view deleted initiatives
-    if include_deleted and user.has_permission('delete_all'):
+    # Build query — deleted-only mode is driven by status=Deleted.
+    if deleted_only:
+        if user.has_permission('delete_all'):
+            query = Initiative.query.filter_by(is_deleted=True)
+        else:
+            query = Initiative.query.filter_by(id=-1)
+    elif include_deleted and user.has_permission('delete_all'):
         query = Initiative.query  # no is_deleted filter
     else:
         query = Initiative.query.filter_by(is_deleted=False)
     
     # Apply filters
-    if status:
+    if status and not deleted_only:
         query = query.filter_by(status=status)
     
     if initiative_type:
@@ -697,14 +703,20 @@ def get_dashboard_stats():
     search          = request.args.get('search', '')
     include_deleted = request.args.get('include_deleted', 'false').lower() == 'true'
     stats_year      = request.args.get('stats_year', type=int)  # None = all time
+    deleted_only    = (status or '').strip().lower() == 'deleted'
 
-    # Base query (same filters as get_initiatives)
-    if include_deleted and user.has_permission('delete_all'):
+    # Base query (same filtering semantics as get_initiatives)
+    if deleted_only:
+        if user.has_permission('delete_all'):
+            base_q = Initiative.query.filter_by(is_deleted=True)
+        else:
+            base_q = Initiative.query.filter_by(id=-1)
+    elif include_deleted and user.has_permission('delete_all'):
         base_q = Initiative.query
     else:
         base_q = Initiative.query.filter_by(is_deleted=False)
 
-    if status:
+    if status and not deleted_only:
         base_q = base_q.filter_by(status=status)
 
     if search:
