@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Savings Tracker v2.0 - Application Presentation</title>
+  <title>Savings Tracker v2.0 - Application Overview</title>
   <style>
     :root {
       --brand-primary: #112b46;
@@ -52,7 +52,7 @@
       color: #dbeafe;
     }
 
-    .slide {
+    .section-card {
       background: var(--card);
       border: 1px solid var(--line);
       border-left: 6px solid var(--brand-accent);
@@ -62,16 +62,44 @@
       box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
     }
 
-    .slide h2 {
+    .section-card h2 {
       margin: 0 0 10px;
       color: var(--brand-primary);
       font-size: 1.25rem;
     }
 
-    .slide h3 {
+    .section-card h3 {
       margin: 14px 0 6px;
       color: #0f4f73;
       font-size: 1.05rem;
+    }
+
+    .toc {
+      background: #eef6fb;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 14px;
+    }
+
+    .toc h2 {
+      margin: 0 0 8px;
+      color: var(--brand-primary);
+      font-size: 1.1rem;
+    }
+
+    .toc ul {
+      margin: 0;
+    }
+
+    .toc a {
+      color: #0f4f73;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .toc a:hover {
+      text-decoration: underline;
     }
 
     ul, ol {
@@ -95,6 +123,54 @@
       background: #fff;
     }
 
+    .emphasis-box {
+      border: 1px solid #bfe3f4;
+      border-left: 6px solid #0f4f73;
+      background: #f2f9fd;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+
+    .emphasis-box h3 {
+      margin: 0 0 6px;
+      color: #0f4f73;
+      font-size: 1.02rem;
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.95rem;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .compare-table th,
+    .compare-table td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .compare-table thead th {
+      background: #e7f3fa;
+      color: #113a59;
+      font-weight: 700;
+    }
+
+    .compare-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .compare-table .upgrade-row {
+      background: #f7fcff;
+    }
+
     .footer-note {
       text-align: center;
       color: var(--muted);
@@ -108,7 +184,8 @@
       }
 
       .header,
-      .slide {
+      .section-card,
+      .toc {
         padding: 14px;
       }
 
@@ -137,12 +214,28 @@
 <body>
   <div class="container">
     <header class="header">
-      <h1>Savings Tracker v2.0 - Application Presentation</h1>
+      <h1>Savings Tracker v2.0 - Application Overview</h1>
       <p>Flask application overview, key features, workflow, and data model diagrams.</p>
     </header>
 
-    <section class="slide">
-      <h2>Slide 1: Overview</h2>
+    <nav class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <ul>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#version-comparison">What Changed from v1.0</a></li>
+        <li><a href="#comparison-matrix">v1.0 vs v2.0 Matrix</a></li>
+        <li><a href="#main-features">Main Features</a></li>
+        <li><a href="#role-access-matrix">Role-Based Access Matrix</a></li>
+        <li><a href="#workflow-controls">Workflow and Controls</a></li>
+        <li><a href="#technology-stack">Technology Stack</a></li>
+        <li><a href="#future-opportunities">Future Opportunities</a></li>
+        <li><a href="#orm-modeling">ORM Modeling</a></li>
+        <li><a href="#auth-flow">Authentication and Authorization Flow</a></li>
+      </ul>
+    </nav>
+
+    <section id="overview" class="section-card">
+      <h2>Overview</h2>
       <p><strong>Savings Tracker v2.0</strong> is a Flask-based enterprise web application for tracking procurement value across three initiative types:</p>
       <ul>
         <li>Cost Savings</li>
@@ -152,26 +245,72 @@
       <p>It modernizes data capture, approval workflows, reporting, and accountability for procurement teams.</p>
     </section>
 
-    <section class="slide">
-      <h2>Slide 2: Business Goals</h2>
+    <section id="version-comparison" class="section-card">
+      <h2>What Changed from v1.0</h2>
+      <div class="emphasis-box">
+        <h3>Top Message for Audience</h3>
+        <p>The v2.0 release is not just a refactor. It introduces a formal ORM data model, a better UI, and two core business upgrades: IIS-based login with database authorization, and rebate extraction for reporting/export workflows.</p>
+      </div>
+      <p>Compared to version 1.0, version 2.0 introduces a stronger technical foundation, cleaner user experience, and two major functional upgrades.</p>
       <ul>
-        <li>Centralize initiative intake and lifecycle management</li>
-        <li>Standardize review and approval processes</li>
-        <li>Improve financial transparency and reporting accuracy</li>
-        <li>Maintain auditability for compliance and governance</li>
-        <li>Enable faster decision-making with dashboard analytics</li>
+        <li><strong>Established ORM structure:</strong> SQLAlchemy models now define relationships, improve maintainability, and support cleaner data access patterns.</li>
+        <li><strong>Better UI:</strong> The interface was modernized with clearer navigation, responsive forms, improved table interactions, and streamlined workflows.</li>
+        <li><strong>Main update 1:</strong> Login now uses IIS Windows Authentication, and authorization is enforced through database-backed users, roles, and permissions.</li>
+        <li><strong>Main update 2:</strong> Rebate extraction was added to support filtered rebate reporting and export workflows for operational use.</li>
       </ul>
     </section>
 
-    <section class="slide">
-      <h2>Slide 3: Main Features</h2>
+    <section id="comparison-matrix" class="section-card">
+      <h2>v1.0 vs v2.0 Comparison Matrix</h2>
+      <div class="diagram-wrap">
+        <table class="compare-table" aria-label="Version comparison matrix">
+          <thead>
+            <tr>
+              <th>Area</th>
+              <th>Version 1.0</th>
+              <th>Version 2.0</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Language and App Stack</strong></td>
+              <td>HTML + Node backend server</td>
+              <td>Python Flask backend, Jinja templates, JavaScript frontend</td>
+            </tr>
+            <tr class="upgrade-row">
+              <td><strong>Data Layer</strong></td>
+              <td>Less formal model mapping</td>
+              <td>Established SQLAlchemy ORM structure with relationships</td>
+            </tr>
+            <tr class="upgrade-row">
+              <td><strong>User Interface</strong></td>
+              <td>Earlier-generation UI</td>
+              <td>Improved responsive UI with clearer workflows and interactions</td>
+            </tr>
+            <tr class="upgrade-row">
+              <td><strong>Authentication and Authorization</strong></td>
+              <td>Basic app-level login model</td>
+              <td>IIS Windows Authentication + database-driven role authorization</td>
+            </tr>
+            <tr class="upgrade-row">
+              <td><strong>Rebate Operations</strong></td>
+              <td>No dedicated rebate extraction workflow</td>
+              <td>Dedicated rebate extraction and export capability</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="main-features" class="section-card">
+      <h2>Main Features</h2>
       <ul>
         <li>Role-based access control (Admin, Reviewer, User, Read-Only)</li>
         <li>IIS Windows Authentication integration for SSO-style sign-in</li>
         <li>Dashboard with statistics, filtering, and initiative status tracking</li>
         <li>Separate forms for Cost Savings, Rebates, and Cost Avoidance</li>
         <li>Facility allocation support with 100% total validation</li>
-        <li>Draft save and submit-for-review workflows</li>
+        <li>Submit-for-review workflow with reviewer/admin approval actions</li>
         <li>Initiative approve/reject actions</li>
         <li>Audit logs for traceability of changes</li>
         <li>File attachment tracking</li>
@@ -180,33 +319,94 @@
       </ul>
     </section>
 
-    <section class="slide">
-      <h2>Slide 4: Initiative Types Supported</h2>
-      <h3>Cost Savings</h3>
-      <ul>
-        <li>Baseline vs expected spend tracking</li>
-        <li>Automatic savings calculations</li>
-        <li>Contract and vendor metadata capture</li>
-      </ul>
-      <h3>Rebates</h3>
-      <ul>
-        <li>Rebate type and amount capture</li>
-        <li>Check date, payment type, and check number tracking</li>
-        <li>Rebate extraction/export support</li>
-      </ul>
-      <h3>Cost Avoidance</h3>
-      <ul>
-        <li>Original vs new quote analysis</li>
-        <li>Automatic avoidance calculations</li>
-        <li>Contract, PO, and baseline context capture</li>
-      </ul>
+    <section id="role-access-matrix" class="section-card">
+      <h2>Role-Based Access Matrix</h2>
+      <p>The following matrix summarizes role permissions configured in the current application setup.</p>
+      <div class="diagram-wrap">
+        <table class="compare-table" aria-label="Role based access matrix">
+          <thead>
+            <tr>
+              <th>Permission</th>
+              <th>Admin</th>
+              <th>Reviewer</th>
+              <th>User</th>
+              <th>Read-Only</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Create initiatives</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Edit own initiatives</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Edit all initiatives</td>
+              <td>Yes</td>
+              <td>No</td>
+              <td>No</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Delete own initiatives</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Delete or restore any initiative</td>
+              <td>Yes</td>
+              <td>No</td>
+              <td>No</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Review and approve or reject</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>No</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Export capability</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>Yes</td>
+              <td>Yes</td>
+            </tr>
+            <tr>
+              <td>Manage users and admin settings</td>
+              <td>Yes</td>
+              <td>No</td>
+              <td>No</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Rebate extraction and export</td>
+              <td>Yes</td>
+              <td>No</td>
+              <td>No</td>
+              <td>No</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
-    <section class="slide">
-      <h2>Slide 5: Workflow and Controls</h2>
+    <section id="workflow-controls" class="section-card">
+      <h2>Workflow and Controls</h2>
       <ol>
         <li>User creates or updates initiative data</li>
-        <li>User saves as draft or submits for review</li>
+        <li>User creates or updates initiative data and submits for review</li>
         <li>Reviewer/Admin evaluates submission</li>
         <li>Reviewer/Admin approves or rejects</li>
         <li>System records actions in audit trail</li>
@@ -214,59 +414,29 @@
       </ol>
     </section>
 
-    <section class="slide">
-      <h2>Slide 6: Technology Stack</h2>
+    <section id="technology-stack" class="section-card">
+      <h2>Technology Stack</h2>
       <ul>
         <li><strong>Backend:</strong> Flask 3.x, SQLAlchemy ORM, pyodbc</li>
         <li><strong>Database:</strong> Microsoft SQL Server</li>
         <li><strong>Frontend:</strong> Jinja templates, Bootstrap, JavaScript</li>
-        <li><strong>Grid/UI:</strong> AG-Grid, responsive forms, status indicators</li>
+        <li><strong>Grid/UI:</strong> Responsive HTML table, custom JavaScript sorting/filtering, status indicators</li>
         <li><strong>Auth:</strong> IIS Windows Authentication</li>
         <li><strong>Notifications:</strong> Microsoft Graph API</li>
         <li><strong>Deployment Target:</strong> IIS + FastCGI</li>
       </ul>
     </section>
 
-    <section class="slide">
-      <h2>Slide 7: API Capability Highlights</h2>
+    <section id="future-opportunities" class="section-card">
+      <h2>Future Opportunities</h2>
       <ul>
-        <li>Authentication status and current user endpoints</li>
-        <li>Initiative listing with filtering and pagination</li>
-        <li>Initiative detail, delete, approve, and reject endpoints</li>
-        <li>Type-specific create/update endpoints: /api/cost-savings, /api/rebates, /api/cost-avoidance</li>
-        <li>Audit history and statistics endpoints</li>
-      </ul>
-    </section>
-
-    <section class="slide">
-      <h2>Slide 8: Operational Benefits</h2>
-      <ul>
-        <li>Better visibility into procurement impact</li>
-        <li>Stronger data integrity through validation rules</li>
-        <li>Clear ownership and review accountability</li>
-        <li>Faster reporting and export readiness</li>
-        <li>Improved compliance via audit history</li>
-      </ul>
-    </section>
-
-    <section class="slide">
-      <h2>Slide 9: Future Opportunities</h2>
-      <ul>
-        <li>Expanded analytics and KPI trend views</li>
+        <li>Expanded analytics and KPI trend review</li>
         <li>Additional export/report automation</li>
-        <li>Deeper role-based policy controls</li>
-        <li>Enhanced notification templates and routing</li>
-        <li>Extended integration with enterprise systems</li>
       </ul>
     </section>
 
-    <section class="slide">
-      <h2>Slide 10: Summary</h2>
-      <p>Savings Tracker v2.0 provides a structured, secure, and scalable platform for tracking procurement initiatives from submission to approval, while improving reporting quality and governance.</p>
-    </section>
-
-    <section class="slide">
-      <h2>Slide 11: ORM Modeling (SQLAlchemy)</h2>
+    <section id="orm-modeling" class="section-card">
+      <h2>ORM Modeling (SQLAlchemy)</h2>
       <div class="diagram-wrap">
         <pre class="mermaid">
 classDiagram
@@ -383,44 +553,31 @@ classDiagram
       </div>
     </section>
 
-    <section class="slide">
-      <h2>Slide 12: Authentication and Authorization Flow</h2>
-      <p>This flow shows how IIS handles Windows authentication, while the application and database enforce role-based authorization.</p>
+    <section id="auth-flow" class="section-card">
+      <h2>Authentication and Authorization Flow</h2>
+      <p>This graph highlights how the user request is authenticated by IIS, processed by the Flask application, and validated against database roles and records.</p>
       <div class="diagram-wrap">
         <pre class="mermaid">
-flowchart TD
-    A[User Browser Request] --> B[IIS Site]
-    B --> C{Windows Authentication Enabled?}
-    C -->|No| D[Reject Request<br/>401 Unauthorized]
-    C -->|Yes| E[Validate AD Credentials<br/>Kerberos or NTLM]
-    E --> F{Identity Valid?}
-    F -->|No| D
-    F -->|Yes| G[Forward Request to Flask App<br/>FastCGI wfastcgi]
+graph LR
+    U[User]
+    I[IIS Web Server<br/>Windows Authentication]
+    A[Flask Application<br/>Authorization Logic]
+    D[(SQL Server Database)]
 
-    G --> H[App Resolves Current User<br/>from IIS Identity]
-    H --> I[Load or Auto-provision User]
-    I --> J[(SQL Server users)]
-    J --> K[(SQL Server user_roles)]
+    U -->|1. Request with Windows identity| I
+    I -->|2. Authenticated request| A
+    A -->|3. Read user and role records| D
+    D -->|4. Return role and data context| A
+    A -->|5. Authorized response| U
 
-    H --> L[Route-level Auth Decorator<br/>login_required]
-    L --> M{User Active and Authenticated?}
-    M -->|No| N[Redirect or 403]
-    M -->|Yes| O[Permission Check<br/>can_create, can_review, can_approve]
-    O --> P{Role Allows Action?}
-    P -->|No| Q[Return 403 Forbidden]
-    P -->|Yes| R[Execute API or View Logic]
-
-    R --> S[(SQL Server initiatives and related tables)]
-    R --> T[(SQL Server audit_logs)]
-    S --> U[Return Authorized Response]
-    T --> U
+    I -. Hosts via FastCGI .-> A
         </pre>
       </div>
     </section>
 
     <p class="muted">Tip: Open this file in a browser to view rendered diagrams.</p>
 
-    <p class="footer-note">Savings Tracker v2.0 Presentation</p>
+    <p class="footer-note">Savings Tracker v2.0 Application Overview</p>
   </div>
 </body>
 </html>

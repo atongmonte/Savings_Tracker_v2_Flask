@@ -52,11 +52,9 @@ Savings_Tracker_v2_Flask/
 │   │   └── email.py          # Email notifications
 │   ├── static/               # Static files (CSS, JS, images)
 │   └── templates/            # HTML templates
-├── migrations/               # Database migrations
+├── migration/                # Database migration/cleanup scripts
 ├── logs/                     # Application logs
-├── tests/                    # Unit tests
 ├── .env                      # Environment variables
-├── .env.example              # Example environment file
 ├── requirements.txt          # Python dependencies
 ├── web.config                # IIS configuration
 ├── init_db.py               # Database initialization
@@ -179,15 +177,15 @@ Access the application at `http://localhost:5000`
 
 ### Cost Savings
 - `POST /api/cost-savings` - Create cost savings initiative
-- `PUT /api/cost-savings/<id>` - Update cost savings initiative
+- `POST /api/cost-savings/<id>` - Update cost savings initiative
 
 ### Rebates
 - `POST /api/rebates` - Create rebate initiative
-- `PUT /api/rebates/<id>` - Update rebate initiative
+- `POST /api/rebates/<id>` - Update rebate initiative
 
 ### Cost Avoidance
 - `POST /api/cost-avoidance` - Create cost avoidance initiative
-- `PUT /api/cost-avoidance/<id>` - Update cost avoidance initiative
+- `POST /api/cost-avoidance/<id>` - Update cost avoidance initiative
 
 ## Key Improvements from v1
 

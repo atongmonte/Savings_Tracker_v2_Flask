@@ -25,7 +25,7 @@ The application will start on: **http://localhost:5000**
 ## What You Can Do Now
 
 ### ✅ View Dashboard
-- See all initiatives in a grid
+- See all initiatives in a sortable table
 - Filter by type and status
 - Search by vendor, contract, description
 - View statistics cards
@@ -134,10 +134,10 @@ app/
    - Edit CSS variables in `base.html`
    - Update `forms.css` if needed
 
-4. **Add real authentication:**
-   - Currently shows "User" as username
-   - Update `views.py` to get actual Windows user from IIS
-   - Update `app/api/auth.py` to use IIS authentication
+4. **Review authentication setup:**
+   - IIS Windows Authentication is integrated
+   - Confirm `web.config` has Windows Authentication enabled and Anonymous Authentication disabled
+   - Validate role assignment in the Admin user page (`/admin/users`)
 
 5. **Deploy to IIS:**
    - Follow instructions in `README.md`
@@ -162,7 +162,7 @@ If you encounter issues:
 1. Check the browser console (F12) for JavaScript errors
 2. Check the terminal where Flask is running for Python errors
 3. Review the API responses in the Network tab
-4. Verify database tables exist: `py -c "from app import db; print(db.engine.table_names())"`
+4. Verify database tables exist: `py -c "from app import db; from sqlalchemy import inspect; print(inspect(db.engine).get_table_names())"`
 
 ---
 

@@ -1,170 +1,83 @@
-# HTML Pages Created
+# HTML and Frontend Documentation
 
 ## Overview
-Modern, responsive web application interface built with Bootstrap 5, AG-Grid, and Font Awesome icons.
+The frontend is server-rendered with Flask + Jinja templates, styled with Bootstrap 5 and Font Awesome. The main dashboard uses a responsive HTML table (not AG-Grid) with client-side filtering, sorting, and pagination logic in JavaScript.
 
-## Pages Created
+## Templates in Use
 
-### 1. Base Template (`base.html`)
-- **Purpose**: Master template for all pages
-- **Features**:
-  - Responsive navigation bar with Montefiore branding
-  - User welcome message
-  - Dropdown menu for creating new initiatives
-  - Flash message support
-  - Logout functionality
-  - Consistent footer
-  - Modern dark blue (#112B46) color scheme
+### Core layout and dashboards
+- `app/templates/base.html`: Shared shell, navigation, branding, flash messages, and page blocks.
+- `app/templates/dashboard.html`: Main initiatives table, filter controls, summary cards, and edit/view modal.
+- `app/templates/savings_dashboard.html`: Analytics-focused dashboard views.
 
-### 2. Dashboard (`dashboard.html`)
-- **Purpose**: Main landing page showing all initiatives
-- **Features**:
-  - Statistics cards showing:
-    - Total initiative count
-    - Total cost savings
-    - Total rebates
-    - Total cost avoidance
-  - Advanced filtering:
-    - By initiative type (Cost Savings, Rebate, Cost Avoidance)
-    - By status (Draft, Submitted, Approved, Rejected)
-    - Search box for vendor, contract, description
-  - AG-Grid data table with:
-    - Sortable columns
-    - Action buttons (View, Edit, Approve, Reject)
-    - Status badges with color coding
-    - Pagination
-  - Approve/Reject modals for reviewers
-  - Responsive design for mobile/tablet
+### Initiative entry/edit pages
+- `app/templates/cost_savings_form.html`
+- `app/templates/rebate_form.html`
+- `app/templates/cost_avoidance_form.html`
 
-### 3. Cost Savings Form (`cost_savings_form.html`)
-- **Purpose**: Create/Edit Cost Savings initiatives
-- **Sections**:
-  - Contract Information (Category, Vendor, Dates, Description)
-  - Savings Details (Baseline spend, New spend, Calculation)
-  - Facility Allocation (8 facilities with percentage distribution)
-  - File Attachments
-- **Features**:
-  - Auto-calculation of savings amount
-  - Real-time facility allocation validation (must equal 100%)
-  - File upload with preview
-  - Save as Draft or Submit for Review
-  - Form validation
+### Admin and support pages
+- `app/templates/rebate_extraction.html`: Admin rebate extraction and export workflow.
+- `app/templates/email_notifications.html`: Admin email notification testing/config page.
+- `app/templates/user_management.html`: Admin user role/status management page.
+- `app/templates/index.html`: Present in repository, while `/` currently redirects to `/dashboard`.
 
-### 4. Rebate Form (`rebate_form.html`)
-- **Purpose**: Create/Edit Rebate initiatives
-- **Sections**:
-  - Rebate Information (Type, Vendor, Category)
-  - Rebate Details (Check number, Amount, Period dates)
-  - Facility Allocation
-  - File Attachments
-- **Features**:
-  - Rebate type selection (Volume, Performance, GPO, etc.)
-  - Payment method tracking
-  - Period date validation
-  - File upload for check copies
+## Frontend Behavior
 
-### 5. Cost Avoidance Form (`cost_avoidance_form.html`)
-- **Purpose**: Create/Edit Cost Avoidance initiatives
-- **Sections**:
-  - Initiative Information (Category, Type, Vendor)
-  - Avoidance Details (Projected vs Actual spend, Justification)
-  - Facility Allocation
-  - File Attachments
-- **Features**:
-  - Auto-calculation of avoidance amount
-  - Time period selection (Monthly, Quarterly, Annual, One-Time)
-  - Baseline/benchmark documentation
-  - Justification requirement
+### Dashboard (`app/templates/dashboard.html` + `app/static/js/dashboard.js`)
+- Loads initiatives from API and renders rows into `#initiativesTableBody`.
+- Supports column sorting, filter fields, text search, and pagination.
+- Opens detailed modal for view/edit actions.
+- Supports reviewer/admin actions (approve/reject/unapprove/revert) based on permissions.
+- Supports soft-delete/restore actions for eligible users.
 
-## CSS Files
+### Forms
+- `app/static/js/cost_savings_form.js`: Cost savings creation/edit, calculations, facility allocation validation, and submission.
+- `app/static/js/rebate_form.js`: Rebate creation/edit, validations, and submission.
+- `app/static/js/cost_avoidance_form.js`: Cost avoidance creation/edit, calculations, and submission.
 
-### `forms.css`
-- Form section styling with left border accent
-- Input group styling for currency fields
-- File upload list styling
-- Facility allocation styles
-- Loading overlay with spinner
-- Validation state styles (is-valid, is-invalid)
-- Responsive adjustments for mobile
+### Shared scripts
+- `app/static/js/contract_categories.js`: Contract category/source utility behavior.
+- `app/static/js/number-format.js`: Number/currency formatting helpers.
 
-## JavaScript Files
+### Shared styles
+- `app/static/css/forms.css`: Common form section styling, validation presentation, and responsive behavior.
 
-### `dashboard.js`
-- **Functions**:
-  - `loadInitiatives()` - Fetch initiatives from API
-  - `updateStatistics()` - Calculate and display totals
-  - `applyFilters()` - Filter grid data
-  - `viewInitiative()` - Show initiative details modal
-  - `editInitiative()` - Navigate to edit form
-  - `approveInitiative()` - Approve with confirmation
-  - `rejectInitiative()` - Show rejection modal
-  - `submitRejection()` - Submit rejection with comment
-- AG-Grid configuration with custom cell renderers
+## API Endpoints Used by Frontend
 
-### `cost_savings_form.js`
-- **Functions**:
-  - Auto-calculation of savings amount
-  - Facility allocation tracking and validation
-  - File upload with preview and removal
-  - Form submission to API
-  - Draft saving functionality
-  - Multi-file upload handling
-  - Form validation
+### Auth
+- `GET /api/auth/current-user`
+- `GET /api/auth/check`
 
-### `rebate_form.js`
-- Similar structure to cost_savings_form.js
-- Handles rebate-specific fields
-- Period date validation
-- Check number and payment method tracking
+### Initiatives and workflow
+- `GET /api/initiatives`
+- `GET /api/initiatives/{id}`
+- `DELETE /api/initiatives/{id}`
+- `POST /api/initiatives/{id}/restore`
+- `POST /api/initiatives/{id}/approve`
+- `POST /api/initiatives/{id}/reject`
+- `POST /api/initiatives/{id}/unapprove`
+- `POST /api/initiatives/{id}/revert`
+- `POST /api/initiatives/{id}/files`
+- `GET /api/initiatives/{id}/files/{file_id}/download`
+- `DELETE /api/initiatives/{id}/files/{file_id}`
+- `GET /api/initiatives/{id}/audit-log`
+- `GET /api/initiatives/dashboard-stats`
+- `GET /api/initiatives/statistics`
 
-### `cost_avoidance_form.js`
-- Similar structure to cost_savings_form.js
-- Auto-calculation of avoidance amount
-- Time period handling
-- Effective/end date validation
+### Initiative-type create/update
+- `POST /api/cost-savings`
+- `POST /api/cost-savings/{id}`
+- `POST /api/rebates`
+- `POST /api/rebates/{id}`
+- `POST /api/cost-avoidance`
+- `POST /api/cost-avoidance/{id}`
 
-## Design Improvements Over Old Version
+### Analytics
+- `GET /api/analytics/summary`
+- `GET /api/analytics/details`
+- `GET /api/analytics/facilities`
 
-1. **Modern UI Framework**: Bootstrap 5 instead of Bootstrap 3
-2. **Better Grid**: AG-Grid 30.0 with better performance
-3. **Responsive Design**: Mobile-first approach
-4. **Color Scheme**: Consistent Montefiore branding
-5. **Icons**: Font Awesome 6 for modern icons
-6. **Status Badges**: Visual status indicators
-7. **Loading States**: Loading overlay during API calls
-8. **File Management**: Better file upload UI with preview
-9. **Validation**: Real-time form validation with visual feedback
-10. **Modular JavaScript**: Separate JS files for each form
-11. **Accessibility**: Better semantic HTML and ARIA labels
-12. **Performance**: CDN resources, optimized loading
-
-## Color Palette
-
-- Primary Color: `#112B46` (Montefiore Dark Blue)
-- Secondary Color: `#00A8E1` (Montefiore Light Blue)
-- Success Color: `#28a745` (Green for savings)
-- Danger Color: `#dc3545` (Red for rejected)
-- Warning Color: `#ffc107` (Yellow for cost avoidance)
-- Light Background: `#f8f9fa`
-
-## API Integration
-
-All forms are connected to the REST API:
-- `GET /api/initiatives` - List initiatives
-- `POST /api/cost-savings` - Create cost savings
-- `POST /api/rebate` - Create rebate
-- `POST /api/cost-avoidance` - Create cost avoidance
-- `POST /api/initiatives/{id}/approve` - Approve initiative
-- `POST /api/initiatives/{id}/reject` - Reject initiative
-- `POST /api/initiatives/{id}/files` - Upload files
-
-## Next Steps
-
-1. **Replace Placeholder Logo**: Update `app/static/images/monte_logo.svg` with actual Montefiore logo
-2. **Test Forms**: Test all three forms with API endpoints
-3. **File Upload**: Implement server-side file upload handling
-4. **User Authentication**: Integrate with IIS Windows Authentication
-5. **Permissions**: Add role-based UI element showing/hiding
-6. **Export Feature**: Add export to Excel functionality
-7. **Audit Trail**: Add audit log viewing page
-8. **Reports**: Create reporting/analytics dashboard
+## Authentication and Authorization Notes
+- IIS Windows Authentication is used for sign-in identity.
+- Route and action-level authorization is enforced by role permissions.
+- Templates receive `template_current_user` via app context processor for role-aware navigation/actions.
