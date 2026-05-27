@@ -160,10 +160,17 @@ function renderTableRows(rows) {
         } else {
             // Normal row — view, edit, optional delete
             const canDel = cu.can_delete_all || (cu.can_delete_own && r.created_by_id === cu.id);
-            // Approved initiatives are read-only — only view is allowed
-            const editBtn = r.status !== 'Approved'
-                ? `<button class="btn btn-sm btn-outline-info"    onclick="editInitiative(${r.id})" title="Edit"><i class="fas fa-edit"></i></button>`
-                : `<button class="btn btn-sm btn-outline-secondary" onclick="viewInitiative(${r.id})" title="Approved — view only" disabled><i class="fas fa-lock"></i></button>`;
+            const roleName = (cu.role || '').toString().trim().toLowerCase();
+            const canEditByRole = roleName === 'admin' || roleName === 'reviewer' || !!cu.can_review || !!cu.can_approve;
+            const canEdit = canEditByRole || (r.created_by_id === cu.id);
+
+            // Approved initiatives are read-only — only view is allowed.
+            let editBtn = '';
+            if (r.status === 'Approved') {
+                editBtn = `<button class="btn btn-sm btn-outline-secondary" onclick="viewInitiative(${r.id})" title="Approved — view only" disabled><i class="fas fa-lock"></i></button>`;
+            } else if (canEdit) {
+                editBtn = `<button class="btn btn-sm btn-outline-info" onclick="editInitiative(${r.id})" title="Edit"><i class="fas fa-edit"></i></button>`;
+            }
             actionBtns = `
                 <button class="btn btn-sm btn-outline-primary" onclick="viewInitiative(${r.id})" title="View"><i class="fas fa-eye"></i></button>
                 ${editBtn}

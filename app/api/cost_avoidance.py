@@ -161,12 +161,12 @@ def update_cost_avoidance(initiative_id):
     if not initiative:
         return jsonify({'error': 'Cost Avoidance initiative not found'}), 404
     
-    # Check permissions
-    can_edit = False
-    if user.has_permission('edit_all'):
-        can_edit = True
-    elif user.has_permission('edit_own') and initiative.created_by_id == user.id:
-        can_edit = True
+    # Only creator, reviewer, or admin can edit existing initiatives.
+    role_name = (getattr(getattr(user, 'role', None), 'name', '') or '').strip().lower()
+    is_admin = role_name == 'admin'
+    is_reviewer = role_name == 'reviewer' or user.has_permission('review') or user.has_permission('approve')
+    is_creator = initiative.created_by_id == user.id
+    can_edit = is_creator or is_reviewer or is_admin
     
     if not can_edit:
         return jsonify({'error': 'Insufficient permissions to edit this initiative'}), 403
