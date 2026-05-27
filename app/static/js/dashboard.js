@@ -349,7 +349,6 @@ function updateStatisticsFromServer(stats) {
         if (Math.abs(v) >= 1_000)     return '$' + (v / 1_000).toFixed(2) + 'K';
         return '$' + Math.round(v).toLocaleString('en-US');
     };
-    document.getElementById('totalCount').textContent      = stats.total || 0;
     document.getElementById('savingsAmount').textContent   = abbrev(stats.savings);
     document.getElementById('rebateAmount').textContent    = abbrev(stats.rebate);
     document.getElementById('avoidanceAmount').textContent = abbrev(stats.avoidance);
