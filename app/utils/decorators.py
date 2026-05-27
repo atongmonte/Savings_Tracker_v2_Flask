@@ -32,7 +32,25 @@ def get_current_user():
         # Auto-create first-time login user with Read-Only role
         readonly_role = UserRole.query.filter_by(name='Read-Only').first()
         if not readonly_role:
-            return None  # DB not seeded yet
+            readonly_role = UserRole.query.filter_by(name='Read Only').first()
+        if not readonly_role:
+            readonly_role = UserRole.query.filter_by(name='Readonly').first()
+        if not readonly_role:
+            readonly_role = UserRole(
+                name='Read-Only',
+                description='Can only view summary information',
+                can_create=False,
+                can_edit_own=False,
+                can_edit_all=False,
+                can_delete_own=False,
+                can_delete_all=False,
+                can_review=False,
+                can_approve=False,
+                can_export=True,
+                can_manage_users=False,
+            )
+            db.session.add(readonly_role)
+            db.session.flush()
         user = User(
             username=username,
             full_name=username,

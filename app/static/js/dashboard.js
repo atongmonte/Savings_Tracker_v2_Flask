@@ -11,6 +11,11 @@ const _pageSize  = 20;
 // ── Stats year follows the bottom Initiative Year filter ────────────────
 let _statsYear = null;
 
+function isReadOnlyUser() {
+    const roleName = (window._currentUser?.role || '').toString().trim().toLowerCase();
+    return roleName === 'read-only' || roleName === 'read only' || roleName === 'readonly';
+}
+
 function syncStatsYearFromFilter() {
     const selectedYear = document.getElementById('filterYear')?.value || '';
     _statsYear = selectedYear ? parseInt(selectedYear, 10) : null;
@@ -149,9 +154,12 @@ function renderTableRows(rows) {
         const initDateFmt = initDateRaw ? new Date(initDateRaw + 'T00:00:00').getFullYear() : '';
         const updatedDate = r.updated_at ? new Date(r.updated_at).toLocaleString('en-US', {timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'}) : '';
         const cu          = window._currentUser || {};
+        const isReadOnly  = isReadOnlyUser();
 
         let actionBtns = '';
-        if (r.is_deleted) {
+        if (isReadOnly) {
+            actionBtns = '<span class="text-muted small">Summary only</span>';
+        } else if (r.is_deleted) {
             // Deleted row — admin can restore
             if (cu.can_delete_all) {
                 actionBtns = `<button class="btn btn-sm btn-outline-warning" onclick="restoreInitiative(${r.id})" title="Restore"><i class="fas fa-trash-restore"></i></button>`;
@@ -204,18 +212,23 @@ function renderTableRows(rows) {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Load current user permissions
+    // Load current user permissions before first table render.
     fetch('/api/auth/current-user')
         .then(r => r.json())
-        .then(u => { window._currentUser = u; })
-        .catch(() => { window._currentUser = {}; });
-
-    syncStatsYearFromFilter();
-    updateSortIcons();
-    loadInitiatives();
-
-    // Setup filter event listeners
-    setupFilters();
+        .then(u => {
+            window._currentUser = u || {};
+            syncStatsYearFromFilter();
+            updateSortIcons();
+            loadInitiatives();
+            setupFilters();
+        })
+        .catch(() => {
+            window._currentUser = {};
+            syncStatsYearFromFilter();
+            updateSortIcons();
+            loadInitiatives();
+            setupFilters();
+        });
 
     // Reset confirm view whenever action modal closes so it shows the form next time
     const actionModalEl = document.getElementById('actionModal');
@@ -363,11 +376,19 @@ function applyFilters() {
 
 // View initiative details (read-only modal)
 function viewInitiative(id) {
+    if (isReadOnlyUser()) {
+        showGlobalPopup('Read-only users can only view summary data. Use the email admin button to request role access.', 'info');
+        return;
+    }
     showInitiativeModal(id, false);
 }
 
 // Edit initiative (editable modal)
 function editInitiative(id) {
+    if (isReadOnlyUser()) {
+        showGlobalPopup('Read-only users cannot open detailed forms or edits. Use the email admin button to request role access.', 'info');
+        return;
+    }
     showInitiativeModal(id, true);
 }
 
@@ -437,6 +458,11 @@ function populateModalWaveCategorySelect(selectId, categories) {
 
 // Open the initiative modal (view or edit mode)
 function showInitiativeModal(id, editMode) {
+    if (isReadOnlyUser()) {
+        showGlobalPopup('Read-only users can only view summary data. Use the email admin button to request role access.', 'info');
+        return;
+    }
+
     Promise.all([
         fetch(`/api/initiatives/${id}`).then(response => response.json()),
         loadContractCategorySelect('mf_contract_category'),

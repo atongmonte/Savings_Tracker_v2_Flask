@@ -407,6 +407,7 @@
                 <!-- Nav links -->
                 {% set is_admin_user = template_current_user and (template_current_user.has_permission('manage_users') or (template_current_user.role and template_current_user.role.name == 'Admin')) %}
                 {% set is_finance_user = template_current_user and template_current_user.role and template_current_user.role.name == 'Finance' %}
+                {% set can_create_initiatives = template_current_user and template_current_user.has_permission('create') and not is_finance_user %}
                 <ul class="navbar-nav ms-4 me-auto">
                     {% if not is_finance_user %}
                     <li class="nav-item">
@@ -419,6 +420,7 @@
                             <i class="fas fa-chart-bar me-1"></i>Analytics
                         </a> #}
                     </li>
+                    {% if can_create_initiatives %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
                            data-bs-toggle="dropdown" aria-expanded="false">
@@ -442,6 +444,7 @@
                             </li>
                         </ul>
                     </li>
+                    {% endif %}
                     {% endif %}
                     {% if is_admin_user or is_finance_user %}
                     <li class="nav-item">
@@ -475,6 +478,13 @@
 
                 <!-- Right: user + logout -->
                 <ul class="navbar-nav align-items-center gap-3">
+                    {% if template_is_readonly_user and template_role_request_mailto %}
+                    <li class="nav-item">
+                        <a class="btn-logout" href="{{ template_role_request_mailto }}" title="Request role update">
+                            <i class="fas fa-envelope me-1"></i>Request Access
+                        </a>
+                    </li>
+                    {% endif %}
                     <li class="nav-item">
                         <span class="navbar-user">
                             <i class="fas fa-user-circle me-1" style="color:rgba(255,255,255,.5);"></i>
@@ -533,7 +543,7 @@
                         <li><a href="{{ url_for('main.rebate_extraction') }}"><i class="fas fa-file-export fa-fw me-1"></i>Rebate Extraction</a></li>
                         {% endif %}
                         {# <li><a href="{{ url_for('main.savings_dashboard') }}"><i class="fas fa-chart-bar fa-fw me-1"></i>Analytics</a></li> #}
-                        {% if not is_finance_user %}
+                        {% if can_create_initiatives %}
                         <li><a href="{{ url_for('main.cost_savings_form') }}"><i class="fas fa-piggy-bank fa-fw me-1"></i>Cost Savings Form</a></li>
                         <li><a href="{{ url_for('main.rebate_form') }}"><i class="fas fa-receipt fa-fw me-1"></i>Rebate Form</a></li>
                         {% endif %}

@@ -5,6 +5,7 @@ import io
 import os
 import zipfile
 from datetime import datetime
+from urllib.parse import quote
 
 from flask import Blueprint, current_app, flash, g, send_file, send_from_directory, render_template, redirect, request, url_for
 from openpyxl import Workbook
@@ -45,7 +46,11 @@ def inject_template_user():
             user = get_current_user()
         except Exception:
             user = None
-    return {'template_current_user': user}
+    return {
+        'template_current_user': user,
+        'template_is_readonly_user': _is_read_only_user(user),
+        'template_role_request_mailto': _build_role_request_mailto(user),
+    }
 
 
 @main_bp.before_request
@@ -116,6 +121,52 @@ def _get_template_current_user_name():
     if not user:
         return None
     return user.full_name or user.username
+
+
+def _normalize_role_name(user):
+    """Return current user role as lowercase normalized text."""
+    return (getattr(getattr(user, 'role', None), 'name', '') or '').strip().lower()
+
+
+def _is_read_only_user(user):
+    """Return True when the current user has a read-only role."""
+    return _normalize_role_name(user) in {'read-only', 'read only', 'readonly'}
+
+
+def _get_role_update_admin_email():
+    """Return the mailbox users should contact for role updates."""
+    return (
+        current_app.config.get('REVIEW_NOTIFICATION_TO')
+        or current_app.config.get('PROCUREMENT_DATA_TEAM_EMAIL')
+        or current_app.config.get('FROM_EMAIL')
+        or 'procurementdatateam@montefiore.org'
+    )
+
+
+def _get_role_update_cc_email():
+    """Return the fixed CC mailbox for role update requests."""
+    return (
+        current_app.config.get('PROCUREMENT_DATA_TEAM_EMAIL')
+        or current_app.config.get('FROM_EMAIL')
+        or 'procurementdatateam@montefiore.org'
+    )
+
+
+def _build_role_request_mailto(user):
+    """Build a prefilled mailto link to request role access changes."""
+    to_email = _get_role_update_admin_email()
+    cc_email = _get_role_update_cc_email()
+    username = getattr(user, 'username', None) or 'unknown-user'
+    full_name = getattr(user, 'full_name', None) or username
+    subject = quote('Savings Tracker Role Update Request')
+    body = quote(
+        f"Hello Admin,\r\n\r\n"
+        f"Please update my Savings Tracker role.\r\n"
+        f"User: {full_name} ({username})\r\n\r\n"
+        f"Requested role:\r\n"
+    )
+    cc = quote(cc_email)
+    return f'mailto:{to_email}?cc={cc}&subject={subject}&body={body}'
 
 
 def _get_allocation_numeric_value(allocation, rebate_amount=0):
@@ -383,26 +434,45 @@ def index():
 
 
 @main_bp.route('/dashboard')
+@login_required
 def dashboard():
     """Serve the dashboard page."""
-    return render_template('dashboard.html', current_user=_get_template_current_user_name())
+    user = g.current_user
+    return render_template(
+        'dashboard.html',
+        current_user=_get_template_current_user_name(),
+        is_readonly_user=_is_read_only_user(user),
+        role_request_mailto=_build_role_request_mailto(user),
+    )
 
 
 @main_bp.route('/savings-dashboard')
+@login_required
 def savings_dashboard():
     """Serve the savings analytics dashboard (reviewer / admin)."""
+    if _is_read_only_user(g.current_user):
+        flash('Read-only users can access summary information only.', 'warning')
+        return redirect(url_for('main.dashboard'))
     return render_template('savings_dashboard.html', current_user=_get_template_current_user_name())
 
 
 @main_bp.route('/cost-savings/form')
+@login_required
 def cost_savings_form():
     """Serve the cost savings form page."""
+    if _is_read_only_user(g.current_user):
+        flash('Read-only users cannot access detailed forms. Use the role request email button to request access.', 'warning')
+        return redirect(url_for('main.dashboard'))
     return render_template('cost_savings_form.html', current_user=_get_template_current_user_name())
 
 
 @main_bp.route('/rebate/form')
+@login_required
 def rebate_form():
     """Serve the rebate form page."""
+    if _is_read_only_user(g.current_user):
+        flash('Read-only users cannot access detailed forms. Use the role request email button to request access.', 'warning')
+        return redirect(url_for('main.dashboard'))
     return render_template('rebate_form.html', current_user=_get_template_current_user_name())
 
 
@@ -513,8 +583,12 @@ def rebate_extraction_export():
 
 
 @main_bp.route('/cost-avoidance/form')
+@login_required
 def cost_avoidance_form():
     """Serve the cost avoidance form page."""
+    if _is_read_only_user(g.current_user):
+        flash('Read-only users cannot access detailed forms. Use the role request email button to request access.', 'warning')
+        return redirect(url_for('main.dashboard'))
     return render_template('cost_avoidance_form.html', current_user=_get_template_current_user_name())
 
 
