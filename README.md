@@ -113,7 +113,7 @@ python init_db.py
 
 This will create:
 - All database tables with proper relationships and indexes
-- Default user roles (Admin, Reviewer, User, Read-Only)
+- Default user roles (Admin, Finance, Reviewer, User, Read-Only)
 - Facility records (MMC, BURKE, AECOM, etc.)
 
 ### 5. Run Development Server

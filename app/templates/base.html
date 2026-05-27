@@ -405,7 +405,10 @@
 
             <div class="collapse navbar-collapse" id="navbarNav">
                 <!-- Nav links -->
+                {% set is_admin_user = template_current_user and (template_current_user.has_permission('manage_users') or (template_current_user.role and template_current_user.role.name == 'Admin')) %}
+                {% set is_finance_user = template_current_user and template_current_user.role and template_current_user.role.name == 'Finance' %}
                 <ul class="navbar-nav ms-4 me-auto">
+                    {% if not is_finance_user %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.dashboard') }}">
                             <i class="fas fa-table-columns me-1"></i>Dashboard
@@ -439,18 +442,21 @@
                             </li>
                         </ul>
                     </li>
-                    {% if template_current_user and (template_current_user.has_permission('manage_users') or (template_current_user.role and template_current_user.role.name == 'Admin')) %}
+                    {% endif %}
+                    {% if is_admin_user or is_finance_user %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.rebate_extraction') }}">
+                            <i class="fas fa-file-export me-1"></i>Rebate Extraction
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if is_admin_user %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="adminNavbarDropdown" role="button"
                            data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-user-shield me-1"></i>Admin
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="adminNavbarDropdown">
-                            <li>
-                                <a class="dropdown-item" href="{{ url_for('main.rebate_extraction') }}">
-                                    <i class="fas fa-file-export me-2" style="color:var(--monte-teal);"></i>Rebate Extraction
-                                </a>
-                            </li>
                             <li>
                                 <a class="dropdown-item" href="{{ url_for('main.email_notifications_admin') }}">
                                     <i class="fas fa-envelope me-2" style="color:var(--monte-blue);"></i>Email Notifications
@@ -520,13 +526,17 @@
                 <div class="col-md-3 mb-3">
                     <div class="fw-600 mb-2" style="color:rgba(255,255,255,.5); font-size:0.72rem; text-transform:uppercase; letter-spacing:.08em;">Quick Links</div>
                     <ul class="list-unstyled mb-0" style="line-height:2;">
+                        {% if not is_finance_user %}
                         <li><a href="{{ url_for('main.dashboard') }}"><i class="fas fa-table-columns fa-fw me-1"></i>Dashboard</a></li>
-                        {% if template_current_user and (template_current_user.has_permission('manage_users') or (template_current_user.role and template_current_user.role.name == 'Admin')) %}
+                        {% endif %}
+                        {% if is_admin_user or is_finance_user %}
                         <li><a href="{{ url_for('main.rebate_extraction') }}"><i class="fas fa-file-export fa-fw me-1"></i>Rebate Extraction</a></li>
                         {% endif %}
                         {# <li><a href="{{ url_for('main.savings_dashboard') }}"><i class="fas fa-chart-bar fa-fw me-1"></i>Analytics</a></li> #}
+                        {% if not is_finance_user %}
                         <li><a href="{{ url_for('main.cost_savings_form') }}"><i class="fas fa-piggy-bank fa-fw me-1"></i>Cost Savings Form</a></li>
                         <li><a href="{{ url_for('main.rebate_form') }}"><i class="fas fa-receipt fa-fw me-1"></i>Rebate Form</a></li>
+                        {% endif %}
                     </ul>
                 </div>
                 <div class="col-md-4 mb-3">

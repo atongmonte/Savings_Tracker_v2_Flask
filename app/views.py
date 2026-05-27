@@ -27,6 +27,14 @@ from app.utils.timezone import now_eastern
 
 main_bp = Blueprint('main', __name__)
 
+_FINANCE_ALLOWED_ENDPOINTS = {
+    'main.rebate_extraction',
+    'main.rebate_extraction_export',
+    'main.logout',
+    'main.send_static',
+    'static',
+}
+
 
 @main_bp.app_context_processor
 def inject_template_user():
@@ -38,6 +46,24 @@ def inject_template_user():
         except Exception:
             user = None
     return {'template_current_user': user}
+
+
+@main_bp.before_request
+def enforce_finance_page_access():
+    """Finance users can only access rebate extraction pages."""
+    user = get_current_user()
+    if not user:
+        return None
+
+    g.current_user = user
+    if not _is_finance_user(user):
+        return None
+
+    endpoint = request.endpoint
+    if endpoint in _FINANCE_ALLOWED_ENDPOINTS:
+        return None
+
+    return redirect(url_for('main.rebate_extraction'))
 
 
 _REBATE_ALLOC_COLUMNS = [
@@ -385,8 +411,8 @@ def rebate_form():
 def rebate_extraction():
     """Display all rebate initiatives with their detailed facility allocations."""
     user = g.current_user
-    if not _is_admin_user(user):
-        flash('Admin access is required for rebate extraction.', 'error')
+    if not (_is_admin_user(user) or _is_finance_user(user)):
+        flash('Admin or Finance access is required for rebate extraction.', 'error')
         return redirect(url_for('main.dashboard'))
 
     start_date_raw = (request.args.get('start_date') or '').strip()
@@ -415,8 +441,8 @@ def rebate_extraction():
 def rebate_extraction_export():
     """Export rebate extraction results as a ZIP containing an Excel workbook and attachments."""
     user = g.current_user
-    if not _is_admin_user(user):
-        flash('Admin access is required for rebate extraction export.', 'error')
+    if not (_is_admin_user(user) or _is_finance_user(user)):
+        flash('Admin or Finance access is required for rebate extraction export.', 'error')
         return redirect(url_for('main.dashboard'))
 
     start_date = _parse_filter_date((request.args.get('start_date') or '').strip())
@@ -500,6 +526,13 @@ def _is_admin_user(user):
         user.has_permission('manage_users'),
         getattr(getattr(user, 'role', None), 'name', '') == 'Admin',
     ])
+
+
+def _is_finance_user(user):
+    """Return True when the current user has the Finance role."""
+    if not user:
+        return False
+    return getattr(getattr(user, 'role', None), 'name', '') == 'Finance'
 
 
 def _can_access_email_testing(user):

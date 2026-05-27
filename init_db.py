@@ -69,6 +69,19 @@ def init_database():
                 'can_approve': False,
                 'can_export': True,
                 'can_manage_users': False
+            },
+            {
+                'name': 'Finance',
+                'description': 'Finance users with access to rebate extraction only',
+                'can_create': False,
+                'can_edit_own': False,
+                'can_edit_all': False,
+                'can_delete_own': False,
+                'can_delete_all': False,
+                'can_review': False,
+                'can_approve': False,
+                'can_export': True,
+                'can_manage_users': False
             }
         ]
         
