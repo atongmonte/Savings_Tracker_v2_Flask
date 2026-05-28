@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Distribution Procedure – Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .proc-card {
+        max-width: 860px;
+    }
+    #logContainer {
+        background: #0B1E31;
+        color: #d4e6f8;
+        font-family: 'Consolas', 'Courier New', monospace;
+        font-size: 0.82rem;
+        line-height: 1.6;
+        border-radius: 5px;
+        padding: 1rem 1.25rem;
+        min-height: 220px;
+        max-height: 460px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+    #logContainer .log-ts {
+        color: rgba(255,255,255,.38);
+        user-select: none;
+        margin-right: 0.6rem;
+    }
+    #logContainer .log-err  { color: #f48989; }
+    #logContainer .log-ok   { color: #6edfa0; }
+    #logContainer .log-info { color: #d4e6f8; }
+    #logContainer .log-wait { color: #ffc96b; }
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+    }
+    .pill-idle    { background:#E8EEF5; color:#334155; }
+    .pill-starting{ background:#EFF5FC; color:#004D80; }
+    .pill-waiting { background:#FEF9EE; color:#7A4A06; }
+    .pill-running { background:#EFF5FC; color:#004D80; }
+    .pill-success { background:#F0FBF5; color:#0E4D2D; }
+    .pill-failed  { background:#FDF3F2; color:#7B2218; }
+    .history-table td, .history-table th { font-size: 0.82rem; }
+    .spinner-sm { width:1rem; height:1rem; }
+    #btnRun.disabled-look {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+    #btnRun .btn-spinner { display: none; }
+    #btnRun.is-busy .btn-spinner { display: inline-block; }
+    #btnRun.is-busy .btn-icon    { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="proc-card mx-auto">
+
+        <!-- Page header -->
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div>
+                <h2 class="mb-1" style="font-size:1.45rem;">
+                    <i class="fas fa-database me-2" style="color:var(--monte-blue);"></i>Daily Distribution Procedure
+                </h2>
+                <p class="text-muted mb-0" style="font-size:0.875rem;">
+                    Manually trigger
+                    <code>[dbo].[SAVINGS_TRACKER_DAILY_DISTRIBUTION_PROCEDURE]</code>.
+                    The job acquires an exclusive application lock before executing, so any
+                    concurrent database activity is allowed to complete first.
+                </p>
+            </div>
+        </div>
+
+        <!-- Run card -->
+        <div class="card mb-4">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span><i class="fas fa-play-circle me-2"></i>Execute Procedure</span>
+                <span id="statusPill" class="status-pill pill-idle">
+                    <i class="fas fa-circle-dot"></i> Idle
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <button id="btnRun" class="btn btn-primary" onclick="startJob()">
+                        <span class="btn-icon"><i class="fas fa-bolt me-1"></i>Run Now</span>
+                        <span class="btn-spinner spinner-border spinner-sm me-1" role="status" aria-hidden="true"></span>
+                        <span class="btn-spinner">Running…</span>
+                    </button>
+                    <button id="btnClear" class="btn btn-outline-secondary" onclick="clearLog()" style="display:none;">
+                        <i class="fas fa-eraser me-1"></i>Clear Log
+                    </button>
+                </div>
+
+                <!-- Live log -->
+                <div id="logContainer"><span class="log-ts">[--:--:--]</span><span class="log-info"> Log output will appear here once the job starts.</span></div>
+                <div class="mt-2 text-muted" style="font-size:0.78rem;" id="jobMeta"></div>
+            </div>
+        </div>
+
+        <!-- History card -->
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span><i class="fas fa-clock-rotate-left me-2"></i>Recent Runs</span>
+                <button class="btn btn-sm btn-light" onclick="loadHistory()">
+                    <i class="fas fa-rotate-right me-1"></i>Refresh
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 history-table">
+                        <thead>
+                            <tr>
+                                <th>Started</th>
+                                <th>Started By</th>
+                                <th>Status</th>
+                                <th>Duration</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyBody">
+                            <tr><td colspan="5" class="text-center text-muted py-3">Loading history…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /.proc-card -->
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+
+    /* ------------------------------------------------------------------ */
+    /* State                                                                */
+    /* ------------------------------------------------------------------ */
+    let _currentJobId = null;
+    let _pollTimer    = null;
+    let _seenLogCount = 0;
+
+    /* ------------------------------------------------------------------ */
+    /* Helpers                                                              */
+    /* ------------------------------------------------------------------ */
+    function fmtDatetime(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        return d.toLocaleString('en-US', { month: 'short', day: '2-digit',
+            year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function fmtDuration(startIso, endIso) {
+        if (!startIso || !endIso) return '—';
+        const secs = Math.round((new Date(endIso) - new Date(startIso)) / 1000);
+        if (secs < 60) return secs + 's';
+        return Math.floor(secs / 60) + 'm ' + (secs % 60) + 's';
+    }
+
+    function statusPillHtml(status) {
+        const map = {
+            idle:     ['pill-idle',    'fas fa-circle-dot',     'Idle'],
+            starting: ['pill-starting','fas fa-spinner fa-spin','Starting'],
+            waiting:  ['pill-waiting', 'fas fa-hourglass-half', 'Waiting for Lock'],
+            running:  ['pill-running', 'fas fa-spinner fa-spin','Running'],
+            success:  ['pill-success', 'fas fa-circle-check',  'Success'],
+            failed:   ['pill-failed',  'fas fa-circle-xmark',  'Failed'],
+        };
+        const [cls, icon, label] = map[status] || map.idle;
+        return `<i class="${icon}"></i> ${label}`;
+    }
+
+    function logClass(msg) {
+        const m = msg.toLowerCase();
+        if (m.includes('error') || m.includes('fail') || m.includes('could not'))
+            return 'log-err';
+        if (m.includes('success') || m.includes('complet') || m.includes('granted'))
+            return 'log-ok';
+        if (m.includes('wait') || m.includes('acquir'))
+            return 'log-wait';
+        return 'log-info';
+    }
+
+    function appendLog(entries) {
+        const box = document.getElementById('logContainer');
+        entries.forEach(e => {
+            const line = document.createElement('div');
+            const cls  = logClass(e.message);
+            line.innerHTML =
+                `<span class="log-ts">[${e.time}]</span>` +
+                `<span class="${cls}"> ${escHtml(e.message)}</span>`;
+            box.appendChild(line);
+        });
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function escHtml(s) {
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function setStatusPill(status) {
+        const pill = document.getElementById('statusPill');
+        pill.className = 'status-pill pill-' + status;
+        pill.innerHTML = statusPillHtml(status);
+    }
+
+    function setBusy(busy) {
+        const btn = document.getElementById('btnRun');
+        if (busy) {
+            btn.classList.add('is-busy', 'disabled-look');
+        } else {
+            btn.classList.remove('is-busy', 'disabled-look');
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Start a job                                                          */
+    /* ------------------------------------------------------------------ */
+    window.startJob = function () {
+        setBusy(true);
+        setStatusPill('starting');
+        _seenLogCount = 0;
+        document.getElementById('logContainer').innerHTML = '';
+        document.getElementById('jobMeta').textContent = '';
+        document.getElementById('btnClear').style.display = 'none';
+
+        fetch('/api/admin/distribution/run', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    if (data.job_id) {
+                        // Another job is running – attach to it
+                        _currentJobId = data.job_id;
+                        appendLog([{ time: '--:--:--', message: 'Another job is already running. Attaching to it…' }]);
+                        startPolling();
+                    } else {
+                        appendLog([{ time: '--:--:--', message: 'Error: ' + data.error }]);
+                        setStatusPill('failed');
+                        setBusy(false);
+                        document.getElementById('btnClear').style.display = 'inline-block';
+                    }
+                    return;
+                }
+                _currentJobId = data.job_id;
+                startPolling();
+            })
+            .catch(err => {
+                appendLog([{ time: '--:--:--', message: 'Network error: ' + err }]);
+                setStatusPill('failed');
+                setBusy(false);
+                document.getElementById('btnClear').style.display = 'inline-block';
+            });
+    };
+
+    /* ------------------------------------------------------------------ */
+    /* Polling                                                              */
+    /* ------------------------------------------------------------------ */
+    function startPolling() {
+        stopPolling();
+        poll();
+        _pollTimer = setInterval(poll, 2000);
+    }
+
+    function stopPolling() {
+        if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+    }
+
+    function poll() {
+        if (!_currentJobId) return;
+        fetch('/api/admin/distribution/status/' + _currentJobId)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    stopPolling();
+                    setBusy(false);
+                    return;
+                }
+                // Append only new log lines
+                const newLines = (data.logs || []).slice(_seenLogCount);
+                if (newLines.length) {
+                    appendLog(newLines);
+                    _seenLogCount += newLines.length;
+                }
+                setStatusPill(data.status);
+
+                const terminal = ['success', 'failed'];
+                if (terminal.includes(data.status)) {
+                    stopPolling();
+                    setBusy(false);
+                    document.getElementById('btnClear').style.display = 'inline-block';
+                    if (data.started_at && data.ended_at) {
+                        document.getElementById('jobMeta').textContent =
+                            `Job started ${fmtDatetime(data.started_at)} · Duration ${fmtDuration(data.started_at, data.ended_at)} · Run by ${data.started_by}`;
+                    }
+                    loadHistory();
+                }
+            })
+            .catch(() => { /* transient network error – keep polling */ });
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Clear log                                                            */
+    /* ------------------------------------------------------------------ */
+    window.clearLog = function () {
+        _currentJobId  = null;
+        _seenLogCount  = 0;
+        document.getElementById('logContainer').innerHTML =
+            '<span class="log-ts">[--:--:--]</span><span class="log-info"> Log cleared.</span>';
+        document.getElementById('jobMeta').textContent = '';
+        setStatusPill('idle');
+        document.getElementById('btnClear').style.display = 'none';
+    };
+
+    /* ------------------------------------------------------------------ */
+    /* History table                                                        */
+    /* ------------------------------------------------------------------ */
+    window.loadHistory = function () {
+        fetch('/api/admin/distribution/jobs')
+            .then(r => r.json())
+            .then(jobs => {
+                const tbody = document.getElementById('historyBody');
+                if (!jobs.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No runs recorded this session.</td></tr>';
+                    return;
+                }
+                const statusBadge = {
+                    starting: '<span class="badge bg-info text-white">Starting</span>',
+                    waiting:  '<span class="badge" style="background:#FEF9EE;color:#7A4A06;border:1px solid #D4820A;">Waiting</span>',
+                    running:  '<span class="badge" style="background:#EFF5FC;color:#004D80;border:1px solid #0072BC;">Running</span>',
+                    success:  '<span class="badge" style="background:#F0FBF5;color:#0E4D2D;border:1px solid #1A7A4A;">Success</span>',
+                    failed:   '<span class="badge" style="background:#FDF3F2;color:#7B2218;border:1px solid #C0392B;">Failed</span>',
+                };
+                tbody.innerHTML = jobs.map(j => `
+                    <tr>
+                        <td>${fmtDatetime(j.started_at)}</td>
+                        <td>${escHtml(j.started_by || '—')}</td>
+                        <td>${statusBadge[j.status] || escHtml(j.status)}</td>
+                        <td>${fmtDuration(j.started_at, j.ended_at)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-secondary py-0"
+                                onclick="viewJobLog('${escHtml(j.job_id)}', this)">
+                                <i class="fas fa-align-left me-1"></i>View Log
+                            </button>
+                        </td>
+                    </tr>`).join('');
+            })
+            .catch(() => {});
+    };
+
+    window.viewJobLog = function (jobId, btn) {
+        fetch('/api/admin/distribution/status/' + jobId)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) return;
+                _currentJobId = jobId;
+                _seenLogCount = 0;
+                document.getElementById('logContainer').innerHTML = '';
+                document.getElementById('jobMeta').textContent = '';
+                appendLog(data.logs || []);
+                _seenLogCount = (data.logs || []).length;
+                setStatusPill(data.status);
+                document.getElementById('btnClear').style.display = 'inline-block';
+                if (data.started_at && data.ended_at) {
+                    document.getElementById('jobMeta').textContent =
+                        `Job started ${fmtDatetime(data.started_at)} · Duration ${fmtDuration(data.started_at, data.ended_at)} · Run by ${data.started_by}`;
+                }
+                document.getElementById('logContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            })
+            .catch(() => {});
+    };
+
+    /* ------------------------------------------------------------------ */
+    /* Init                                                                 */
+    /* ------------------------------------------------------------------ */
+    document.addEventListener('DOMContentLoaded', loadHistory);
+})();
+</script>
+{% endblock %}
