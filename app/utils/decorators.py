@@ -11,7 +11,8 @@ def get_current_user():
     """
     Get current user from IIS Windows Authentication.
     IIS passes the authenticated username via REMOTE_USER or AUTH_USER.
-    First-time users are automatically assigned the Read-Only role.
+    In development, first-time users are automatically assigned the Admin role.
+    In all other environments, first-time users are assigned the Read-Only role.
     """
     from app.models import UserRole
 
@@ -29,33 +30,57 @@ def get_current_user():
 
     user = User.query.filter_by(username=username).first()
     if not user:
-        # Auto-create first-time login user with Read-Only role
-        readonly_role = UserRole.query.filter_by(name='Read-Only').first()
-        if not readonly_role:
-            readonly_role = UserRole.query.filter_by(name='Read Only').first()
-        if not readonly_role:
-            readonly_role = UserRole.query.filter_by(name='Readonly').first()
-        if not readonly_role:
-            readonly_role = UserRole(
-                name='Read-Only',
-                description='Can only view summary information',
-                can_create=False,
-                can_edit_own=False,
-                can_edit_all=False,
-                can_delete_own=False,
-                can_delete_all=False,
-                can_review=False,
-                can_approve=False,
-                can_export=True,
-                can_manage_users=False,
-            )
-            db.session.add(readonly_role)
-            db.session.flush()
+        from flask import current_app
+        dev_auto_admin = current_app.config.get('DEV_AUTO_ADMIN', False)
+
+        if dev_auto_admin:
+            # Development: auto-assign Admin role
+            assigned_role = UserRole.query.filter_by(name='Admin').first()
+            if not assigned_role:
+                assigned_role = UserRole(
+                    name='Admin',
+                    description='System administrator with full access',
+                    can_create=True,
+                    can_edit_own=True,
+                    can_edit_all=True,
+                    can_delete_own=True,
+                    can_delete_all=True,
+                    can_review=True,
+                    can_approve=True,
+                    can_export=True,
+                    can_manage_users=True,
+                )
+                db.session.add(assigned_role)
+                db.session.flush()
+        else:
+            # All other environments: auto-assign Read-Only role
+            assigned_role = UserRole.query.filter_by(name='Read-Only').first()
+            if not assigned_role:
+                assigned_role = UserRole.query.filter_by(name='Read Only').first()
+            if not assigned_role:
+                assigned_role = UserRole.query.filter_by(name='Readonly').first()
+            if not assigned_role:
+                assigned_role = UserRole(
+                    name='Read-Only',
+                    description='Can only view summary information',
+                    can_create=False,
+                    can_edit_own=False,
+                    can_edit_all=False,
+                    can_delete_own=False,
+                    can_delete_all=False,
+                    can_review=False,
+                    can_approve=False,
+                    can_export=True,
+                    can_manage_users=False,
+                )
+                db.session.add(assigned_role)
+                db.session.flush()
+
         user = User(
             username=username,
             full_name=username,
             email='',
-            role_id=readonly_role.id,
+            role_id=assigned_role.id,
             is_active=True,
         )
         db.session.add(user)

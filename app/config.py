@@ -98,6 +98,9 @@ class DevelopmentConfig(Config):
         Config.DB_USER,
         Config.DB_PASSWORD,
     )
+    # IIS Windows Authentication is active in development; auto-assign Admin to all logins.
+    DEV_AUTO_ADMIN = True
+    FILE_STORAGE_PATH = os.getenv('FILE_STORAGE_PATH_TESTDEV', os.getenv('FILE_STORAGE_PATH', ''))
     # In development, recipients can still be redirected, but sender and CC stay fixed.
     REVIEW_NOTIFICATION_TO = os.getenv('REVIEW_NOTIFICATION_TO', Config.PROCUREMENT_DATA_TEAM_EMAIL)
 
@@ -114,6 +117,7 @@ class TestingConfig(Config):
         Config.DB_USER,
         Config.DB_PASSWORD,
     )
+    FILE_STORAGE_PATH = os.getenv('FILE_STORAGE_PATH_TESTDEV', os.getenv('FILE_STORAGE_PATH', ''))
 
 
 class ProductionConfig(Config):
