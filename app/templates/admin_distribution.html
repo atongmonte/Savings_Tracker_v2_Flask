@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Distribution Procedure – Admin{% endblock %}
+{% block title %}PowerBI Dashboard Backend Force Refresh – Admin{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -56,6 +56,52 @@
     #btnRun .btn-spinner { display: none; }
     #btnRun.is-busy .btn-spinner { display: inline-block; }
     #btnRun.is-busy .btn-icon    { display: none; }
+
+    /* Log popup modal */
+    #logModal .modal-content {
+        border: none;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    #logModal .modal-header {
+        background: #0B1E31;
+        border-bottom: 1px solid rgba(255,255,255,.12);
+        color: #d4e6f8;
+        padding: 0.75rem 1.25rem;
+    }
+    #logModal .modal-header .btn-close {
+        filter: invert(1) grayscale(1) brightness(1.6);
+    }
+    #logModal .modal-meta {
+        background: #0d2136;
+        color: rgba(212,230,248,.65);
+        font-size: 0.76rem;
+        padding: 0.4rem 1.25rem;
+        border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    #modalLogContainer {
+        background: #0B1E31;
+        color: #d4e6f8;
+        font-family: 'Consolas', 'Courier New', monospace;
+        font-size: 0.82rem;
+        line-height: 1.6;
+        padding: 1rem 1.25rem;
+        min-height: 260px;
+        max-height: 520px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+    #modalLogContainer .log-ts   { color: rgba(255,255,255,.38); user-select:none; margin-right:0.6rem; }
+    #modalLogContainer .log-err  { color: #f48989; }
+    #modalLogContainer .log-ok   { color: #6edfa0; }
+    #modalLogContainer .log-info { color: #d4e6f8; }
+    #modalLogContainer .log-wait { color: #ffc96b; }
+    #logModal .modal-footer {
+        background: #0d2136;
+        border-top: 1px solid rgba(255,255,255,.07);
+        padding: 0.5rem 1.25rem;
+    }
 </style>
 {% endblock %}
 
@@ -67,7 +113,7 @@
         <div class="d-flex align-items-center justify-content-between mb-3">
             <div>
                 <h2 class="mb-1" style="font-size:1.45rem;">
-                    <i class="fas fa-database me-2" style="color:var(--monte-blue);"></i>Daily Distribution Procedure
+                    <i class="fas fa-database me-2" style="color:var(--monte-blue);"></i>PowerBI Dashboard Backend Force Refresh
                 </h2>
                 <p class="text-muted mb-0" style="font-size:0.875rem;">
                     Manually trigger
@@ -133,6 +179,28 @@
         </div>
 
     </div><!-- /.proc-card -->
+</div>
+
+<!-- ============================================================ -->
+<!-- History Log Modal                                            -->
+<!-- ============================================================ -->
+<div class="modal fade" id="logModal" tabindex="-1" aria-labelledby="logModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title mb-0" id="logModalLabel">
+                    <i class="fas fa-terminal me-2"></i>Job Log
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-meta" id="logModalMeta">—</div>
+            <div id="modalLogContainer" class="modal-body p-0"><span class="log-info">Loading…</span></div>
+            <div class="modal-footer">
+                <span id="logModalStatus" class="status-pill pill-idle me-auto" style="font-size:0.75rem;"></span>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -346,7 +414,7 @@
                         <td>${fmtDuration(j.started_at, j.ended_at)}</td>
                         <td>
                             <button class="btn btn-sm btn-outline-secondary py-0"
-                                onclick="viewJobLog('${escHtml(j.job_id)}', this)">
+                                onclick="viewJobLog(${j.id}, this)">
                                 <i class="fas fa-align-left me-1"></i>View Log
                             </button>
                         </td>
@@ -355,26 +423,64 @@
             .catch(() => {});
     };
 
-    window.viewJobLog = function (jobId, btn) {
-        fetch('/api/admin/distribution/status/' + jobId)
+    window.viewJobLog = function (dbRowId, btn) {
+        // Reset modal content before opening
+        const modalLog  = document.getElementById('modalLogContainer');
+        const modalMeta = document.getElementById('logModalMeta');
+        const modalPill = document.getElementById('logModalStatus');
+        modalLog.innerHTML  = '<span class="log-info">Loading…</span>';
+        modalMeta.textContent = '—';
+        modalPill.className   = 'status-pill pill-idle me-auto';
+        modalPill.innerHTML   = '';
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('logModal')).show();
+
+        fetch('/api/admin/distribution/jobs/' + dbRowId)
             .then(r => r.json())
             .then(data => {
-                if (data.error) return;
-                _currentJobId = jobId;
-                _seenLogCount = 0;
-                document.getElementById('logContainer').innerHTML = '';
-                document.getElementById('jobMeta').textContent = '';
-                appendLog(data.logs || []);
-                _seenLogCount = (data.logs || []).length;
-                setStatusPill(data.status);
-                document.getElementById('btnClear').style.display = 'inline-block';
-                if (data.started_at && data.ended_at) {
-                    document.getElementById('jobMeta').textContent =
-                        `Job started ${fmtDatetime(data.started_at)} · Duration ${fmtDuration(data.started_at, data.ended_at)} · Run by ${data.started_by}`;
+                if (data.error) {
+                    modalLog.innerHTML = `<span class="log-err">Error: ${escHtml(data.error)}</span>`;
+                    return;
                 }
-                document.getElementById('logContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                // Render log lines
+                modalLog.innerHTML = '';
+                (data.logs || []).forEach(e => {
+                    const line = document.createElement('div');
+                    const cls  = logClass(e.message);
+                    line.innerHTML =
+                        `<span class="log-ts">[${e.time}]</span>` +
+                        `<span class="${cls}"> ${escHtml(e.message)}</span>`;
+                    modalLog.appendChild(line);
+                });
+                if (!data.logs || !data.logs.length) {
+                    modalLog.innerHTML = '<span class="log-info">No log entries recorded.</span>';
+                }
+                modalLog.scrollTop = modalLog.scrollHeight;
+
+                // Status pill
+                const pillMap = {
+                    starting: ['pill-starting', 'fas fa-spinner fa-spin', 'Starting'],
+                    waiting:  ['pill-waiting',  'fas fa-hourglass-half',  'Waiting for Lock'],
+                    running:  ['pill-running',  'fas fa-spinner fa-spin', 'Running'],
+                    success:  ['pill-success',  'fas fa-circle-check',    'Success'],
+                    failed:   ['pill-failed',   'fas fa-circle-xmark',    'Failed'],
+                };
+                const [pcls, picon, plabel] = pillMap[data.status] || ['pill-idle', 'fas fa-circle-dot', 'Idle'];
+                modalPill.className = `status-pill ${pcls} me-auto`;
+                modalPill.innerHTML = `<i class="${picon}"></i> ${plabel}`;
+
+                // Meta bar
+                const parts = [];
+                if (data.started_at) parts.push(`Started: ${fmtDatetime(data.started_at)}`);
+                if (data.started_by)  parts.push(`By: ${escHtml(data.started_by)}`);
+                if (data.started_at && data.ended_at)
+                    parts.push(`Duration: ${fmtDuration(data.started_at, data.ended_at)}`);
+                modalMeta.textContent = parts.join('  ·  ') || '—';
             })
-            .catch(() => {});
+            .catch(() => {
+                modalLog.innerHTML = '<span class="log-err">Failed to load log.</span>';
+            });
     };
 
     /* ------------------------------------------------------------------ */

@@ -100,6 +100,8 @@ class DevelopmentConfig(Config):
     )
     # IIS Windows Authentication is active in development; auto-assign Admin to all logins.
     DEV_AUTO_ADMIN = True
+    # When True, skips IIS auth and uses the OS login name so the app runs without IIS locally.
+    DEV_BYPASS_AUTH = os.getenv('DEV_BYPASS_AUTH', 'true').lower() == 'true'
     FILE_STORAGE_PATH = os.getenv('FILE_STORAGE_PATH_TESTDEV', os.getenv('FILE_STORAGE_PATH', ''))
     # In development, recipients can still be redirected, but sender and CC stay fixed.
     REVIEW_NOTIFICATION_TO = os.getenv('REVIEW_NOTIFICATION_TO', Config.PROCUREMENT_DATA_TEAM_EMAIL)

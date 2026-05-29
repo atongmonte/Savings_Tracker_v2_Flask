@@ -1,6 +1,7 @@
 """
 Authentication and authorization utilities.
 """
+import os
 from functools import wraps
 from flask import request, jsonify, g
 from app import db
@@ -22,7 +23,11 @@ def get_current_user():
         username = request.headers.get('X-Remote-User')
 
     if not username:
-        return None
+        from flask import current_app
+        if current_app.config.get('DEV_BYPASS_AUTH', False):
+            username = os.environ.get('USERNAME') or os.environ.get('USER') or 'devuser'
+        else:
+            return None
 
     # Remove domain prefix if present (DOMAIN\username -> username)
     if '\\' in username:
