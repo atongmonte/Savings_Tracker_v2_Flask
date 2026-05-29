@@ -9,6 +9,7 @@ from app.models.rebate import Rebate
 from app.models.cost_avoidance import CostAvoidance
 from app.models.file_tracking import FileTracking
 from app.models.audit import AuditLog
+from app.models.system_event_log import SystemEventLog
 
 __all__ = [
     'User',
@@ -20,5 +21,6 @@ __all__ = [
     'Rebate',
     'CostAvoidance',
     'FileTracking',
-    'AuditLog'
+    'AuditLog',
+    'SystemEventLog',
 ]
