@@ -51,14 +51,13 @@ def create_app(config_name='default'):
         os.makedirs(logs_dir)
 
     # Register blueprints
-    from app.api import initiatives_bp, cost_savings_bp, rebate_bp, cost_avoidance_bp, auth_bp, analytics_bp, admin_bp
+    from app.api import initiatives_bp, cost_savings_bp, rebate_bp, cost_avoidance_bp, auth_bp, analytics_bp
     app.register_blueprint(initiatives_bp, url_prefix='/api/initiatives')
     app.register_blueprint(cost_savings_bp, url_prefix='/api/cost-savings')
     app.register_blueprint(rebate_bp, url_prefix='/api/rebates')
     app.register_blueprint(cost_avoidance_bp, url_prefix='/api/cost-avoidance')
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
-    app.register_blueprint(admin_bp, url_prefix='/api/admin')
     
     # Register main routes (for serving HTML pages)
     from app.views import main_bp
