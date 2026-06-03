@@ -201,164 +201,22 @@ def _trim_job_history() -> None:
 @admin_bp.route("/distribution/run", methods=["POST"])
 @login_required
 def run_distribution():
-    """
-    Start the daily distribution stored procedure in a background thread.
-    Returns 409 if a job is already waiting or running.
-    Returns 202 with the job_id on success.
-    """
-    user = g.current_user
-    if not _is_admin(user):
-        return jsonify({"error": "Admin access required."}), 403
-
-    # Prevent duplicate concurrent runs
-    with _jobs_lock:
-        for job in _jobs.values():
-            if job["status"] in ("waiting", "running", "starting"):
-                return jsonify(
-                    {
-                        "error": "A distribution job is already in progress. "
-                        "Please wait for it to finish.",
-                        "job_id": job["job_id"],
-                    }
-                ), 409
-
-    from app import db
-    from app.models.system_event_log import SystemEventLog
-    from app.utils.timezone import now_eastern
-
-    app = current_app._get_current_object()
-    job_id = str(uuid.uuid4())
-    started_by = user.full_name or user.username
-    started_at = now_eastern()
-
-    # Create the DB row immediately so it exists even if the thread fails early.
-    db_row = SystemEventLog(
-        event_type="DISTRIBUTION_PROC",
-        status="starting",
-        started_by=started_by,
-        started_at=started_at,
-    )
-    db.session.add(db_row)
-    db.session.commit()
-    db_row_id = db_row.id
-
-    with _jobs_lock:
-        _jobs[job_id] = {
-            "job_id":    job_id,
-            "db_row_id": db_row_id,
-            "status":    "starting",
-            "started_at": started_at.isoformat(),
-            "ended_at":  None,
-            "started_by": started_by,
-            "logs": [
-                {
-                    "time":    started_at.strftime("%H:%M:%S"),
-                    "message": f"Job initiated by {started_by}.",
-                }
-            ],
-        }
-
-    thread = threading.Thread(
-        target=_run_distribution_job, args=(job_id, db_row_id, app), daemon=True
-    )
-    thread.start()
-
-    return jsonify({"job_id": job_id, "db_row_id": db_row_id, "status": "starting"}), 202
+    return jsonify({"error": "Not found."}), 404
 
 
 @admin_bp.route("/distribution/status/<job_id>", methods=["GET"])
 @login_required
 def distribution_status(job_id: str):
-    """Return the current status and log lines for a given job."""
-    if not _is_admin(g.current_user):
-        return jsonify({"error": "Admin access required."}), 403
-
-    with _jobs_lock:
-        job = _jobs.get(job_id)
-
-    if not job:
-        return jsonify({"error": "Job not found."}), 404
-
-    return jsonify(job), 200
+    return jsonify({"error": "Not found."}), 404
 
 
 @admin_bp.route("/distribution/jobs/<int:db_row_id>", methods=["GET"])
 @login_required
 def get_distribution_job(db_row_id: int):
-    """
-    Return details (including parsed log lines) for a specific job by DB row ID.
-    Checks the live in-memory registry first, then falls back to the DB.
-    """
-    if not _is_admin(g.current_user):
-        return jsonify({"error": "Admin access required."}), 403
-
-    # Check live in-memory registry first (job may still be running)
-    with _jobs_lock:
-        for job in _jobs.values():
-            if job.get("db_row_id") == db_row_id:
-                return jsonify(job), 200
-
-    # Fall back to DB for completed/historical jobs
-    from app import db
-    from app.models.system_event_log import SystemEventLog
-    row = db.session.get(SystemEventLog, db_row_id)
-    if not row or row.event_type != "DISTRIBUTION_PROC":
-        return jsonify({"error": "Job not found."}), 404
-
-    # Parse log_text (stored as "[HH:MM:SS] message\n…") back into a list
-    logs = []
-    if row.log_text:
-        for line in row.log_text.splitlines():
-            if line.startswith("[") and "]" in line:
-                bracket_end = line.index("]")
-                time_str = line[1:bracket_end]
-                msg = line[bracket_end + 2:]  # skip '] '
-                logs.append({"time": time_str, "message": msg})
-            elif line:
-                logs.append({"time": "--:--:--", "message": line})
-
-    data = row.to_dict()
-    data["logs"] = logs
-    return jsonify(data), 200
+    return jsonify({"error": "Not found."}), 404
 
 
 @admin_bp.route("/distribution/jobs", methods=["GET"])
 @login_required
 def list_distribution_jobs():
-    """
-    Return the 20 most recent distribution jobs from the DB (newest first).
-    For any job that is still in-memory (currently running), live status from
-    the in-memory registry overrides the DB row.
-    """
-    if not _is_admin(g.current_user):
-        return jsonify({"error": "Admin access required."}), 403
-
-    from app.models.system_event_log import SystemEventLog
-
-    rows = (
-        SystemEventLog.query
-        .filter_by(event_type="DISTRIBUTION_PROC")
-        .order_by(SystemEventLog.started_at.desc())
-        .limit(20)
-        .all()
-    )
-
-    # Build a quick lookup of live in-memory jobs by db_row_id
-    with _jobs_lock:
-        live_by_db_id = {
-            j["db_row_id"]: j
-            for j in _jobs.values()
-            if "db_row_id" in j
-        }
-
-    results = []
-    for row in rows:
-        data = row.to_dict()
-        live = live_by_db_id.get(row.id)
-        if live and live["status"] in ("starting", "waiting", "running"):
-            # Return live status for jobs still in progress
-            data["status"]     = live["status"]
-            data["job_id"]     = live["job_id"]
-        results.append(data)
-
-    return jsonify(results), 200
+    return jsonify({"error": "Not found."}), 404

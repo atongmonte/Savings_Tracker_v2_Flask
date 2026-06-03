@@ -936,17 +936,6 @@ def user_delete(user_id):
     return redirect(url_for('main.user_management'))
 
 
-@main_bp.route('/admin/distribution')
-@login_required
-def admin_distribution():
-    """Admin page for running the daily distribution stored procedure."""
-    user = g.current_user
-    if not _is_admin_user(user):
-        flash('Admin access is required to run the PowerBI dashboard backend force refresh.', 'error')
-        return redirect(url_for('main.dashboard'))
-    return render_template('admin_distribution.html', current_user=user.full_name)
-
-
 @main_bp.route('/logout')
 def logout():
     """Handle logout."""
