@@ -10,6 +10,7 @@ from app.models import Initiative, Rebate, FacilityAllocation, Facility, AuditLo
 from app.utils.decorators import login_required, permission_required
 from app.utils.validators import validate_facility_allocations, validate_rebate_duplicate, validate_positive_amount
 from app.utils.email import send_initiative_created_notification
+from app.utils.sp_helpers import run_distribution_procedure
 
 
 def _normalize_wave_id(value):
@@ -141,6 +142,8 @@ def create_rebate():
         db.session.add(audit)
         
         db.session.commit()
+
+        run_distribution_procedure()
         
         # Send email notifications
         reviewers = User.query.join(UserRole).filter(
@@ -303,6 +306,8 @@ def update_rebate(initiative_id):
         db.session.add(audit)
         
         db.session.commit()
+
+        run_distribution_procedure()
         
         return jsonify({
             'message': 'Rebate initiative updated successfully',

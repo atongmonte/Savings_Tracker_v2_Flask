@@ -10,6 +10,7 @@ from app.models import Initiative, CostAvoidance, FacilityAllocation, Facility, 
 from app.utils.decorators import login_required, permission_required
 from app.utils.validators import validate_facility_allocations, validate_cost_avoidance_duplicate, validate_positive_amount
 from app.utils.email import send_initiative_created_notification
+from app.utils.sp_helpers import run_distribution_procedure
 
 
 def _normalize_wave_id(value):
@@ -124,6 +125,8 @@ def create_cost_avoidance():
         db.session.add(audit)
         
         db.session.commit()
+
+        run_distribution_procedure()
         
         # Send email notifications
         reviewers = User.query.join(UserRole).filter(
@@ -279,6 +282,8 @@ def update_cost_avoidance(initiative_id):
         db.session.add(audit)
         
         db.session.commit()
+
+        run_distribution_procedure()
         
         return jsonify({
             'message': 'Cost Avoidance initiative updated successfully',

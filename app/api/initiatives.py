@@ -12,6 +12,7 @@ from app.api import initiatives_bp
 from app.models import Initiative, User, UserRole, FacilityAllocation, Facility, AuditLog, FileTracking
 from app.utils.decorators import login_required, permission_required
 from app.utils.email import send_initiative_approved_notification, send_initiative_rejected_notification
+from app.utils.sp_helpers import run_distribution_procedure
 from app.utils.contract_categories import (
     get_contract_categories,
     get_prime_contract_numbers,
@@ -268,6 +269,8 @@ def delete_initiative(initiative_id):
         
         db.session.add(audit)
         db.session.commit()
+
+        run_distribution_procedure()
         
         return jsonify({'message': 'Initiative deleted successfully'}), 200
         
@@ -359,6 +362,8 @@ def approve_initiative(initiative_id):
         
         db.session.add(audit)
         db.session.commit()
+
+        run_distribution_procedure()
         
         # Send email notification
         send_initiative_approved_notification(initiative, user)
@@ -420,6 +425,8 @@ def reject_initiative(initiative_id):
         
         db.session.add(audit)
         db.session.commit()
+
+        run_distribution_procedure()
         
         # Send email notification
         send_initiative_rejected_notification(initiative, user, data['comments'])
@@ -482,6 +489,8 @@ def unapprove_initiative(initiative_id):
         db.session.add(audit)
         db.session.commit()
 
+        run_distribution_procedure()
+
         return jsonify({
             'message': 'Initiative reverted to Pending Review',
             'initiative': initiative.to_dict(include_details=True)
@@ -531,6 +540,8 @@ def revert_initiative(initiative_id):
 
         db.session.add(audit)
         db.session.commit()
+
+        run_distribution_procedure()
 
         return jsonify({
             'message': 'Initiative reverted to Pending Review',
