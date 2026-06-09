@@ -765,8 +765,10 @@ def get_dashboard_stats():
         year_start = date(stats_year, 1, 1)
         year_end   = date(stats_year, 12, 31)
 
-        # ── Cost Savings: prorate annual_savings_amount by days overlapping the year ──
+        # ── Cost Savings: spread total_savings_amount across contract days, then
+        # count only the days overlapping the selected year.
         cs_rows = db.session.query(
+            CostSavings.total_savings_amount,
             CostSavings.annual_savings_amount,
             CostSavings.start_date,
             CostSavings.end_date
@@ -774,13 +776,14 @@ def get_dashboard_stats():
 
         savings_sum = 0.0
         cs_count = 0
-        for annual, sd, ed in cs_rows:
-            if not annual:
-                continue
+        for total_savings, annual, sd, ed in cs_rows:
             # If dates are missing, assume it falls in the year (use full annual amount)
             if not sd or not ed:
-                savings_sum += float(annual)
-                cs_count += 1
+                if annual:
+                    savings_sum += float(annual)
+                    cs_count += 1
+                continue
+            if not total_savings:
                 continue
             overlap_start = max(sd, year_start)
             overlap_end   = min(ed, year_end)
@@ -788,7 +791,7 @@ def get_dashboard_stats():
             if overlap_days <= 0:
                 continue  # contract doesn't touch this year
             contract_days = (ed - sd).days + 1 or 365
-            savings_sum += float(annual) * overlap_days / contract_days
+            savings_sum += float(total_savings) * overlap_days / contract_days
             cs_count += 1
 
         # ── Rebates: filter by transaction (rebate_check_date) year ──

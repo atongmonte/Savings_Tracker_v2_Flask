@@ -16,9 +16,28 @@ function isReadOnlyUser() {
     return roleName === 'read-only' || roleName === 'read only' || roleName === 'readonly';
 }
 
+function isAdminUser() {
+    const roleName = (window._currentUser?.role || '').toString().trim().toLowerCase();
+    return roleName === 'admin';
+}
+
+function canCurrentUserEditInitiative(initiativeLike) {
+    if (!initiativeLike || isReadOnlyUser()) {
+        return false;
+    }
+    if (isAdminUser()) {
+        return true;
+    }
+
+    const cu = window._currentUser || {};
+    const ownerId = initiativeLike.owner_id || initiativeLike.owner?.id || null;
+    return ownerId !== null && ownerId === cu.id;
+}
+
 function syncStatsYearFromFilter() {
     const selectedYear = document.getElementById('filterYear')?.value || '';
     _statsYear = selectedYear ? parseInt(selectedYear, 10) : null;
+    const selectedYearLabel = getStatsYearLabel(_statsYear);
 
     const summaryLabel = document.getElementById('summaryYearLabel');
     if (summaryLabel) {
@@ -27,9 +46,21 @@ function syncStatsYearFromFilter() {
 
     const badge = document.getElementById('statsYearBadge');
     if (badge) {
-        badge.textContent = selectedYear || 'All Years';
+        badge.textContent = selectedYearLabel || 'All Years';
         badge.style.display = '';
     }
+}
+
+function getStatsYearLabel(year) {
+    if (!year) {
+        return '';
+    }
+
+    const nextYearStart = new Date(year + 1, 0, 1);
+    const today = new Date();
+    const isYearComplete = today >= nextYearStart;
+
+    return isYearComplete ? `${year}` : `${year} (Full year projection)`;
 }
 
 /**
@@ -152,7 +183,9 @@ function renderTableRows(rows) {
         const fmtAmt      = '$' + Math.round(amount).toLocaleString('en-US');
         const initDateRaw = r.initiative_date;
         const initDateFmt = initDateRaw ? new Date(initDateRaw + 'T00:00:00').getFullYear() : '';
-        const updatedDate = r.updated_at ? new Date(r.updated_at).toLocaleString('en-US', {timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'}) : '';
+        const updatedDatePart = r.updated_at ? new Date(r.updated_at).toLocaleDateString('en-US', {timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: 'numeric'}) : '';
+        const updatedTimePart = r.updated_at ? new Date(r.updated_at).toLocaleTimeString('en-US', {timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit'}) : '';
+        const updatedDate = updatedDatePart ? `${updatedDatePart}<br><span class="text-muted">${updatedTimePart}</span>` : '';
         const cu          = window._currentUser || {};
         const isReadOnly  = isReadOnlyUser();
 
@@ -167,9 +200,7 @@ function renderTableRows(rows) {
         } else {
             // Normal row — view, edit, optional delete
             const canDel = cu.can_delete_all || (cu.can_delete_own && r.created_by_id === cu.id);
-            const roleName = (cu.role || '').toString().trim().toLowerCase();
-            const canEditByRole = roleName === 'admin' || roleName === 'reviewer' || !!cu.can_review || !!cu.can_approve;
-            const canEdit = canEditByRole || (r.created_by_id === cu.id);
+            const canEdit = canCurrentUserEditInitiative(r);
 
             // Approved initiatives are read-only — only view is allowed.
             let editBtn = '';
@@ -177,6 +208,8 @@ function renderTableRows(rows) {
                 editBtn = `<button class="btn btn-sm btn-outline-secondary" onclick="viewInitiative(${r.id})" title="Approved — view only" disabled><i class="fas fa-lock"></i></button>`;
             } else if (canEdit) {
                 editBtn = `<button class="btn btn-sm btn-outline-info" onclick="editInitiative(${r.id})" title="Edit"><i class="fas fa-edit"></i></button>`;
+            } else {
+                editBtn = `<button class="btn btn-sm btn-outline-secondary" onclick="viewInitiative(${r.id})" title="Locked — only Admin or the initiative owner can edit" disabled><i class="fas fa-lock"></i></button>`;
             }
             actionBtns = `
                 <button class="btn btn-sm btn-outline-primary" onclick="viewInitiative(${r.id})" title="View"><i class="fas fa-eye"></i></button>
@@ -193,15 +226,15 @@ function renderTableRows(rows) {
         return `<tr${rowClass}>
             <td>${r.id || ''}</td>
             <td>${r.owner_name || ''}</td>
-            <td>${icon}${r.initiative_type || ''}</td>
+            <td class="col-type">${icon}${r.initiative_type || ''}</td>
             <td>${r.contract_id || 'N/A'}</td>
             <td>${r.contract_category || ''}</td>
             <td>${r.vendor_name || ''}</td>
             <td class="text-end">${fmtAmt}</td>
             <td>${initDateFmt}</td>
-            <td>${updatedDate}</td>
-            <td>${statusCell}</td>
-            <td>
+            <td class="col-sticky-right col-last-updated">${updatedDate}</td>
+            <td class="col-sticky-right col-status">${statusCell}</td>
+            <td class="col-sticky-right col-actions">
                 <div class="btn-group btn-group-sm" role="group">
                     ${actionBtns}
                 </div>
@@ -336,6 +369,7 @@ function flattenInitiative(init) {
         : null;
     return {
         ...init,
+        owner_id:          init.owner ? init.owner.id : null,
         owner_name:        init.owner ? (init.owner.full_name || init.owner.username || '') : '',
         created_by:        init.created_by ? (init.created_by.full_name || init.created_by.username) : '',
         created_by_id:     init.created_by ? init.created_by.id : null,
@@ -474,9 +508,13 @@ function showInitiativeModal(id, editMode) {
         }),
     ])
         .then(([data, categories]) => {
+            const effectiveEditMode = editMode && canCurrentUserEditInitiative(data);
+            if (editMode && !effectiveEditMode) {
+                showGlobalPopup('Only Admin or the initiative owner can edit this initiative.', 'warning');
+            }
             populateModalContractCategorySelect('mf_contract_category', categories || []);
             populateModalWaveCategorySelect('mf_wave_category', categories || []);
-            populateInitiativeModal(data, editMode);
+            populateInitiativeModal(data, effectiveEditMode);
             const modal = new bootstrap.Modal(document.getElementById('actionModal'));
             modal.show();
         })
@@ -722,7 +760,19 @@ function populateInitiativeModal(data, editMode) {
                     );
                 }
                 renderModalFiles(window._serverFiles, window._editMode);
+                updateModalSaveButtonVisibility();
             };
+        }
+    }
+
+    const modalForm = document.getElementById('modalForm');
+    if (modalForm) {
+        if (editMode) {
+            modalForm.oninput = () => updateModalSaveButtonVisibility();
+            modalForm.onchange = () => updateModalSaveButtonVisibility();
+        } else {
+            modalForm.oninput = null;
+            modalForm.onchange = null;
         }
     }
 
@@ -751,14 +801,19 @@ function populateInitiativeModal(data, editMode) {
 
     // Title & Save button
     document.getElementById('modalTitle').textContent = editMode ? 'Edit Initiative' : 'View Initiative';
-    document.getElementById('modalSaveBtn').classList.toggle('d-none', !editMode);
+    document.getElementById('modalSaveBtn').classList.add('d-none');
 
     // Wire up live calculations and trigger initial display
     setupModalCalculations(type);
 
     // In edit mode, snapshot field values AFTER calculations have settled
     if (editMode) {
-        setTimeout(() => captureModalSnapshot(type), 50);
+        setTimeout(() => {
+            captureModalSnapshot(type);
+            updateModalSaveButtonVisibility();
+        }, 50);
+    } else {
+        updateModalSaveButtonVisibility();
     }
 }
 
@@ -955,7 +1010,7 @@ function setupModalCalculations(type) {
 }
 
 // Validate edit modal required fields — mirrors each form's required set
-function captureModalSnapshot(type) {
+function buildModalSnapshot(type) {
     const getVal   = id => { const el = document.getElementById(id); return el ? el.value : ''; };
     const getRadio = n  => { const el = document.querySelector(`input[name="${n}"]:checked`); return el ? el.value : ''; };
 
@@ -1004,7 +1059,55 @@ function captureModalSnapshot(type) {
     document.querySelectorAll('.modal-alloc').forEach(inp => { allocs[inp.dataset.facility] = numVal(inp.value); });
     snap._allocations = allocs;
 
-    window._originalModalSnapshot = snap;
+    return snap;
+}
+
+function captureModalSnapshot(type) {
+    window._originalModalSnapshot = buildModalSnapshot(type);
+}
+
+function hasModalPendingChanges(type) {
+    const original = window._originalModalSnapshot;
+    if (!original || !type) return false;
+
+    const current = buildModalSnapshot(type);
+    const keys = new Set([...Object.keys(original), ...Object.keys(current)]);
+    keys.delete('_allocations');
+
+    for (const key of keys) {
+        const oldVal = original[key];
+        const newVal = current[key];
+        const bothNumbers = typeof oldVal === 'number' || typeof newVal === 'number';
+        if (bothNumbers) {
+            if (Math.abs(numVal(oldVal) - numVal(newVal)) > 0.005) return true;
+        } else {
+            const oldStr = String(oldVal ?? '').trim();
+            const newStr = String(newVal ?? '').trim();
+            if (oldStr !== newStr) return true;
+        }
+    }
+
+    const oldAllocs = original._allocations || {};
+    const newAllocs = current._allocations || {};
+    const allocKeys = new Set([...Object.keys(oldAllocs), ...Object.keys(newAllocs)]);
+    for (const code of allocKeys) {
+        if (Math.abs(numVal(oldAllocs[code]) - numVal(newAllocs[code])) > 0.005) return true;
+    }
+
+    return (window._stagedFiles && window._stagedFiles.length > 0)
+        || (window._stagedDeletes && window._stagedDeletes.size > 0);
+}
+
+function updateModalSaveButtonVisibility() {
+    const saveBtn = document.getElementById('modalSaveBtn');
+    if (!saveBtn) return;
+
+    if (!window._editMode) {
+        saveBtn.classList.add('d-none');
+        return;
+    }
+
+    saveBtn.classList.toggle('d-none', !hasModalPendingChanges(window._modalInitiativeType));
 }
 
 const _FIELD_LABELS = {
@@ -1274,6 +1377,12 @@ function saveModalChanges() {
     const type = window._modalInitiativeType;
     if (!id || !type) return;
 
+    if (!hasModalPendingChanges(type)) {
+        showModalAlert('No changes detected.', 'info');
+        updateModalSaveButtonVisibility();
+        return;
+    }
+
     if (!validateModalForm(type)) return;
 
     const getVal = elId => { const el = document.getElementById(elId); return el ? el.value : ''; };
@@ -1380,7 +1489,7 @@ function goBackToForm() {
     document.getElementById('modalForm').classList.remove('d-none');
     document.getElementById('mf_goBackBtn').classList.add('d-none');
     document.getElementById('mf_confirmSaveBtn').classList.add('d-none');
-    document.getElementById('modalSaveBtn').classList.remove('d-none');
+    updateModalSaveButtonVisibility();
 }
 
 function confirmAndSave() {
@@ -1395,30 +1504,40 @@ function confirmAndSave() {
     goBackBtn.disabled  = true;
     confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
 
-    fetch(`/api/${endpoint}/${id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    })
-    .then(r => r.json())
-    .then(resp => {
-        if (resp.error) {
-            // Go back to form view and show error
+    flushStagedDeletes(id)
+    .then(deleteErrors => {
+        if (deleteErrors.length) {
             goBackToForm();
-            showModalAlert(resp.error, 'danger');
-        } else {
-            // Flush staged file changes before closing
-            flushStagedFileChanges(id).then(fileErrors => {
-                if (fileErrors.length) {
-                    goBackToForm();
-                    showModalAlert('Initiative saved, but file errors: ' + fileErrors.join('; '), 'warning');
-                } else {
-                    bootstrap.Modal.getInstance(document.getElementById('actionModal')).hide();
-                    showAlert('Initiative updated successfully', 'success');
-                }
-                loadInitiatives();
-            });
+            showModalAlert('File deletion failed. Initiative was not updated: ' + deleteErrors.join('; '), 'danger');
+            loadInitiatives();
+            return;
         }
+
+        return fetch(`/api/${endpoint}/${id}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(resp => {
+            if (resp.error) {
+                // Go back to form view and show error
+                goBackToForm();
+                showModalAlert(resp.error, 'danger');
+            } else {
+                // Upload staged files after initiative update succeeds
+                flushStagedFileChanges(id).then(fileErrors => {
+                    if (fileErrors.length) {
+                        goBackToForm();
+                        showModalAlert('Initiative saved, but file upload errors: ' + fileErrors.join('; '), 'warning');
+                    } else {
+                        bootstrap.Modal.getInstance(document.getElementById('actionModal')).hide();
+                        showAlert('Initiative updated successfully', 'success');
+                    }
+                    loadInitiatives();
+                });
+            }
+        });
     })
     .catch(err => {
         console.error('Error saving:', err);
@@ -1832,11 +1951,13 @@ function renderModalFiles(serverFiles, editMode) {
 function stageDeleteFile(fileId) {
     window._stagedDeletes.add(fileId);
     renderModalFiles(window._serverFiles, window._editMode);
+    updateModalSaveButtonVisibility();
 }
 
 function unstageDelete(fileId) {
     window._stagedDeletes.delete(fileId);
     renderModalFiles(window._serverFiles, window._editMode);
+    updateModalSaveButtonVisibility();
 }
 
 function removeStagedFile(idx) {
@@ -1851,6 +1972,7 @@ function removeStagedFile(idx) {
     }
     window._stagedFiles.splice(idx, 1);
     renderModalFiles(window._serverFiles, window._editMode);
+    updateModalSaveButtonVisibility();
 }
 
 async function flushStagedFileChanges(initiativeId) {
@@ -1875,17 +1997,26 @@ async function flushStagedFileChanges(initiativeId) {
         window._stagedFiles = [];
     }
 
-    // Delete staged files AFTER uploads so the "last file" guard does not
-    // block removal when a replacement was just uploaded above.
-    for (const fileId of window._stagedDeletes) {
+    return errors;
+}
+
+async function flushStagedDeletes(initiativeId) {
+    const errors = [];
+
+    for (const fileId of Array.from(window._stagedDeletes)) {
         try {
             const r = await fetch(`/api/initiatives/${initiativeId}/files/${fileId}`, { method: 'DELETE' });
             const d = await r.json();
-            if (d.error) errors.push(d.error);
-            else window._serverFiles = d.files || [];
-        } catch (e) { errors.push(`Delete file ${fileId} failed`); }
+            if (d.error) {
+                errors.push(d.error);
+            } else {
+                window._serverFiles = d.files || [];
+                window._stagedDeletes.delete(fileId);
+            }
+        } catch (e) {
+            errors.push(`Delete file ${fileId} failed`);
+        }
     }
-    window._stagedDeletes.clear();
 
     return errors;
 }

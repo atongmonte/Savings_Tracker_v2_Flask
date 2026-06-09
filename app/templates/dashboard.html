@@ -148,6 +148,30 @@
         color: #1A2535;
     }
 
+    /* ── Sticky right columns ── */
+    #initiativesTable th.col-sticky-right,
+    #initiativesTable td.col-sticky-right {
+        position: sticky;
+        z-index: 1;
+    }
+    #initiativesTable thead th.col-sticky-right {
+        background-color: var(--monte-navy, #112B46);
+        z-index: 2;
+    }
+    #initiativesTable tbody td.col-sticky-right {
+        background-color: #fff;
+    }
+    #initiativesTable tbody tr:hover td.col-sticky-right {
+        background-color: #EFF4FA;
+    }
+    #initiativesTable tbody tr.deleted-row td.col-sticky-right {
+        background-color: #FFF5F5;
+    }
+    /* Column widths and right offsets */
+    #initiativesTable .col-actions      { right: 0;     min-width: 120px; }
+    #initiativesTable .col-status       { right: 120px; min-width: 110px; }
+    #initiativesTable .col-last-updated { right: 230px; min-width: 105px; }
+    #initiativesTable .col-type         { min-width: 155px; white-space: nowrap; }
     /* ── Summary year label ── */
     .summary-label {
         display: inline-flex;
@@ -297,7 +321,7 @@
                                 </span>
                             </th>
                             <th>Owner</th>
-                            <th>Type</th>
+                            <th class="col-type">Type</th>
                             <th>Contract ID</th>
                             <th>Contract Category</th>
                             <th>Vendor Name</th>
@@ -313,14 +337,14 @@
                                     <i id="sort-icon-initdate" class="fas fa-sort text-muted sort-icon-inactive"></i>
                                 </span>
                             </th>
-                            <th class="sortable" onclick="toggleSort('updated_at')" title="Sort by Last Updated">
+                            <th class="sortable col-sticky-right col-last-updated" onclick="toggleSort('updated_at')" title="Sort by Last Updated">
                                 <span class="sortable-header-content">
                                     <span class="sortable-header-label">Last Updated</span>
                                     <i id="sort-icon-updated" class="fas fa-sort text-muted sort-icon-inactive"></i>
                                 </span>
                             </th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            <th class="col-sticky-right col-status">Status</th>
+                            <th class="col-sticky-right col-actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="initiativesTableBody">

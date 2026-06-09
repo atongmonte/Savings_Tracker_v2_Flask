@@ -29,6 +29,7 @@
             --border-color:  #DDE3EA;
             --text-main:     #1A2535;
             --text-muted:    #5E6E82;
+            --navbar-height: 52px;
             /* aliases for shared CSS files */
             --primary-color: var(--monte-navy);
             --secondary-color: var(--monte-blue);
@@ -40,6 +41,7 @@
             background-color: var(--light-bg);
             color: var(--text-main);
             font-size: 0.915rem;
+            padding-top: var(--navbar-height);
         }
 
         /* ════════════════════════════════════════
@@ -48,7 +50,7 @@
         .navbar-custom {
             background-color: var(--monte-navy);
             padding: 0;
-            min-height: 52px;
+            min-height: var(--navbar-height);
         }
         .navbar-custom > .container-fluid {
             padding-left: var(--page-gutter);
@@ -258,7 +260,7 @@
 
         #globalFlashModal.top-flash {
             position: fixed;
-            top: 0;
+            top: calc(var(--navbar-height) + 0.75rem);
             left: 50%;
             transform: translateX(-50%);
             width: min(92vw, 640px);
@@ -408,7 +410,7 @@
 </head>
 <body>
     <!-- ── Single Navy Navigation Bar ── -->
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom" style="position:relative;">
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom fixed-top">
         {% if template_environment and template_environment != 'production' %}
         <span class="env-badge env-{{ template_environment }}" title="Running in {{ template_environment }} environment">{{ template_environment }}</span>
         {% endif %}
