@@ -11,6 +11,7 @@
         margin-bottom: 1.75rem;
         border-bottom: 1px solid #DDE3EA;
     }
+
     .page-hero .hero-eyebrow {
         font-family: 'Inter', sans-serif;
         font-size: 0.68rem;
@@ -20,6 +21,7 @@
         color: var(--monte-blue, #0072BC);
         margin-bottom: 0.4rem;
     }
+
     .page-hero h1 {
         font-family: 'Source Serif 4', Georgia, serif;
         font-size: 2.1rem;
@@ -28,6 +30,7 @@
         line-height: 1.15;
         margin: 0;
     }
+
     .page-hero .hero-rule {
         display: block;
         width: 48px;
@@ -36,19 +39,23 @@
         border-radius: 2px;
         margin-top: 0.8rem;
     }
+
     #initiativesTable thead th {
         text-align: left;
         vertical-align: middle;
         white-space: normal;
         line-height: 1.2;
     }
+
     #initiativesTable thead th.text-end {
         text-align: left !important;
     }
+
     th.sortable {
         cursor: pointer;
         user-select: none;
     }
+
     th.sortable .sortable-header-content {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
@@ -58,6 +65,7 @@
         width: 100%;
         max-width: 100%;
     }
+
     th.sortable .sortable-header-label {
         display: -webkit-box;
         -webkit-line-clamp: 2;
@@ -67,14 +75,17 @@
         white-space: normal;
         text-align: left;
     }
+
     th.sortable .sort-icon-inactive {
         flex-shrink: 0;
         margin-top: 0.05rem;
     }
+
     th.sortable:hover {
         background-color: rgba(0, 0, 0, 0.04);
         color: #FFFFFF;
     }
+
     th.sortable:hover .sortable-header-label,
     th.sortable:hover .sort-icon-inactive,
     th.sortable:hover .sort-icon-inactive.text-muted,
@@ -83,22 +94,39 @@
     th.sortable:focus-visible .sort-icon-inactive.text-muted {
         color: rgba(255, 255, 255, 0.95) !important;
     }
-    .sort-icon-inactive { opacity: 0.35; }
+
+    .sort-icon-inactive {
+        opacity: 0.35;
+    }
 
     /* ── Stats Cards ── */
     .stats-card {
         border-top: 3px solid #112B46;
         transition: box-shadow 0.2s, transform 0.2s;
     }
+
     .stats-card:hover {
         transform: translateY(-3px);
-        box-shadow: 0 6px 18px rgba(17,43,70,.10);
+        box-shadow: 0 6px 18px rgba(17, 43, 70, .10);
     }
-    .stats-card.savings  { border-top-color: #1A7A4A; }
-    .stats-card.rebate   { border-top-color: #0072BC; }
-    .stats-card.avoidance{ border-top-color: #00A8A8; }
 
-    .stats-icon { font-size: 2rem; opacity: 0.45; }
+    .stats-card.savings {
+        border-top-color: #1A7A4A;
+    }
+
+    .stats-card.rebate {
+        border-top-color: #0072BC;
+    }
+
+    .stats-card.avoidance {
+        border-top-color: #00A8A8;
+    }
+
+    .stats-icon {
+        font-size: 2rem;
+        opacity: 0.45;
+    }
+
     .stats-card h6 {
         font-size: 0.72rem;
         text-transform: uppercase;
@@ -106,7 +134,12 @@
         font-weight: 600;
         color: #5E6E82;
     }
-    .stats-card h3 { font-size: 1.55rem; font-weight: 700; color: #1A2535; }
+
+    .stats-card h3 {
+        font-size: 1.55rem;
+        font-weight: 700;
+        color: #1A2535;
+    }
 
     /* ── Filter bar ── */
     .filter-section {
@@ -127,15 +160,41 @@
         text-transform: uppercase;
         display: inline-block;
     }
-    .status-draft      { background-color: #F0F3F6; color: #4A5568; }
-    .status-submitted  { background-color: #EFF5FC; color: #004D80; }
-    .status-approved   { background-color: #F0FBF5; color: #0E4D2D; }
-    .status-pending    { background-color: #FEF9EE; color: #7A4A06; }
-    .status-rejected   { background-color: #FDF3F2; color: #7B2218; }
+
+    .status-draft {
+        background-color: #F0F3F6;
+        color: #4A5568;
+    }
+
+    .status-submitted {
+        background-color: #EFF5FC;
+        color: #004D80;
+    }
+
+    .status-approved {
+        background-color: #F0FBF5;
+        color: #0E4D2D;
+    }
+
+    .status-pending {
+        background-color: #FEF9EE;
+        color: #7A4A06;
+    }
+
+    .status-rejected {
+        background-color: #FDF3F2;
+        color: #7B2218;
+    }
 
     /* ── Deleted rows ── */
-    tr.deleted-row td  { color: #9CA3AF; font-style: italic; }
-    tr.deleted-row     { background-color: #FFF5F5 !important; }
+    tr.deleted-row td {
+        color: #9CA3AF;
+        font-style: italic;
+    }
+
+    tr.deleted-row {
+        background-color: #FFF5F5 !important;
+    }
 
     /* ── Modal view mode ── */
     #actionModal .form-control:disabled,
@@ -154,24 +213,45 @@
         position: sticky;
         z-index: 1;
     }
+
     #initiativesTable thead th.col-sticky-right {
         background-color: var(--monte-navy, #112B46);
         z-index: 2;
     }
+
     #initiativesTable tbody td.col-sticky-right {
         background-color: #fff;
     }
+
     #initiativesTable tbody tr:hover td.col-sticky-right {
         background-color: #EFF4FA;
     }
+
     #initiativesTable tbody tr.deleted-row td.col-sticky-right {
         background-color: #FFF5F5;
     }
+
     /* Column widths and right offsets */
-    #initiativesTable .col-actions      { right: 0;     min-width: 120px; }
-    #initiativesTable .col-status       { right: 120px; min-width: 110px; }
-    #initiativesTable .col-last-updated { right: 230px; min-width: 105px; }
-    #initiativesTable .col-type         { min-width: 155px; white-space: nowrap; }
+    #initiativesTable .col-actions {
+        right: 0;
+        min-width: 120px;
+    }
+
+    #initiativesTable .col-status {
+        right: 120px;
+        min-width: 110px;
+    }
+
+    #initiativesTable .col-last-updated {
+        right: 230px;
+        min-width: 105px;
+    }
+
+    #initiativesTable .col-type {
+        min-width: 155px;
+        white-space: nowrap;
+    }
+
     /* ── Summary year label ── */
     .summary-label {
         display: inline-flex;
@@ -225,9 +305,13 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted mb-2">Cost Savings
-                                <span id="statsYearBadge" class="badge bg-primary ms-1" style="font-size:0.65rem">2026</span>
+                                <span id="statsYearBadge" class="badge bg-primary ms-1"
+                                    style="font-size:0.65rem">2026</span>
                             </h6>
                             <h3 class="mb-0 text-success" id="savingsAmount">$0</h3>
+                            <small class="text-muted d-block mt-2">
+                                Initiatives may be carry-overs from previous years.
+                            </small>
                         </div>
                         <div class="stats-icon text-success">
                             <i class="fas fa-piggy-bank"></i>
@@ -273,8 +357,8 @@
         <div class="row g-3">
             <div class="col-md-4">
                 <label class="form-label"><i class="fas fa-search"></i> Search</label>
-                <input type="text" class="form-control" id="searchBox" 
-                       placeholder="Search by ID, owner, type, contract, vendor, status...">
+                <input type="text" class="form-control" id="searchBox"
+                    placeholder="Search by ID, owner, type, contract, vendor, status...">
             </div>
             <div class="col-md-2">
                 <label class="form-label"><i class="fas fa-calendar-alt"></i> Initiative Year</label>
@@ -314,7 +398,8 @@
                 <table class="table table-hover align-middle mb-0" id="initiativesTable">
                     <thead>
                         <tr>
-                            <th class="sortable" onclick="toggleSort('id')" title="Sort by Initiative ID" style="width:90px">
+                            <th class="sortable" onclick="toggleSort('id')" title="Sort by Initiative ID"
+                                style="width:90px">
                                 <span class="sortable-header-content">
                                     <span class="sortable-header-label">Init ID</span>
                                     <i id="sort-icon-id" class="fas fa-sort text-muted sort-icon-inactive"></i>
@@ -331,13 +416,15 @@
                                     <i id="sort-icon-amount" class="fas fa-sort text-muted sort-icon-inactive"></i>
                                 </span>
                             </th>
-                            <th class="sortable" onclick="toggleSort('initiative_date')" title="Sort by Initiative Year">
+                            <th class="sortable" onclick="toggleSort('initiative_date')"
+                                title="Sort by Initiative Year">
                                 <span class="sortable-header-content">
                                     <span class="sortable-header-label">Init Yr</span>
                                     <i id="sort-icon-initdate" class="fas fa-sort text-muted sort-icon-inactive"></i>
                                 </span>
                             </th>
-                            <th class="sortable col-sticky-right col-last-updated" onclick="toggleSort('updated_at')" title="Sort by Last Updated">
+                            <th class="sortable col-sticky-right col-last-updated" onclick="toggleSort('updated_at')"
+                                title="Sort by Last Updated">
                                 <span class="sortable-header-content">
                                     <span class="sortable-header-label">Last Updated</span>
                                     <i id="sort-icon-updated" class="fas fa-sort text-muted sort-icon-inactive"></i>
@@ -348,7 +435,9 @@
                         </tr>
                     </thead>
                     <tbody id="initiativesTableBody">
-                        <tr><td colspan="11" class="text-center text-muted py-4">Loading...</td></tr>
+                        <tr>
+                            <td colspan="11" class="text-center text-muted py-4">Loading...</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -420,7 +509,8 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Contract ID <span class="form-required">*</span></label>
-                                <input type="text" class="form-control modal-field" id="mf_contract_number" required list="mf_contract_number_options">
+                                <input type="text" class="form-control modal-field" id="mf_contract_number" required
+                                    list="mf_contract_number_options">
                                 <datalist id="mf_contract_number_options"></datalist>
                             </div>
                             <div class="col-md-4">
@@ -428,18 +518,21 @@
                                 <input type="text" class="form-control modal-field" id="mf_contract_source" readonly>
                                 <div class="mt-2 d-flex gap-3 modal-radio-group" id="mf_contract_source_radios">
                                     <div class="form-check">
-                                        <input class="form-check-input modal-field" type="radio" name="mf_contract_source_r" value="GPO" id="mf_cs_gpo">
+                                        <input class="form-check-input modal-field" type="radio"
+                                            name="mf_contract_source_r" value="GPO" id="mf_cs_gpo">
                                         <label class="form-check-label" for="mf_cs_gpo">GPO</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input modal-field" type="radio" name="mf_contract_source_r" value="Local" id="mf_cs_local">
+                                        <input class="form-check-input modal-field" type="radio"
+                                            name="mf_contract_source_r" value="Local" id="mf_cs_local">
                                         <label class="form-check-label" for="mf_cs_local">Local</label>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Vendor Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control modal-field" id="mf_vendor_name" list="mf_vendor_name_options">
+                                <input type="text" class="form-control modal-field" id="mf_vendor_name"
+                                    list="mf_vendor_name_options">
                                 <datalist id="mf_vendor_name_options"></datalist>
                             </div>
                             <div class="col-md-4">
@@ -456,10 +549,18 @@
                             <div class="col-md-4">
                                 <label class="form-label">Savings Type <span class="text-danger">*</span></label>
                                 <div class="modal-radio-group" id="mf_savings_type_radios">
-                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_savings_type" value="Standardization/Conversion"><label class="form-check-label">Standardization/Conversion</label></div>
-                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_savings_type" value="Negotiated Price Reduction"><label class="form-check-label">Negotiated Price Reduction</label></div>
-                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_savings_type" value="Demand/Utilization Reduction"><label class="form-check-label">Demand/Utilization Reduction</label></div>
-                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_savings_type" value="One-time Saving (non-rebate)"><label class="form-check-label">One-time Saving</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio"
+                                            name="mf_savings_type" value="Standardization/Conversion"><label
+                                            class="form-check-label">Standardization/Conversion</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio"
+                                            name="mf_savings_type" value="Negotiated Price Reduction"><label
+                                            class="form-check-label">Negotiated Price Reduction</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio"
+                                            name="mf_savings_type" value="Demand/Utilization Reduction"><label
+                                            class="form-check-label">Demand/Utilization Reduction</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio"
+                                            name="mf_savings_type" value="One-time Saving (non-rebate)"><label
+                                            class="form-check-label">One-time Saving</label></div>
                                 </div>
                             </div>
                             <!-- Detail fields — hidden for Demand/Utilization Reduction -->
@@ -478,20 +579,32 @@
                                         <input type="date" class="form-control modal-field" id="mf_end_date">
                                     </div>
                                     <div class="col-md-3">
-                                        <label class="form-label">Baseline Spend <span class="text-danger">*</span></label>
-                                        <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control modal-field" id="mf_baseline_spend"></div>
+                                        <label class="form-label">Baseline Spend <span
+                                                class="text-danger">*</span></label>
+                                        <div class="input-group"><span class="input-group-text">$</span><input
+                                                type="number" step="0.01" class="form-control modal-field"
+                                                id="mf_baseline_spend"></div>
                                     </div>
                                     <div class="col-md-3">
-                                        <label class="form-label">Expected Spend <span class="text-danger">*</span></label>
-                                        <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control modal-field" id="mf_expected_spend"></div>
+                                        <label class="form-label">Expected Spend <span
+                                                class="text-danger">*</span></label>
+                                        <div class="input-group"><span class="input-group-text">$</span><input
+                                                type="number" step="0.01" class="form-control modal-field"
+                                                id="mf_expected_spend"></div>
                                     </div>
                                     <div class="col-md-3">
-                                        <label class="form-label">Annual Savings <span class="text-danger">*</span> <small class="text-muted fst-italic">(auto-calculated)</small></label>
-                                        <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control" id="mf_annual_savings" readonly tabindex="-1"></div>
+                                        <label class="form-label">Annual Savings <span class="text-danger">*</span>
+                                            <small class="text-muted fst-italic">(auto-calculated)</small></label>
+                                        <div class="input-group"><span class="input-group-text">$</span><input
+                                                type="number" step="0.01" class="form-control" id="mf_annual_savings"
+                                                readonly tabindex="-1"></div>
                                     </div>
                                     <div class="col-md-3">
-                                        <label class="form-label">Total Savings <span class="text-danger">*</span> <small class="text-muted fst-italic">(auto-calculated)</small></label>
-                                        <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control" id="mf_total_savings" readonly tabindex="-1"></div>
+                                        <label class="form-label">Total Savings <span class="text-danger">*</span>
+                                            <small class="text-muted fst-italic">(auto-calculated)</small></label>
+                                        <div class="input-group"><span class="input-group-text">$</span><input
+                                                type="number" step="0.01" class="form-control" id="mf_total_savings"
+                                                readonly tabindex="-1"></div>
                                         <small id="mf_total_savings_hint" class="text-muted d-block mt-1"></small>
                                     </div>
                                 </div>
@@ -506,11 +619,21 @@
                             <div class="col-md-4">
                                 <label class="form-label">Avoidance Type <span class="text-danger">*</span></label>
                                 <div class="modal-radio-group" id="mf_avoidance_type_radios">
-                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_avoidance_type" value="Capital"><label class="form-check-label">Capital</label></div>
-                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_avoidance_type" value="Service"><label class="form-check-label">Service</label></div>
-                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_avoidance_type" value="Value Analysis"><label class="form-check-label">Value Analysis</label></div>
-                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_avoidance_type" value="Price Parity"><label class="form-check-label">Price Parity</label></div>
-                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_avoidance_type" value="Negotiated Price Reduction"><label class="form-check-label">Negotiated Price Reduction</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio"
+                                            name="mf_avoidance_type" value="Capital"><label
+                                            class="form-check-label">Capital</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio"
+                                            name="mf_avoidance_type" value="Service"><label
+                                            class="form-check-label">Service</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio"
+                                            name="mf_avoidance_type" value="Value Analysis"><label
+                                            class="form-check-label">Value Analysis</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio"
+                                            name="mf_avoidance_type" value="Price Parity"><label
+                                            class="form-check-label">Price Parity</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio"
+                                            name="mf_avoidance_type" value="Negotiated Price Reduction"><label
+                                            class="form-check-label">Negotiated Price Reduction</label></div>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -531,15 +654,20 @@
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label">Original Quote <span class="text-danger">*</span></label>
-                                <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control modal-field" id="mf_original_quote"></div>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number"
+                                        step="0.01" class="form-control modal-field" id="mf_original_quote"></div>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label">New Quote <span class="text-danger">*</span></label>
-                                <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control modal-field" id="mf_new_quote"></div>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number"
+                                        step="0.01" class="form-control modal-field" id="mf_new_quote"></div>
                             </div>
                             <div class="col-md-2">
-                                <label class="form-label">Avoidance Amount <span class="text-danger">*</span> <small class="text-muted fst-italic">(auto-calculated)</small></label>
-                                <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control" id="mf_avoidance_amount" readonly tabindex="-1"></div>
+                                <label class="form-label">Avoidance Amount <span class="text-danger">*</span> <small
+                                        class="text-muted fst-italic">(auto-calculated)</small></label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number"
+                                        step="0.01" class="form-control" id="mf_avoidance_amount" readonly
+                                        tabindex="-1"></div>
                             </div>
                         </div>
                     </fieldset>
@@ -564,7 +692,8 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Rebate Amount <span class="text-danger">*</span></label>
-                                <div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" class="form-control modal-field" id="mf_rebate_amount"></div>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number"
+                                        step="0.01" class="form-control modal-field" id="mf_rebate_amount"></div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Transaction Date <span class="text-danger">*</span></label>
@@ -573,15 +702,24 @@
                             <div class="col-md-4">
                                 <label class="form-label">Transaction Type <span class="text-danger">*</span></label>
                                 <div class="modal-radio-group" id="mf_transaction_type_radios">
-                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_transaction_type" value="Check"><label class="form-check-label">Check</label></div>
-                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_transaction_type" value="ACH"><label class="form-check-label">ACH</label></div>
-                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_transaction_type" value="Credit Memo"><label class="form-check-label">Credit Memo</label></div>
-                                    <div class="form-check"><input class="form-check-input modal-field" type="radio" name="mf_transaction_type" value="EFT"><label class="form-check-label">EFT</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio"
+                                            name="mf_transaction_type" value="Check"><label
+                                            class="form-check-label">Check</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio"
+                                            name="mf_transaction_type" value="ACH"><label
+                                            class="form-check-label">ACH</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio"
+                                            name="mf_transaction_type" value="Credit Memo"><label
+                                            class="form-check-label">Credit Memo</label></div>
+                                    <div class="form-check"><input class="form-check-input modal-field" type="radio"
+                                            name="mf_transaction_type" value="EFT"><label
+                                            class="form-check-label">EFT</label></div>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Transaction Number <span class="text-danger">*</span></label>
-                                <textarea class="form-control modal-field" id="mf_transaction_number" rows="2"></textarea>
+                                <textarea class="form-control modal-field" id="mf_transaction_number"
+                                    rows="2"></textarea>
                             </div>
                         </div>
                     </fieldset>
@@ -590,14 +728,46 @@
                     <fieldset class="border rounded p-3 mb-3" id="mf_section_alloc">
                         <legend class="float-none w-auto px-2 fs-6 fw-bold text-primary">Facility Allocation</legend>
                         <div class="row g-2">
-                            <div class="col-6 col-md-3"><label class="form-label">MMC</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_mmc" data-facility="MMC"></div></div>
-                            <div class="col-6 col-md-3"><label class="form-label">BURKE</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_burke" data-facility="BURKE"></div></div>
-                            <div class="col-6 col-md-3"><label class="form-label">AECOM</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_aecom" data-facility="AECOM"></div></div>
-                            <div class="col-6 col-md-3"><label class="form-label">MOUNT VERNON</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_mmvo" data-facility="MMVO"></div></div>
-                            <div class="col-6 col-md-3"><label class="form-label">NEW ROCHELLE</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_msso" data-facility="MSSO"></div></div>
-                            <div class="col-6 col-md-3"><label class="form-label">NYACK</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_nyack" data-facility="NYACK"></div></div>
-                            <div class="col-6 col-md-3"><label class="form-label">ST LUKE'S</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_slch" data-facility="SLCH"></div></div>
-                            <div class="col-6 col-md-3"><label class="form-label">WPH</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" min="0" class="form-control modal-field modal-alloc" id="mf_alloc_wph" data-facility="WPH"></div></div>
+                            <div class="col-6 col-md-3"><label class="form-label">MMC</label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number"
+                                        step="0.01" min="0" class="form-control modal-field modal-alloc"
+                                        id="mf_alloc_mmc" data-facility="MMC"></div>
+                            </div>
+                            <div class="col-6 col-md-3"><label class="form-label">BURKE</label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number"
+                                        step="0.01" min="0" class="form-control modal-field modal-alloc"
+                                        id="mf_alloc_burke" data-facility="BURKE"></div>
+                            </div>
+                            <div class="col-6 col-md-3"><label class="form-label">AECOM</label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number"
+                                        step="0.01" min="0" class="form-control modal-field modal-alloc"
+                                        id="mf_alloc_aecom" data-facility="AECOM"></div>
+                            </div>
+                            <div class="col-6 col-md-3"><label class="form-label">MOUNT VERNON</label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number"
+                                        step="0.01" min="0" class="form-control modal-field modal-alloc"
+                                        id="mf_alloc_mmvo" data-facility="MMVO"></div>
+                            </div>
+                            <div class="col-6 col-md-3"><label class="form-label">NEW ROCHELLE</label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number"
+                                        step="0.01" min="0" class="form-control modal-field modal-alloc"
+                                        id="mf_alloc_msso" data-facility="MSSO"></div>
+                            </div>
+                            <div class="col-6 col-md-3"><label class="form-label">NYACK</label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number"
+                                        step="0.01" min="0" class="form-control modal-field modal-alloc"
+                                        id="mf_alloc_nyack" data-facility="NYACK"></div>
+                            </div>
+                            <div class="col-6 col-md-3"><label class="form-label">ST LUKE'S</label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number"
+                                        step="0.01" min="0" class="form-control modal-field modal-alloc"
+                                        id="mf_alloc_slch" data-facility="SLCH"></div>
+                            </div>
+                            <div class="col-6 col-md-3"><label class="form-label">WPH</label>
+                                <div class="input-group"><span class="input-group-text">$</span><input type="number"
+                                        step="0.01" min="0" class="form-control modal-field modal-alloc"
+                                        id="mf_alloc_wph" data-facility="WPH"></div>
+                            </div>
                         </div>
                         <div class="mt-2 d-flex align-items-center flex-wrap gap-2">
                             <span class="fw-semibold">Total Allocation: $<span id="mf_alloc_total">0.00</span></span>
@@ -610,10 +780,10 @@
                         <legend class="float-none w-auto px-2 fs-6 fw-bold">Attachments</legend>
                         <div id="mf_file_list" class="mb-2"></div>
                         <div id="mf_file_upload_area" class="d-none mt-2">
-                            <label class="form-label small text-muted mb-1">Add files <span class="fst-italic">(changes applied when you click Save Changes)</span></label>
-                            <input type="file" id="mf_file_input" multiple
-                                   class="form-control form-control-sm"
-                                   accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.png,.jpg,.jpeg,.gif,.zip">
+                            <label class="form-label small text-muted mb-1">Add files <span class="fst-italic">(changes
+                                    applied when you click Save Changes)</span></label>
+                            <input type="file" id="mf_file_input" multiple class="form-control form-control-sm"
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.png,.jpg,.jpeg,.gif,.zip">
                         </div>
                     </fieldset>
 
@@ -640,9 +810,10 @@
                     <div id="mf_audit_section" class="d-none mt-3">
                         <hr class="mb-2">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <h6 class="fw-bold mb-0 text-secondary"><i class="fas fa-history me-1"></i> Audit History</h6>
+                            <h6 class="fw-bold mb-0 text-secondary"><i class="fas fa-history me-1"></i> Audit History
+                            </h6>
                             <button type="button" class="btn btn-sm btn-outline-secondary py-0" id="mf_audit_toggle_btn"
-                                    onclick="toggleAuditLog()">
+                                onclick="toggleAuditLog()">
                                 <i class="fas fa-chevron-down"></i> Show
                             </button>
                         </div>
@@ -656,25 +827,25 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 <!-- Approve / Reject — shown only when status is Pending Review and user has permission -->
                 <button type="button" class="btn btn-danger d-none" id="modalRejectBtn"
-                        onclick="rejectInitiative(window._modalInitiativeId)">
+                    onclick="rejectInitiative(window._modalInitiativeId)">
                     <i class="fas fa-times-circle"></i> Reject
                 </button>
                 <button type="button" class="btn btn-success d-none" id="modalApproveBtn"
-                        onclick="approveInitiativeFromModal()">
+                    onclick="approveInitiativeFromModal()">
                     <i class="fas fa-check-circle"></i> Approve
                 </button>
                 <!-- Revert — shown only when status is Rejected and user has permission -->
                 <button type="button" class="btn btn-warning d-none" id="modalRevertBtn"
-                        onclick="revertInitiativeFromModal()">
+                    onclick="revertInitiativeFromModal()">
                     <i class="fas fa-undo"></i> Revert to Pending
                 </button>
                 <!-- Reopen / Revoke — shown only when status is Approved and user has permission -->
                 <button type="button" class="btn btn-outline-danger d-none" id="modalRevokeBtn"
-                        onclick="revokeApprovalFromModal()">
+                    onclick="revokeApprovalFromModal()">
                     <i class="fas fa-ban"></i> Revoke Approval
                 </button>
                 <button type="button" class="btn btn-outline-warning d-none" id="modalUnapproveBtn"
-                        onclick="unapproveInitiativeFromModal()">
+                    onclick="unapproveInitiativeFromModal()">
                     <i class="fas fa-undo-alt"></i> Reopen to Pending
                 </button>
                 <!-- shown only in edit (form) view -->
@@ -704,9 +875,10 @@
             <div class="modal-body">
                 <div id="rejectModalContext" class="d-none mb-2"></div>
                 <div class="mb-3">
-                    <label class="form-label" id="rejectCommentLabel">Rejection Reason <span class="form-required">*</span></label>
-                    <textarea class="form-control" id="rejectComment" rows="4" 
-                              placeholder="Please enter the reason..."></textarea>
+                    <label class="form-label" id="rejectCommentLabel">Rejection Reason <span
+                            class="form-required">*</span></label>
+                    <textarea class="form-control" id="rejectComment" rows="4"
+                        placeholder="Please enter the reason..."></textarea>
                 </div>
             </div>
             <div class="modal-footer">
