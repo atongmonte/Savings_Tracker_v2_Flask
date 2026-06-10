@@ -2029,7 +2029,7 @@ async function flushStagedDeletes(initiativeId) {
 
     for (const fileId of Array.from(window._stagedDeletes)) {
         try {
-            const r = await fetch(`/api/initiatives/${initiativeId}/files/${fileId}`, { method: 'DELETE' });
+            const r = await fetch(`/api/initiatives/${initiativeId}/files/${fileId}`, { method: 'POST' });
             const d = await r.json();
             if (d.error) {
                 errors.push(d.error);

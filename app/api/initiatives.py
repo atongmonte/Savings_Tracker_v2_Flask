@@ -635,7 +635,7 @@ def download_file(initiative_id, file_id):
     )
 
 
-@initiatives_bp.route('/<int:initiative_id>/files/<int:file_id>', methods=['DELETE'])
+@initiatives_bp.route('/<int:initiative_id>/files/<int:file_id>', methods=['POST'])
 @login_required
 def delete_file(initiative_id, file_id):
     """Delete a file attachment (soft-delete DB record + remove from disk)."""
