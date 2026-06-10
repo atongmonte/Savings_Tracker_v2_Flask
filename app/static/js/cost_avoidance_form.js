@@ -132,7 +132,7 @@ function deleteExistingFile(fileId, rowEl) {
         return;
     }
     if (!confirm('Delete this attachment? This cannot be undone.')) return;
-    fetch(`/api/initiatives/${editInitiativeId}/files/${fileId}`, { method: 'DELETE' })
+    fetch(`/api/initiatives/${editInitiativeId}/files/${fileId}`, { method: 'POST' })
         .then(r => r.json())
         .then(data => {
             if (data.error) { showAlert(data.error, 'danger'); return; }

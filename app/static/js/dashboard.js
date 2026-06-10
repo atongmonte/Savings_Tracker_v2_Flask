@@ -1830,7 +1830,7 @@ function submitRejection() {
 // Delete (soft-delete) an initiative
 function deleteInitiative(id) {
     if (!confirm('Delete this initiative? Admins can restore it later.')) return;
-    fetch(`/api/initiatives/${id}`, { method: 'DELETE' })
+    fetch(`/api/initiatives/${id}`, { method: 'POST' })
         .then(r => r.json())
         .then(data => {
             if (data.message) {
@@ -2027,7 +2027,7 @@ async function flushStagedDeletes(initiativeId) {
 
     for (const fileId of Array.from(window._stagedDeletes)) {
         try {
-            const r = await fetch(`/api/initiatives/${initiativeId}/files/${fileId}`, { method: 'DELETE' });
+            const r = await fetch(`/api/initiatives/${initiativeId}/files/${fileId}`, { method: 'POST' });
             const d = await r.json();
             if (d.error) {
                 errors.push(d.error);
