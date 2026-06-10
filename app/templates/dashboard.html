@@ -565,19 +565,26 @@
                             </div>
                             <!-- Detail fields — hidden for Demand/Utilization Reduction -->
                             <div id="mf_savings_details" class="col-12">
+                                <!-- GPO Tier -->
                                 <div class="row g-3">
-                                    <div class="col-md-4">
+                                    <div class="col-md-12">
                                         <label class="form-label">GPO Tier</label>
                                         <input type="text" class="form-control modal-field" id="mf_gpo_tier_cs">
                                     </div>
-                                    <div class="col-md-2">
+                                </div>
+                                <!-- Dates -->
+                                <div class="row g-3 mt-1">
+                                    <div class="col-md-6">
                                         <label class="form-label">Start Date <span class="text-danger">*</span></label>
                                         <input type="date" class="form-control modal-field" id="mf_start_date">
                                     </div>
-                                    <div class="col-md-2">
+                                    <div class="col-md-6">
                                         <label class="form-label">End Date <span class="text-danger">*</span></label>
                                         <input type="date" class="form-control modal-field" id="mf_end_date">
                                     </div>
+                                </div>
+                                <!-- Spend Details -->
+                                <div class="row g-3 mt-1">
                                     <div class="col-md-3">
                                         <label class="form-label">Baseline Spend <span
                                                 class="text-danger">*</span></label>
@@ -593,15 +600,14 @@
                                                 id="mf_expected_spend"></div>
                                     </div>
                                     <div class="col-md-3">
-                                        <label class="form-label">Annual Savings <span class="text-danger">*</span>
-                                            <small class="text-muted fst-italic">(auto-calculated)</small></label>
+                                        <label class="form-label">Annual Savings <span class="text-danger">*</span></label>
                                         <div class="input-group"><span class="input-group-text">$</span><input
                                                 type="number" step="0.01" class="form-control" id="mf_annual_savings"
                                                 readonly tabindex="-1"></div>
+                                        <small class="text-muted fst-italic d-block">(auto-calculated)</small>
                                     </div>
                                     <div class="col-md-3">
-                                        <label class="form-label">Total Savings <span class="text-danger">*</span>
-                                            <small class="text-muted fst-italic">(auto-calculated)</small></label>
+                                        <label class="form-label">Total Savings <span class="text-danger">*</span></label>
                                         <div class="input-group"><span class="input-group-text">$</span><input
                                                 type="number" step="0.01" class="form-control" id="mf_total_savings"
                                                 readonly tabindex="-1"></div>
