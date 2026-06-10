@@ -1,5 +1,16 @@
 /* Forms Common Styles — Montefiore Einstein brand */
 
+/* Custom autocomplete dropdown for Contract ID / Vendor Name */
+.prime-autocomplete-dropdown {
+    font-family: inherit;
+    min-width: 0;
+}
+
+.prime-autocomplete-dropdown li:hover {
+    background: #0072BC !important;
+    color: #fff !important;
+}
+
 .form-section {
     background-color: #FFFFFF;
     padding: 1.5rem 1.75rem;

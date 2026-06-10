@@ -185,6 +185,144 @@ function debounceAsync(callback, waitMs) {
     };
 }
 
+const AUTOCOMPLETE_MAX_ITEMS = 8;
+
+function createCustomAutocomplete(input) {
+    input.removeAttribute('list');
+    input.setAttribute('autocomplete', 'off');
+
+    let allOptions = [];
+    let activeIndex = -1;
+
+    const dropdown = document.createElement('ul');
+    dropdown.className = 'prime-autocomplete-dropdown';
+    Object.assign(dropdown.style, {
+        position: 'fixed',
+        background: '#fff',
+        border: '1px solid #ced4da',
+        borderTop: 'none',
+        borderRadius: '0 0 4px 4px',
+        zIndex: '9999',
+        margin: '0',
+        padding: '0',
+        listStyle: 'none',
+        display: 'none',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+        overflowY: 'auto',
+    });
+    document.body.appendChild(dropdown);
+
+    function positionDropdown() {
+        const rect = input.getBoundingClientRect();
+        dropdown.style.top = rect.bottom + 'px';
+        dropdown.style.left = rect.left + 'px';
+        dropdown.style.width = rect.width + 'px';
+    }
+
+    function setActive(index) {
+        const items = dropdown.querySelectorAll('li');
+        items.forEach(li => {
+            li.style.background = '';
+            li.style.color = '';
+        });
+        activeIndex = index;
+        if (index >= 0 && index < items.length) {
+            items[index].style.background = '#0072BC';
+            items[index].style.color = '#fff';
+            items[index].scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function hideDropdown() {
+        dropdown.style.display = 'none';
+        activeIndex = -1;
+    }
+
+    function showDropdown(items) {
+        if (!items.length) {
+            hideDropdown();
+            return;
+        }
+        dropdown.innerHTML = '';
+        activeIndex = -1;
+        const limited = items.slice(0, AUTOCOMPLETE_MAX_ITEMS);
+        limited.forEach((value, i) => {
+            const li = document.createElement('li');
+            li.textContent = value;
+            Object.assign(li.style, {
+                padding: '0.45rem 0.75rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                borderBottom: i < limited.length - 1 ? '1px solid #f0f0f0' : 'none',
+            });
+            li.addEventListener('mousedown', e => {
+                e.preventDefault();
+                input.value = value;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                hideDropdown();
+            });
+            li.addEventListener('mouseenter', () => setActive(i));
+            li.addEventListener('mouseleave', () => {
+                li.style.background = '';
+                li.style.color = '';
+            });
+            dropdown.appendChild(li);
+        });
+        positionDropdown();
+        dropdown.style.display = 'block';
+    }
+
+    function filterAndShow() {
+        const query = (input.value || '').trim().toLowerCase();
+        const filtered = query
+            ? allOptions.filter(v => v.toLowerCase().includes(query))
+            : allOptions;
+        showDropdown(filtered);
+    }
+
+    input.addEventListener('input', filterAndShow);
+    input.addEventListener('focus', filterAndShow);
+    input.addEventListener('blur', () => setTimeout(hideDropdown, 150));
+    input.addEventListener('keydown', e => {
+        if (dropdown.style.display === 'none') return;
+        const items = dropdown.querySelectorAll('li');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActive(Math.min(activeIndex + 1, items.length - 1));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActive(Math.max(activeIndex - 1, 0));
+        } else if (e.key === 'Enter' && activeIndex >= 0) {
+            e.preventDefault();
+            items[activeIndex].dispatchEvent(new MouseEvent('mousedown'));
+        } else if (e.key === 'Escape') {
+            hideDropdown();
+        }
+    });
+
+    const onScrollOrResize = () => {
+        if (dropdown.style.display !== 'none') positionDropdown();
+    };
+    window.addEventListener('scroll', onScrollOrResize, true);
+    window.addEventListener('resize', onScrollOrResize);
+
+    return {
+        setOptions(options) {
+            allOptions = options || [];
+            if (document.activeElement === input) filterAndShow();
+        },
+        destroy() {
+            dropdown.remove();
+            window.removeEventListener('scroll', onScrollOrResize, true);
+            window.removeEventListener('resize', onScrollOrResize);
+        },
+    };
+}
+
 async function initializePrimeContractLookup(options) {
     const contractInput = typeof options.contractInputId === 'string'
         ? document.getElementById(options.contractInputId)
@@ -195,14 +333,19 @@ async function initializePrimeContractLookup(options) {
 
     if (!contractInput || !vendorInput) return;
 
-    if (options.contractListId) {
-        contractInput.setAttribute('list', options.contractListId);
-    }
-    if (options.vendorListId) {
-        vendorInput.setAttribute('list', options.vendorListId);
-    }
+    // Use custom autocomplete dropdowns instead of native datalist
+    const contractAC = createCustomAutocomplete(contractInput);
+    const vendorAC = createCustomAutocomplete(vendorInput);
 
-    await loadPrimeContractIdOptions(options.contractListId);
+    // Load all contract IDs and seed the contract autocomplete
+    let allContractNumbers = [];
+    try {
+        const payload = await fetchPrimeContractLookup('', options.forceRefresh === true);
+        allContractNumbers = payload.contractNumbers || [];
+    } catch (e) {
+        console.error('Error loading PRIME contract IDs:', e);
+    }
+    contractAC.setOptions(allContractNumbers);
 
     contractInput.dataset.lastPrimeContractValue = (contractInput.value || '').trim();
 
@@ -213,10 +356,22 @@ async function initializePrimeContractLookup(options) {
 
         if (clearVendorOnChange && normalizedCurrentContractNumber !== lastContractNumber) {
             vendorInput.value = '';
+            vendorAC.setOptions([]);
         }
 
         contractInput.dataset.lastPrimeContractValue = normalizedCurrentContractNumber;
-        return loadPrimeVendorOptions(currentContractNumber, options.vendorListId);
+
+        if (!normalizedCurrentContractNumber) {
+            vendorAC.setOptions([]);
+            return;
+        }
+        try {
+            const payload = await fetchPrimeContractLookup(normalizedCurrentContractNumber);
+            vendorAC.setOptions(payload.vendors || []);
+        } catch (e) {
+            console.error('Error loading PRIME vendors:', e);
+            vendorAC.setOptions([]);
+        }
     };
 
     if (!contractInput.dataset.primeLookupBound) {
