@@ -640,11 +640,24 @@ def download_file(initiative_id, file_id):
 def delete_file(initiative_id, file_id):
     """Delete a file attachment (soft-delete DB record + remove from disk)."""
     user = g.current_user
+
+    initiative = Initiative.query.filter_by(id=initiative_id, is_deleted=False).first()
+    if not initiative:
+        return jsonify({'error': 'Initiative not found'}), 404
+
+    # Auto-clean any files already removed from disk so the "remaining" count
+    # only reflects files that actually exist, and ghost records don't block deletions.
+    _reconcile_missing_files(initiative)
+
     file_record = FileTracking.query.filter_by(
         id=file_id, initiative_id=initiative_id, is_deleted=False
     ).first()
     if not file_record:
-        return jsonify({'error': 'File not found'}), 404
+        # Already deleted (possibly just cleaned up by reconcile) — return current file list
+        return jsonify({
+            'message': 'File already removed',
+            'files': [f.to_dict() for f in initiative.files if not f.is_deleted]
+        }), 200
 
     # Block deletion if this is the last remaining file
     remaining = FileTracking.query.filter_by(
@@ -667,14 +680,15 @@ def delete_file(initiative_id, file_id):
         try:
             if file_record.file_path and os.path.exists(file_record.file_path):
                 os.remove(file_record.file_path)
-        except OSError as e:
-            return jsonify({'error': f'Could not delete file from disk: {e}'}), 500
+        except OSError:
+            # Physical removal failed — still soft-delete the DB record so
+            # the broken reference doesn't surface to users again.
+            pass
 
     file_record.is_deleted = True
     file_record.deleted_at = now_eastern()
     file_record.deleted_by_id = user.id
     db.session.commit()
-    initiative = Initiative.query.get(initiative_id)
     return jsonify({
         'message': 'File deleted',
         'files': [f.to_dict() for f in initiative.files if not f.is_deleted]

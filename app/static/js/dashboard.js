@@ -1385,6 +1385,14 @@ function saveModalChanges() {
 
     if (!validateModalForm(type)) return;
 
+    // File attachment constraint: at least 1 file must remain after staged changes
+    const remainingFiles = window._serverFiles.filter(f => !window._stagedDeletes.has(f.id)).length
+                         + window._stagedFiles.length;
+    if (remainingFiles < 1) {
+        showModalAlert('At least one file attachment is required. Please add a replacement file before removing all existing ones.', 'warning');
+        return;
+    }
+
     const getVal = elId => { const el = document.getElementById(elId); return el ? el.value : ''; };
     const getRadio = name => { const el = document.querySelector(`input[name="${name}"]:checked`); return el ? el.value : ''; };
 
@@ -1492,11 +1500,20 @@ function goBackToForm() {
     updateModalSaveButtonVisibility();
 }
 
-function confirmAndSave() {
+async function confirmAndSave() {
     const id       = window._modalInitiativeId;
     const payload  = window._pendingPayload;
     const endpoint = window._pendingEndpoint;
     if (!id || !payload || !endpoint) return;
+
+    // Pre-flight: ensure at least 1 file will remain after staged deletes/uploads
+    const remainingFiles = window._serverFiles.filter(f => !window._stagedDeletes.has(f.id)).length
+                         + window._stagedFiles.length;
+    if (remainingFiles < 1) {
+        goBackToForm();
+        showModalAlert('At least one file attachment is required. Please add a replacement file before removing all existing ones.', 'warning');
+        return;
+    }
 
     const confirmBtn = document.getElementById('mf_confirmSaveBtn');
     const goBackBtn  = document.getElementById('mf_goBackBtn');
@@ -1504,51 +1521,58 @@ function confirmAndSave() {
     goBackBtn.disabled  = true;
     confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
 
-    flushStagedDeletes(id)
-    .then(deleteErrors => {
-        if (deleteErrors.length) {
-            goBackToForm();
-            showModalAlert('File deletion failed. Initiative was not updated: ' + deleteErrors.join('; '), 'danger');
-            loadInitiatives();
-            return;
-        }
+    try {
+        // 1. Upload new files FIRST so the server-side "last file" guard passes
+        //    when we subsequently delete the old file(s).
+        const uploadErrors = await flushStagedFileChanges(id);
 
-        return fetch(`/api/${endpoint}/${id}`, {
+        // If uploads failed and we're relying on them to satisfy the "at least
+        // one file" constraint after deletes, abort the deletes — otherwise the
+        // server would correctly block the delete with a "last file" error and
+        // the user would see a confusing "deletion failed" message.
+        const uploadFailed = uploadErrors.length > 0;
+        const deletesWouldLeaveNoFiles = window._stagedDeletes.size > 0 &&
+            window._serverFiles.filter(f => !window._stagedDeletes.has(f.id)).length < 1;
+        const skipDeletes = uploadFailed && deletesWouldLeaveNoFiles;
+
+        // 2. Flush staged deletes — collect warnings but don't block the save.
+        //    Skip if uploads failed and we'd be left with no files.
+        const deleteErrors = skipDeletes ? [] : await flushStagedDeletes(id);
+
+        // 3. Update initiative data
+        const r = await fetch(`/api/${endpoint}/${id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
-        })
-        .then(r => r.json())
-        .then(resp => {
-            if (resp.error) {
-                // Go back to form view and show error
-                goBackToForm();
-                showModalAlert(resp.error, 'danger');
-            } else {
-                // Upload staged files after initiative update succeeds
-                flushStagedFileChanges(id).then(fileErrors => {
-                    if (fileErrors.length) {
-                        goBackToForm();
-                        showModalAlert('Initiative saved, but file upload errors: ' + fileErrors.join('; '), 'warning');
-                    } else {
-                        bootstrap.Modal.getInstance(document.getElementById('actionModal')).hide();
-                        showAlert('Initiative updated successfully', 'success');
-                    }
-                    loadInitiatives();
-                });
-            }
         });
-    })
-    .catch(err => {
+        const resp = await r.json();
+
+        if (resp.error) {
+            goBackToForm();
+            showModalAlert(resp.error, 'danger');
+        } else {
+            const warnings = [...uploadErrors, ...deleteErrors];
+            if (warnings.length) {
+                const prefix = uploadErrors.length
+                    ? 'Initiative saved, but file upload failed (files not changed): '
+                    : 'Initiative saved, but some file operations had warnings: ';
+                goBackToForm();
+                showModalAlert(prefix + warnings.join('; '), 'warning');
+            } else {
+                bootstrap.Modal.getInstance(document.getElementById('actionModal')).hide();
+                showAlert('Initiative updated successfully', 'success');
+            }
+            loadInitiatives();
+        }
+    } catch (err) {
         console.error('Error saving:', err);
         goBackToForm();
         showModalAlert('Error saving changes', 'danger');
-    })
-    .finally(() => {
+    } finally {
         confirmBtn.disabled = false;
         goBackBtn.disabled  = false;
         confirmBtn.innerHTML = '<i class="fas fa-check-circle"></i> Confirm &amp; Save';
-    });
+    }
 }
 
 // Revert rejected initiative from modal footer
