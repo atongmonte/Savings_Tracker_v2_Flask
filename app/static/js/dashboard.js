@@ -1285,11 +1285,9 @@ function validateModalForm(type) {
     reqRadio('mf_contract_source_r', 'Contract Source', 'mf_contract_source_radios');
 
     if (type === 'Rebate') {
-        const contractCategoryVal = (document.getElementById('mf_contract_category')?.value || '').trim();
         const waveCategoryVal = (document.getElementById('mf_wave_category')?.value || '').trim();
-        if (!contractCategoryVal && !waveCategoryVal) {
-            errors.push('Contract Category or Wave Category');
-            document.getElementById('mf_contract_category')?.classList.add('is-invalid');
+        if (!waveCategoryVal) {
+            errors.push('Wave Category');
             document.getElementById('mf_wave_category')?.classList.add('is-invalid');
         }
     } else {
