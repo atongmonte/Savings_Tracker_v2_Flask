@@ -772,57 +772,83 @@ def get_dashboard_stats():
     # Collect matching IDs (cheap — no serialization)
     matching_ids = [row.id for row in base_q.with_entities(Initiative.id).all()]
 
+    empty = {
+        'total': 0,
+        'savings': 0, 'savings_approved': 0, 'savings_pending': 0,
+        'rebate': 0, 'rebate_approved': 0, 'rebate_pending': 0,
+        'avoidance': 0, 'avoidance_approved': 0, 'avoidance_pending': 0,
+    }
     if not matching_ids:
-        return jsonify({'total': 0, 'savings': 0, 'rebate': 0, 'avoidance': 0}), 200
+        return jsonify(empty), 200
 
+    # Split matching IDs by status for the approved/pending breakdown
+    status_rows = db.session.query(Initiative.id, Initiative.status) \
+        .filter(Initiative.id.in_(matching_ids)).all()
+    approved_ids = [r.id for r in status_rows if r.status == 'Approved']
+    pending_ids  = [r.id for r in status_rows if r.status == 'Pending Review']
+
+    def _calc_stats(ids):
+        """Compute (savings, rebate, avoidance) for a set of initiative IDs."""
+        if not ids:
+            return 0.0, 0.0, 0.0
+
+        if stats_year:
+            _year_start = date(stats_year, 1, 1)
+            _year_end   = date(stats_year, 12, 31)
+
+            cs_rows = db.session.query(
+                CostSavings.total_savings_amount,
+                CostSavings.annual_savings_amount,
+                CostSavings.start_date,
+                CostSavings.end_date
+            ).filter(CostSavings.initiative_id.in_(ids)).all()
+
+            _savings = 0.0
+            for total_savings, annual, sd, ed in cs_rows:
+                if not sd or not ed:
+                    if annual:
+                        _savings += float(annual)
+                    continue
+                if not total_savings:
+                    continue
+                overlap_start = max(sd, _year_start)
+                overlap_end   = min(ed, _year_end)
+                overlap_days  = (overlap_end - overlap_start).days + 1
+                if overlap_days <= 0:
+                    continue
+                contract_days = (ed - sd).days + 1 or 365
+                _savings += float(total_savings) * overlap_days / contract_days
+
+            _rebate = db.session.query(func.sum(Rebate.rebate_amount)) \
+                .filter(
+                    Rebate.initiative_id.in_(ids),
+                    func.extract('year', Rebate.rebate_check_date) == stats_year
+                ).scalar() or 0
+
+            _avoidance = db.session.query(func.sum(CostAvoidance.avoidance_amount)) \
+                .filter(
+                    CostAvoidance.initiative_id.in_(ids),
+                    func.extract('year', CostAvoidance.avoidance_date) == stats_year
+                ).scalar() or 0
+
+            return _savings, float(_rebate), float(_avoidance)
+        else:
+            _savings   = db.session.query(func.sum(CostSavings.total_savings_amount)) \
+                           .filter(CostSavings.initiative_id.in_(ids)).scalar() or 0
+            _rebate    = db.session.query(func.sum(Rebate.rebate_amount)) \
+                           .filter(Rebate.initiative_id.in_(ids)).scalar() or 0
+            _avoidance = db.session.query(func.sum(CostAvoidance.avoidance_amount)) \
+                           .filter(CostAvoidance.initiative_id.in_(ids)).scalar() or 0
+            return float(_savings), float(_rebate), float(_avoidance)
+
+    savings_sum,   rebate_sum,   avoidance_sum   = _calc_stats(matching_ids)
+    savings_appv,  rebate_appv,  avoidance_appv  = _calc_stats(approved_ids)
+    savings_pend,  rebate_pend,  avoidance_pend  = _calc_stats(pending_ids)
+
+    # Total count
     if stats_year:
         year_start = date(stats_year, 1, 1)
         year_end   = date(stats_year, 12, 31)
-
-        # ── Cost Savings: spread total_savings_amount across contract days, then
-        # count only the days overlapping the selected year.
-        cs_rows = db.session.query(
-            CostSavings.total_savings_amount,
-            CostSavings.annual_savings_amount,
-            CostSavings.start_date,
-            CostSavings.end_date
-        ).filter(CostSavings.initiative_id.in_(matching_ids)).all()
-
-        savings_sum = 0.0
-        cs_count = 0
-        for total_savings, annual, sd, ed in cs_rows:
-            # If dates are missing, assume it falls in the year (use full annual amount)
-            if not sd or not ed:
-                if annual:
-                    savings_sum += float(annual)
-                    cs_count += 1
-                continue
-            if not total_savings:
-                continue
-            overlap_start = max(sd, year_start)
-            overlap_end   = min(ed, year_end)
-            overlap_days  = (overlap_end - overlap_start).days + 1
-            if overlap_days <= 0:
-                continue  # contract doesn't touch this year
-            contract_days = (ed - sd).days + 1 or 365
-            savings_sum += float(total_savings) * overlap_days / contract_days
-            cs_count += 1
-
-        # ── Rebates: filter by transaction (rebate_check_date) year ──
-        rebate_sum = db.session.query(func.sum(Rebate.rebate_amount)) \
-            .filter(
-                Rebate.initiative_id.in_(matching_ids),
-                func.extract('year', Rebate.rebate_check_date) == stats_year
-            ).scalar() or 0
-
-        # ── Cost Avoidance: filter by avoidance_date year ──
-        avoidance_sum = db.session.query(func.sum(CostAvoidance.avoidance_amount)) \
-            .filter(
-                CostAvoidance.initiative_id.in_(matching_ids),
-                func.extract('year', CostAvoidance.avoidance_date) == stats_year
-            ).scalar() or 0
-
-        # Total count = initiatives with any activity in the year
         cs_ids_in_year = {row.initiative_id for row in db.session.query(CostSavings.initiative_id)
             .filter(CostSavings.initiative_id.in_(matching_ids),
                     CostSavings.end_date >= year_start,
@@ -834,22 +860,20 @@ def get_dashboard_stats():
             .filter(CostAvoidance.initiative_id.in_(matching_ids),
                     func.extract('year', CostAvoidance.avoidance_date) == stats_year).all()}
         total = len(cs_ids_in_year | rb_ids_in_year | ca_ids_in_year)
-
     else:
-        # All-time totals
-        savings_sum   = db.session.query(func.sum(CostSavings.total_savings_amount)) \
-                          .filter(CostSavings.initiative_id.in_(matching_ids)).scalar() or 0
-        rebate_sum    = db.session.query(func.sum(Rebate.rebate_amount)) \
-                          .filter(Rebate.initiative_id.in_(matching_ids)).scalar() or 0
-        avoidance_sum = db.session.query(func.sum(CostAvoidance.avoidance_amount)) \
-                          .filter(CostAvoidance.initiative_id.in_(matching_ids)).scalar() or 0
         total = len(matching_ids)
 
     return jsonify({
-        'total':     total,
-        'savings':   float(savings_sum),
-        'rebate':    float(rebate_sum),
-        'avoidance': float(avoidance_sum),
+        'total':              total,
+        'savings':            savings_sum,
+        'savings_approved':   savings_appv,
+        'savings_pending':    savings_pend,
+        'rebate':             rebate_sum,
+        'rebate_approved':    rebate_appv,
+        'rebate_pending':     rebate_pend,
+        'avoidance':          avoidance_sum,
+        'avoidance_approved': avoidance_appv,
+        'avoidance_pending':  avoidance_pend,
     }), 200
 
 

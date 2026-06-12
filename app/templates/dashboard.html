@@ -110,6 +110,23 @@
         box-shadow: 0 6px 18px rgba(17, 43, 70, .10);
     }
 
+    .stat-half {
+        cursor: pointer;
+        border-radius: 6px;
+        padding: 0.5rem 0.25rem;
+        transition: background 0.15s;
+    }
+
+    .stat-half:hover {
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    .stat-half-active {
+        background: rgba(0, 0, 0, 0.08);
+        outline: 2px solid currentColor;
+        outline-offset: -2px;
+    }
+
     .stats-card.savings {
         border-top-color: #1A7A4A;
     }
@@ -298,55 +315,75 @@
         <small class="text-muted fw-semibold">SUMMARY</small>
         <span class="summary-label" id="summaryYearLabel">Initiative Year: 2026</span>
     </div>
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card stats-card savings">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted mb-2">Cost Savings
-                                <span id="statsYearBadge" class="badge bg-primary ms-1"
-                                    style="font-size:0.65rem">2026</span>
-                            </h6>
-                            <h3 class="mb-0 text-success" id="savingsAmount">$0</h3>
-                            <small class="text-muted d-block mt-2">
-                                Savings may include prior-year carryovers
-                            </small>
+    <div class="row mb-4 row-cols-1 row-cols-md-3 g-3">
+        <div class="col">
+            <div class="card stats-card savings h-100">
+                <div class="card-body d-flex flex-column justify-content-between">
+                    <h5 class="text-muted text-center mb-3">Cost Savings
+                        <span id="statsYearBadge" class="badge bg-primary ms-1"
+                            style="font-size:0.7rem">2026</span>
+                    </h5>
+                    <div class="row text-center g-0">
+                        <div class="col-6 border-end stat-half" data-status="Approved"
+                            onclick="filterByStatus('Approved')" title="Filter by Approved">
+                            <div class="stats-icon text-success mb-1"><i class="fas fa-check-circle"></i></div>
+                            <div class="small fw-semibold text-success mb-1">Approved</div>
+                            <strong class="text-success fs-5" id="savingsApproved">$0</strong>
                         </div>
-                        <div class="stats-icon text-success">
-                            <i class="fas fa-piggy-bank"></i>
+                        <div class="col-6 stat-half" data-status="Pending Review"
+                            onclick="filterByStatus('Pending Review')" title="Filter by Pending Review">
+                            <div class="stats-icon text-warning mb-1"><i class="fas fa-clock"></i></div>
+                            <div class="small fw-semibold text-warning mb-1">Pending</div>
+                            <strong class="text-warning fs-5" id="savingsPending">$0</strong>
                         </div>
                     </div>
+                    <small class="text-muted text-center d-block mt-3">
+                        Savings may include prior-year carryovers
+                    </small>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card stats-card rebate">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted mb-2">Rebates</h6>
-                            <h3 class="mb-0 text-info" id="rebateAmount">$0</h3>
+        <div class="col">
+            <div class="card stats-card rebate h-100">
+                <div class="card-body d-flex flex-column justify-content-between">
+                    <h5 class="text-muted text-center mb-3">Rebates</h5>
+                    <div class="row text-center g-0">
+                        <div class="col-6 border-end stat-half" data-status="Approved"
+                            onclick="filterByStatus('Approved')" title="Filter by Approved">
+                            <div class="stats-icon text-success mb-1"><i class="fas fa-check-circle"></i></div>
+                            <div class="small fw-semibold text-success mb-1">Approved</div>
+                            <strong class="text-success fs-5" id="rebateApproved">$0</strong>
                         </div>
-                        <div class="stats-icon text-info">
-                            <i class="fas fa-receipt"></i>
+                        <div class="col-6 stat-half" data-status="Pending Review"
+                            onclick="filterByStatus('Pending Review')" title="Filter by Pending Review">
+                            <div class="stats-icon text-warning mb-1"><i class="fas fa-clock"></i></div>
+                            <div class="small fw-semibold text-warning mb-1">Pending</div>
+                            <strong class="text-warning fs-5" id="rebatePending">$0</strong>
                         </div>
                     </div>
+                    <small class="text-muted text-center d-block mt-3">&nbsp;</small>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card stats-card avoidance">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-muted mb-2">Cost Avoidance</h6>
-                            <h3 class="mb-0 text-warning" id="avoidanceAmount">$0</h3>
+        <div class="col">
+            <div class="card stats-card avoidance h-100">
+                <div class="card-body d-flex flex-column justify-content-between">
+                    <h5 class="text-muted text-center mb-3">Cost Avoidance</h5>
+                    <div class="row text-center g-0">
+                        <div class="col-6 border-end stat-half" data-status="Approved"
+                            onclick="filterByStatus('Approved')" title="Filter by Approved">
+                            <div class="stats-icon text-success mb-1"><i class="fas fa-check-circle"></i></div>
+                            <div class="small fw-semibold text-success mb-1">Approved</div>
+                            <strong class="text-success fs-5" id="avoidanceApproved">$0</strong>
                         </div>
-                        <div class="stats-icon text-warning">
-                            <i class="fas fa-shield-alt"></i>
+                        <div class="col-6 stat-half" data-status="Pending Review"
+                            onclick="filterByStatus('Pending Review')" title="Filter by Pending Review">
+                            <div class="stats-icon text-warning mb-1"><i class="fas fa-clock"></i></div>
+                            <div class="small fw-semibold text-warning mb-1">Pending</div>
+                            <strong class="text-warning fs-5" id="avoidancePending">$0</strong>
                         </div>
                     </div>
+                    <small class="text-muted text-center d-block mt-3">&nbsp;</small>
                 </div>
             </div>
         </div>

@@ -3,7 +3,7 @@
 let currentInitiativeId = null;
 
 // ── Sorting & pagination state ────────────────────────
-let _sortColumn  = 'initiative_date';   // default: newest initiative year first
+let _sortColumn  = 'updated_at';        // default: most recently updated first
 let _sortDir     = 'desc';
 let _currentPage = 1;
 const _pageSize  = 20;
@@ -296,7 +296,7 @@ function loadInitiatives() {
 
     // Map client sort-column names → API sort_by values
     const sortByMap = { id: 'id', updated_at: 'updated_at', amount: 'amount', initiative_date: 'initiative_date' };
-    const sort_by    = _sortColumn ? (sortByMap[_sortColumn] || 'created_at') : 'created_at';
+    const sort_by    = _sortColumn ? (sortByMap[_sortColumn] || 'updated_at') : 'updated_at';
     const sort_order = _sortColumn ? _sortDir : 'desc';
 
     const params = new URLSearchParams({
@@ -390,9 +390,12 @@ function updateStatisticsFromServer(stats) {
         if (Math.abs(v) >= 1_000)     return '$' + (v / 1_000).toFixed(2) + 'K';
         return '$' + Math.round(v).toLocaleString('en-US');
     };
-    document.getElementById('savingsAmount').textContent   = abbrev(stats.savings);
-    document.getElementById('rebateAmount').textContent    = abbrev(stats.rebate);
-    document.getElementById('avoidanceAmount').textContent = abbrev(stats.avoidance);
+    document.getElementById('savingsApproved').textContent   = abbrev(stats.savings_approved);
+    document.getElementById('savingsPending').textContent    = abbrev(stats.savings_pending);
+    document.getElementById('rebateApproved').textContent    = abbrev(stats.rebate_approved);
+    document.getElementById('rebatePending').textContent     = abbrev(stats.rebate_pending);
+    document.getElementById('avoidanceApproved').textContent = abbrev(stats.avoidance_approved);
+    document.getElementById('avoidancePending').textContent  = abbrev(stats.avoidance_pending);
 }
 
 // Setup filter event listeners
@@ -406,6 +409,24 @@ function setupFilters() {
 function applyFilters() {
     _currentPage = 1;
     loadInitiatives();
+}
+
+// Filter the table by status (called from summary card clicks)
+function filterByStatus(status) {
+    const sel = document.getElementById('filterStatus');
+    if (!sel) return;
+    // Toggle off if already active
+    sel.value = (sel.value === status) ? '' : status;
+    // Update active state on stat card halves
+    document.querySelectorAll('.stat-half').forEach(el => {
+        el.classList.remove('stat-half-active');
+    });
+    if (sel.value) {
+        document.querySelectorAll(`.stat-half[data-status="${sel.value}"]`).forEach(el => {
+            el.classList.add('stat-half-active');
+        });
+    }
+    applyFilters();
 }
 
 // View initiative details (read-only modal)
