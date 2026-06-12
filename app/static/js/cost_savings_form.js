@@ -64,6 +64,35 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 function initializeForm() {
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+    function addMonthsClampedUtc(utcMs, monthsToAdd) {
+        const source = new Date(utcMs);
+        const sourceDay = source.getUTCDate();
+        const monthStart = new Date(Date.UTC(source.getUTCFullYear(), source.getUTCMonth() + monthsToAdd, 1));
+        const targetYear = monthStart.getUTCFullYear();
+        const targetMonth = monthStart.getUTCMonth();
+        const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+        const targetDay = Math.min(sourceDay, lastDay);
+        return Date.UTC(targetYear, targetMonth, targetDay);
+    }
+
+    function formatIsoDateForHint(isoDate) {
+        if (!isoDate) return '';
+        const parts = isoDate.split('-').map(Number);
+        if (parts.length !== 3 || parts.some(Number.isNaN)) return isoDate;
+        const month = String(parts[1]).padStart(2, '0');
+        const day = String(parts[2]).padStart(2, '0');
+        return `${month}/${day}/${parts[0]}`;
+    }
+
+    function formatDurationBreakdown(detail) {
+        const yearLabel = detail.wholeYears === 1 ? 'year' : 'years';
+        const monthLabel = detail.extraMonths === 1 ? 'month' : 'months';
+        const dayLabel = detail.remainingDays === 1 ? 'day' : 'days';
+        return `${detail.wholeYears} ${yearLabel}, ${detail.extraMonths} ${monthLabel}, ${detail.remainingDays} ${dayLabel}`;
+    }
+
     // Calculate savings amount when baseline or new contract spend changes
     const baselineSpend = document.getElementById('baselineSpend');
     const newContractSpend = document.getElementById('newContractSpend');
@@ -73,12 +102,47 @@ function initializeForm() {
     const endDateInput = document.getElementById('endDate');
     const totalSavingsHint = document.getElementById('totalSavingsHint');
     
-    function getDurationYears() {
+    function getDurationDetail() {
         if (!startDateInput.value || !endDateInput.value) return null;
-        const start = new Date(startDateInput.value);
-        const end = new Date(endDateInput.value);
-        if (end <= start) return null;
-        return (end - start) / (365.25 * 24 * 60 * 60 * 1000);
+        const startParts = startDateInput.value.split('-').map(Number);
+        const endParts = endDateInput.value.split('-').map(Number);
+        if (startParts.length !== 3 || endParts.length !== 3 || startParts.some(Number.isNaN) || endParts.some(Number.isNaN)) {
+            return null;
+        }
+
+        const startUtc = Date.UTC(startParts[0], startParts[1] - 1, startParts[2]);
+        const endUtc = Date.UTC(endParts[0], endParts[1] - 1, endParts[2]);
+        if (endUtc <= startUtc) return null;
+
+        // Use calendar months first, then prorate any leftover days using 365.25.
+        const endExclusiveUtc = endUtc + MS_PER_DAY;
+        const startDate = new Date(startUtc);
+        const endExclusiveDate = new Date(endExclusiveUtc);
+        let wholeMonths = (endExclusiveDate.getUTCFullYear() - startDate.getUTCFullYear()) * 12 +
+            (endExclusiveDate.getUTCMonth() - startDate.getUTCMonth());
+
+        wholeMonths = Math.max(0, wholeMonths);
+        while (wholeMonths > 0 && addMonthsClampedUtc(startUtc, wholeMonths) > endExclusiveUtc) {
+            wholeMonths -= 1;
+        }
+        while (addMonthsClampedUtc(startUtc, wholeMonths + 1) <= endExclusiveUtc) {
+            wholeMonths += 1;
+        }
+
+        const monthAnchorUtc = addMonthsClampedUtc(startUtc, wholeMonths);
+        const remainingDays = Math.max(0, Math.floor((endExclusiveUtc - monthAnchorUtc) / MS_PER_DAY));
+        const wholeYears = Math.floor(wholeMonths / 12);
+        const extraMonths = wholeMonths % 12;
+        const durationYears = (wholeMonths / 12) + (remainingDays / 365.25);
+
+        return {
+            durationYears,
+            wholeYears,
+            extraMonths,
+            remainingDays,
+            startIso: startDateInput.value,
+            endIso: endDateInput.value
+        };
     }
     
     function calculateSavings() {
@@ -91,19 +155,22 @@ function initializeForm() {
     
     function calculateTotal() {
         const annualSavings = numVal(savingsAmount.value);
-        const durationYears = getDurationYears();
-        if (durationYears !== null && annualSavings !== 0) {
-            const total = Math.round(annualSavings * durationYears);
+        const durationDetail = getDurationDetail();
+        if (durationDetail !== null && annualSavings !== 0) {
+            const total = Math.round((annualSavings * durationDetail.durationYears) * 100) / 100;
             totalSavingsAmount.value = fmtNum(total);
             totalSavingsAmount.dispatchEvent(new Event('input'));
             if (totalSavingsHint) {
-                totalSavingsHint.textContent = `Calculated: $${annualSavings.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} × ${durationYears.toFixed(2)} yrs = $${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                const startLabel = formatIsoDateForHint(durationDetail.startIso);
+                const endLabel = formatIsoDateForHint(durationDetail.endIso);
+                const breakdown = formatDurationBreakdown(durationDetail);
+                totalSavingsHint.innerHTML = `Cost Saving Duration: ${breakdown} (${startLabel} to ${endLabel})<br>Calculation: $${annualSavings.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} × ${durationDetail.durationYears.toFixed(3)} yrs = $${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             }
         } else {
             totalSavingsAmount.value = '';
             totalSavingsAmount.dispatchEvent(new Event('input'));
             if (totalSavingsHint) {
-                totalSavingsHint.textContent = 'Calculated: Annual Expected Savings × Duration (years)';
+                totalSavingsHint.innerHTML = 'Cost Saving Duration: Select start and end dates<br>Calculation: Annual Expected Savings × Duration (years)';
             }
         }
     }

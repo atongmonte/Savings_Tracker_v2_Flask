@@ -552,9 +552,51 @@ function populateInitiativeModal(data, editMode) {
         el.value = isNaN(n) ? '' : fmtNum(n);
     };
     const setRadio = (name, val) => {
-        document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
-            r.checked = (r.value === val);
-        });
+        const radios = Array.from(document.querySelectorAll(`input[name="${name}"]`));
+        radios.forEach(r => { r.checked = false; });
+
+        const targetRaw = (val ?? '').toString();
+        let match = radios.find(r => r.value === targetRaw);
+
+        if (!match) {
+            const norm = s => (s ?? '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+            const targetNorm = norm(targetRaw);
+            match = radios.find(r => norm(r.value) === targetNorm);
+        }
+
+        if (match) match.checked = true;
+    };
+    const normalizeSavingsType = val => {
+        const raw = (val ?? '').toString().trim();
+        if (!raw) return '';
+        const norm = raw.toLowerCase().replace(/[()]/g, '').replace(/[-_]/g, ' ').replace(/\s+/g, ' ').trim();
+
+        if (norm === 'standardization/conversion' || norm === 'standardization conversion') {
+            return 'Standardization/Conversion';
+        }
+        if (norm === 'negotiated price reduction') {
+            return 'Negotiated Price Reduction';
+        }
+        if (norm === 'demand/utilization reduction' || norm === 'demand utilization reduction') {
+            return 'Demand/Utilization Reduction';
+        }
+        if (norm === 'one time saving' || norm === 'one time saving non rebate' || norm === 'one-time saving' || norm === 'one-time saving non rebate') {
+            return 'One-time Saving (non-rebate)';
+        }
+
+        return raw;
+    };
+    const toIsoDateInputValue = val => {
+        if (!val) return '';
+        const raw = String(val).trim();
+        const m = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (m) return m[1];
+        const parsed = new Date(raw);
+        if (Number.isNaN(parsed.getTime())) return '';
+        const y = parsed.getFullYear();
+        const mo = String(parsed.getMonth() + 1).padStart(2, '0');
+        const d = String(parsed.getDate()).padStart(2, '0');
+        return `${y}-${mo}-${d}`;
     };
     const setSelectNormalized = (elId, val) => {
         const el = document.getElementById(elId);
@@ -635,10 +677,11 @@ function populateInitiativeModal(data, editMode) {
     if (type === 'Cost Savings') {
         document.getElementById('mf_section_savings').classList.remove('d-none');
         const cs = data.cost_savings || {};
-        setRadio('mf_savings_type',    cs.savings_type);
+        const normalizedSavingsType = normalizeSavingsType(cs.savings_type);
+        setRadio('mf_savings_type', normalizedSavingsType);
         setVal('mf_gpo_tier_cs',       cs.gpo_tier);
-        setVal('mf_start_date',        cs.start_date  ? cs.start_date.slice(0,10)  : '');
-        setVal('mf_end_date',          cs.end_date    ? cs.end_date.slice(0,10)    : '');
+        setVal('mf_start_date',        toIsoDateInputValue(cs.start_date));
+        setVal('mf_end_date',          toIsoDateInputValue(cs.end_date));
         setNumVal('mf_baseline_spend',    cs.baseline_spend);
         setNumVal('mf_expected_spend',    cs.expected_spend);
         setNumVal('mf_annual_savings',    cs.annual_savings_amount);
@@ -820,6 +863,17 @@ function populateInitiativeModal(data, editMode) {
 // Set up auto-calculations inside the view/edit modal
 function setupModalCalculations(type) {
     const fmt2 = n => n.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+    const addMonthsClampedUtc = (utcMs, monthsToAdd) => {
+        const source = new Date(utcMs);
+        const sourceDay = source.getUTCDate();
+        const monthStart = new Date(Date.UTC(source.getUTCFullYear(), source.getUTCMonth() + monthsToAdd, 1));
+        const targetYear = monthStart.getUTCFullYear();
+        const targetMonth = monthStart.getUTCMonth();
+        const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+        const targetDay = Math.min(sourceDay, lastDay);
+        return Date.UTC(targetYear, targetMonth, targetDay);
+    };
     const shiftIsoDate = (isoDate, days) => {
         if (!isoDate) return '';
         const parts = isoDate.split('-').map(Number);
@@ -829,6 +883,20 @@ function setupModalCalculations(type) {
         const m = String(shifted.getUTCMonth() + 1).padStart(2, '0');
         const d = String(shifted.getUTCDate()).padStart(2, '0');
         return `${y}-${m}-${d}`;
+    };
+
+    const formatIsoDateForHint = isoDate => {
+        if (!isoDate) return '';
+        const parts = isoDate.split('-').map(Number);
+        if (parts.length !== 3 || parts.some(Number.isNaN)) return isoDate;
+        return `${String(parts[1]).padStart(2, '0')}/${String(parts[2]).padStart(2, '0')}/${parts[0]}`;
+    };
+
+    const formatDurationBreakdown = detail => {
+        const yearLabel = detail.wholeYears === 1 ? 'year' : 'years';
+        const monthLabel = detail.extraMonths === 1 ? 'month' : 'months';
+        const dayLabel = detail.remainingDays === 1 ? 'day' : 'days';
+        return `${detail.wholeYears} ${yearLabel}, ${detail.extraMonths} ${monthLabel}, ${detail.remainingDays} ${dayLabel}`;
     };
 
     // ── Cost Savings ──────────────────────────────────────────────────
@@ -871,11 +939,47 @@ function setupModalCalculations(type) {
             }
         }
 
-        function getDurationYears() {
+        function getDurationDetail() {
             if (!startDate.value || !endDate.value) return null;
-            const s = new Date(startDate.value), e = new Date(endDate.value);
-            if (e <= s) return null;
-            return (e - s) / (365.25 * 24 * 60 * 60 * 1000);
+            const startParts = startDate.value.split('-').map(Number);
+            const endParts = endDate.value.split('-').map(Number);
+            if (startParts.length !== 3 || endParts.length !== 3 || startParts.some(Number.isNaN) || endParts.some(Number.isNaN)) {
+                return null;
+            }
+
+            const startUtc = Date.UTC(startParts[0], startParts[1] - 1, startParts[2]);
+            const endUtc = Date.UTC(endParts[0], endParts[1] - 1, endParts[2]);
+            if (endUtc <= startUtc) return null;
+
+            // Use calendar months first, then prorate any leftover days using 365.25.
+            const endExclusiveUtc = endUtc + MS_PER_DAY;
+            const startDateUtc = new Date(startUtc);
+            const endExclusiveDate = new Date(endExclusiveUtc);
+            let wholeMonths = (endExclusiveDate.getUTCFullYear() - startDateUtc.getUTCFullYear()) * 12 +
+                (endExclusiveDate.getUTCMonth() - startDateUtc.getUTCMonth());
+
+            wholeMonths = Math.max(0, wholeMonths);
+            while (wholeMonths > 0 && addMonthsClampedUtc(startUtc, wholeMonths) > endExclusiveUtc) {
+                wholeMonths -= 1;
+            }
+            while (addMonthsClampedUtc(startUtc, wholeMonths + 1) <= endExclusiveUtc) {
+                wholeMonths += 1;
+            }
+
+            const monthAnchorUtc = addMonthsClampedUtc(startUtc, wholeMonths);
+            const remainingDays = Math.max(0, Math.floor((endExclusiveUtc - monthAnchorUtc) / MS_PER_DAY));
+            const wholeYears = Math.floor(wholeMonths / 12);
+            const extraMonths = wholeMonths % 12;
+            const durationYears = (wholeMonths / 12) + (remainingDays / 365.25);
+
+            return {
+                durationYears,
+                wholeYears,
+                extraMonths,
+                remainingDays,
+                startIso: startDate.value,
+                endIso: endDate.value
+            };
         }
 
         function calcSavings() {
@@ -888,14 +992,19 @@ function setupModalCalculations(type) {
 
         function calcTotal() {
             const ann = numVal(annual.value);
-            const dur = getDurationYears();
-            if (dur !== null && ann !== 0) {
-                const t = Math.round(ann * dur);
+            const durationDetail = getDurationDetail();
+            if (durationDetail !== null && ann !== 0) {
+                const t = Math.round((ann * durationDetail.durationYears) * 100) / 100;
                 total.value = fmtNum(t);
-                if (hint) hint.textContent = `Calculated: $${Math.round(ann).toLocaleString('en-US')} × ${dur.toFixed(2)} yrs = $${t.toLocaleString('en-US')}`;
+                if (hint) {
+                    const startLabel = formatIsoDateForHint(durationDetail.startIso);
+                    const endLabel = formatIsoDateForHint(durationDetail.endIso);
+                    const breakdown = formatDurationBreakdown(durationDetail);
+                    hint.innerHTML = `Cost Saving Duration: ${breakdown} (${startLabel} to ${endLabel})<br>Calculation: $${ann.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} × ${durationDetail.durationYears.toFixed(3)} yrs = $${t.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                }
             } else {
                 total.value = '';
-                if (hint) hint.textContent = 'Calculated: Annual Expected Savings × Duration (years)';
+                if (hint) hint.innerHTML = 'Cost Saving Duration: Select start and end dates<br>Calculation: Annual Expected Savings × Duration (years)';
             }
             updateAllocTotal();
         }
