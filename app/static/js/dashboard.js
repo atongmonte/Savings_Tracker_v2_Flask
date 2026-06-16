@@ -181,10 +181,11 @@ function renderTableRows(rows) {
         const sCls        = statusClass[r.status] || '';
         const amount      = parseFloat(r.amount) || 0;
         const fmtAmt      = '$' + Math.round(amount).toLocaleString('en-US');
-        const initDateRaw = r.initiative_date;
+        const initDateRaw = r.initiative_date || r.created_at;
         const initDateFmt = initDateRaw ? new Date(initDateRaw + 'T00:00:00').getFullYear() : '';
-        const updatedDatePart = r.updated_at ? new Date(r.updated_at).toLocaleDateString('en-US', {timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: 'numeric'}) : '';
-        const updatedTimePart = r.updated_at ? new Date(r.updated_at).toLocaleTimeString('en-US', {timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit'}) : '';
+        const lastUpdatedRaw = r.updated_at || r.created_at;
+        const updatedDatePart = lastUpdatedRaw ? new Date(lastUpdatedRaw).toLocaleDateString('en-US', {timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: 'numeric'}) : '';
+        const updatedTimePart = lastUpdatedRaw ? new Date(lastUpdatedRaw).toLocaleTimeString('en-US', {timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit'}) : '';
         const updatedDate = updatedDatePart ? `${updatedDatePart}<br><span class="text-muted">${updatedTimePart}</span>` : '';
         const cu          = window._currentUser || {};
         const isReadOnly  = isReadOnlyUser();
@@ -362,11 +363,12 @@ function flattenInitiative(init) {
                  : init.rebate          ? (init.rebate.rebate_amount || 0)
                  : init.cost_avoidance  ? (init.cost_avoidance.avoidance_amount || 0)
                  : 0;
-    const initiative_date =
+        const detailDate =
           init.cost_savings   ? (init.cost_savings.start_date   || null)
         : init.rebate         ? (init.rebate.transaction_date   || null)
         : init.cost_avoidance ? (init.cost_avoidance.avoidance_date || null)
         : null;
+        const initiative_date = detailDate || init.created_at || null;
     return {
         ...init,
         owner_id:          init.owner ? init.owner.id : null,

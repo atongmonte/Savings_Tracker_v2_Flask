@@ -33,7 +33,7 @@ def get_initiatives():
         - initiative_type: Filter by type
         - owner_id: Filter by owner
         - search: Search in initiative ID, owner, type, contract number/category, vendor name, status
-        - sort_by: Field to sort by (default: created_at)
+        - sort_by: Field to sort by (default: updated_at)
         - sort_order: asc or desc (default: desc)
     """
     user = g.current_user
@@ -45,7 +45,7 @@ def get_initiatives():
     initiative_type = request.args.get('initiative_type')
     owner_id = request.args.get('owner_id', type=int)
     search = request.args.get('search', '')
-    sort_by = request.args.get('sort_by', 'created_at')
+    sort_by = request.args.get('sort_by', 'updated_at')
     sort_order = request.args.get('sort_order', 'desc')
     include_deleted = request.args.get('include_deleted', 'false').lower() == 'true'
     initiative_year = request.args.get('initiative_year', type=int)
@@ -90,6 +90,12 @@ def get_initiatives():
                 func.extract('year', CostSavings.start_date)       == initiative_year,
                 func.extract('year', Rebate.rebate_check_date)     == initiative_year,
                 func.extract('year', CostAvoidance.avoidance_date) == initiative_year,
+                and_(
+                    CostSavings.start_date.is_(None),
+                    Rebate.rebate_check_date.is_(None),
+                    CostAvoidance.avoidance_date.is_(None),
+                    func.extract('year', Initiative.created_at) == initiative_year,
+                ),
             )
         )
 
@@ -148,15 +154,19 @@ def get_initiatives():
         date_expr = func.coalesce(
             CostSavings.start_date,
             Rebate.rebate_check_date,
-            CostAvoidance.avoidance_date
+            CostAvoidance.avoidance_date,
+            func.cast(Initiative.created_at, db.Date)
         )
-        query = query.order_by(date_expr.asc() if sort_order == 'asc' else date_expr.desc())
+        if sort_order == 'asc':
+            query = query.order_by(date_expr.asc(), Initiative.id.asc())
+        else:
+            query = query.order_by(date_expr.desc(), Initiative.id.desc())
     elif hasattr(Initiative, sort_by):
         order_column = getattr(Initiative, sort_by)
         if sort_order == 'asc':
-            query = query.order_by(order_column.asc())
+            query = query.order_by(order_column.asc(), Initiative.id.asc())
         else:
-            query = query.order_by(order_column.desc())
+            query = query.order_by(order_column.desc(), Initiative.id.desc())
     
     # Paginate
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
