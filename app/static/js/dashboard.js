@@ -287,7 +287,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Load a single page of initiatives from the server
-function loadInitiatives() {
+function loadInitiatives(options = {}) {
+    const refreshStats = options.refreshStats !== false;
     showLoading();
 
     const status = document.getElementById('filterStatus').value;
@@ -331,23 +332,21 @@ function loadInitiatives() {
             hideLoading();
         });
 
-    loadStats();
+    if (refreshStats) {
+        loadStats();
+    }
 }
 
 // Load only the aggregate stats (called on year-tab switch too)
 function loadStats() {
-    const status = document.getElementById('filterStatus').value;
-    const deletedOnly = status === 'Deleted';
     const search = document.getElementById('searchBox').value;
     const filterYear = document.getElementById('filterYear')?.value || '';
 
     syncStatsYearFromFilter();
 
     const statsParams = new URLSearchParams();
-    if (status)              statsParams.set('status', status);
     if (search)              statsParams.set('search', search);
     if (filterYear)          statsParams.set('initiative_year', filterYear);
-    if (deletedOnly)         statsParams.set('include_deleted', 'true');
     if (_statsYear)          statsParams.set('stats_year', _statsYear);
 
     fetch(`/api/initiatives/dashboard-stats?${statsParams}`)
@@ -402,7 +401,10 @@ function updateStatisticsFromServer(stats) {
 
 // Setup filter event listeners
 function setupFilters() {
-    document.getElementById('filterStatus').addEventListener('change', applyFilters);
+    document.getElementById('filterStatus').addEventListener('change', function() {
+        syncStatusCardSelection(this.value);
+        applyFilters();
+    });
     document.getElementById('filterYear').addEventListener('change', applyFilters);
     document.getElementById('searchBox').addEventListener('keyup', debounce(applyFilters, 500));
 }
@@ -413,22 +415,29 @@ function applyFilters() {
     loadInitiatives();
 }
 
+function syncStatusCardSelection(status) {
+    document.querySelectorAll('.stat-half').forEach(el => {
+        el.classList.remove('stat-half-active');
+    });
+
+    if (!status) {
+        return;
+    }
+
+    document.querySelectorAll(`.stat-half[data-status="${status}"]`).forEach(el => {
+        el.classList.add('stat-half-active');
+    });
+}
+
 // Filter the table by status (called from summary card clicks)
 function filterByStatus(status) {
     const sel = document.getElementById('filterStatus');
     if (!sel) return;
     // Toggle off if already active
     sel.value = (sel.value === status) ? '' : status;
-    // Update active state on stat card halves
-    document.querySelectorAll('.stat-half').forEach(el => {
-        el.classList.remove('stat-half-active');
-    });
-    if (sel.value) {
-        document.querySelectorAll(`.stat-half[data-status="${sel.value}"]`).forEach(el => {
-            el.classList.add('stat-half-active');
-        });
-    }
-    applyFilters();
+    syncStatusCardSelection(sel.value);
+    _currentPage = 1;
+    loadInitiatives({ refreshStats: false });
 }
 
 // View initiative details (read-only modal)
