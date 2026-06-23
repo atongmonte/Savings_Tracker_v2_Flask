@@ -29,6 +29,7 @@ from app.utils.timezone import now_eastern
 main_bp = Blueprint('main', __name__)
 
 _REVIEW_NOTIFICATION_DEFAULT_EMAIL = 'procurementdatateam@montefiore.org'
+_READ_ONLY_ROLE_KEY = 'readonly'
 
 _FINANCE_ALLOWED_ENDPOINTS = {
     'main.rebate_extraction',
@@ -132,9 +133,67 @@ def _normalize_role_name(user):
     return (getattr(getattr(user, 'role', None), 'name', '') or '').strip().lower()
 
 
+def _normalize_role_key(role_name):
+    """Return role text normalized for alias comparisons."""
+    return ''.join(ch for ch in (role_name or '').strip().lower() if ch.isalnum())
+
+
+def _is_read_only_role(role):
+    """Return True when a role record is a read-only alias."""
+    return _normalize_role_key(getattr(role, 'name', '')) == _READ_ONLY_ROLE_KEY
+
+
 def _is_read_only_user(user):
     """Return True when the current user has a read-only role."""
-    return _normalize_role_name(user) in {'read-only', 'read only', 'readonly'}
+    return _normalize_role_key(_normalize_role_name(user)) == _READ_ONLY_ROLE_KEY
+
+
+def _get_canonical_read_only_role(roles):
+    """Prefer the canonical Read-Only role from a role collection."""
+    read_only_roles = [role for role in roles if _is_read_only_role(role)]
+    if not read_only_roles:
+        return None
+
+    canonical = next((role for role in read_only_roles if role.name == 'Read-Only'), None)
+    return canonical or min(read_only_roles, key=lambda role: role.id or 0)
+
+
+def _get_admin_role_filter_value(role):
+    """Return the filter value used by the admin users table."""
+    if _is_read_only_role(role):
+        return _READ_ONLY_ROLE_KEY
+    return str(getattr(role, 'id', '') or '')
+
+
+def _prepare_admin_roles(users, roles):
+    """Return role options with read-only aliases collapsed for admin views."""
+    canonical_read_only = _get_canonical_read_only_role(roles)
+    prepared_roles = []
+    read_only_added = False
+    active_user_counts = {}
+
+    for user in users:
+        role_filter_value = _get_admin_role_filter_value(getattr(user, 'role', None))
+        user.admin_role_filter_value = role_filter_value
+        if user.is_active:
+            active_user_counts[role_filter_value] = active_user_counts.get(role_filter_value, 0) + 1
+
+    for role in roles:
+        if _is_read_only_role(role):
+            if not read_only_added and canonical_read_only:
+                prepared_roles.append(canonical_read_only)
+                read_only_added = True
+            continue
+        prepared_roles.append(role)
+
+    for role in prepared_roles:
+        role_filter_value = _get_admin_role_filter_value(role)
+        role.admin_filter_value = role_filter_value
+        role.admin_display_name = 'Read-only' if _is_read_only_role(role) else role.name
+        role.admin_css_name = 'Read-Only' if _is_read_only_role(role) else role.name.replace(' ', '-')
+        role.admin_active_user_count = active_user_counts.get(role_filter_value, 0)
+
+    return prepared_roles
 
 
 def _get_role_update_admin_email():
@@ -856,7 +915,7 @@ def user_management():
         return redirect(url_for('main.dashboard'))
 
     users = User.query.order_by(User.full_name).all()
-    roles = UserRole.query.order_by(UserRole.name).all()
+    roles = _prepare_admin_roles(users, UserRole.query.order_by(UserRole.name).all())
 
     return render_template(
         'user_management.html',
@@ -885,6 +944,9 @@ def user_assign_role(user_id):
         return redirect(url_for('main.user_management'))
 
     from app import db
+    if _is_read_only_role(role):
+        role = _get_canonical_read_only_role(UserRole.query.order_by(UserRole.name).all()) or role
+
     old_role = target.role.name if target.role else 'None'
     target.role_id = role.id
     db.session.commit()

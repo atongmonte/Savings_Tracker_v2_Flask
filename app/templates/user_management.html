@@ -140,8 +140,7 @@
                     <select id="roleFilter" class="form-select form-select-sm table-filter-select" aria-label="Filter users by role">
                         <option value="">All roles</option>
                         {% for role in roles %}
-                        {% set normalized_role_name = role.name | lower | replace(' ', '') | replace('-', '') %}
-                        <option value="{{ role.id }}">{{ 'Read-only' if normalized_role_name == 'readonly' else role.name }}</option>
+                        <option value="{{ role.admin_filter_value }}">{{ role.admin_display_name }}</option>
                         {% endfor %}
                     </select>
                     <select id="statusFilter" class="form-select form-select-sm table-filter-select" aria-label="Filter users by status">
@@ -168,7 +167,7 @@
                         </thead>
                         <tbody>
                             {% for u in users %}
-                            <tr id="user-row-{{ u.id }}" data-role-id="{{ u.role_id }}" data-status="{{ 'active' if u.is_active else 'inactive' }}">
+                            <tr id="user-row-{{ u.id }}" data-role-id="{{ u.admin_role_filter_value }}" data-status="{{ 'active' if u.is_active else 'inactive' }}">
                                 {# Avatar #}
                                 <td>
                                     <span class="user-avatar">
@@ -192,10 +191,9 @@
                                                 title="Assign role"
                                                 onchange="this.form.submit()">
                                             {% for role in roles %}
-                                            {% set normalized_role_name = role.name | lower | replace(' ', '') | replace('-', '') %}
                                             <option value="{{ role.id }}"
-                                                {{ 'selected' if u.role_id == role.id else '' }}>
-                                                {{ 'Read-only' if normalized_role_name == 'readonly' else role.name }}
+                                                {{ 'selected' if u.admin_role_filter_value == role.admin_filter_value else '' }}>
+                                                {{ role.admin_display_name }}
                                             </option>
                                             {% endfor %}
                                         </select>
@@ -271,18 +269,14 @@
             <div class="card-body p-0">
                 <div class="list-group list-group-flush">
                     {% for role in roles %}
-                    {% set normalized_role_name = role.name | lower | replace(' ', '') | replace('-', '') %}
-                    {% set role_display_name = 'Read-only' if normalized_role_name == 'readonly' else role.name %}
-                    {% set role_css_name = 'Read-Only' if normalized_role_name == 'readonly' else role.name.replace(' ', '-') %}
                     <div class="list-group-item px-3 py-3">
                         <div class="d-flex align-items-center justify-content-between mb-2">
-                            <span class="badge role-badge-{{ role_css_name }} px-2 py-1"
+                            <span class="badge role-badge-{{ role.admin_css_name }} px-2 py-1"
                                   style="font-size:0.78rem;">
-                                {{ role_display_name }}
+                                {{ role.admin_display_name }}
                             </span>
                             <span class="text-muted" style="font-size:0.75rem;">
-                                {% set active_role_users = role.users.filter_by(is_active=True).count() %}
-                                {{ active_role_users }} active user{{ 's' if active_role_users != 1 else '' }}
+                                {{ role.admin_active_user_count }} active user{{ 's' if role.admin_active_user_count != 1 else '' }}
                             </span>
                         </div>
                         {% if role.description %}
