@@ -128,7 +128,7 @@ function deleteExistingFile(fileId, rowEl) {
     // Use stagedNewFiles.length — fileInput is always cleared after staging so .files.length is always 0
     const pendingUploads = stagedNewFiles.length;
     if (existingFileCount <= 1 && pendingUploads === 0) {
-        showAlert('At least one file attachment is required. Upload a replacement before deleting this one.', 'warning');
+        showAlert('At least one file attachment is required. Upload another attachment before deleting this one.', 'warning');
         return;
     }
     if (!confirm('Delete this attachment? This cannot be undone.')) return;
@@ -583,7 +583,13 @@ function uploadFiles(initiativeId, files) {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(response => response.json().then(data => ({ ok: response.ok, data })))
+    .then(({ ok, data }) => {
+        if (!ok || data.error) {
+            throw new Error(data.error || 'File upload failed');
+        }
+        return data;
+    })
     .then(data => {
         showAlert('Initiative and files uploaded successfully!', 'success');
         setTimeout(() => {
@@ -592,7 +598,7 @@ function uploadFiles(initiativeId, files) {
     })
     .catch(error => {
         console.error('Error uploading files:', error);
-        showAlert('Initiative created but file upload failed', 'warning');
+        showAlert(`Initiative saved, but file upload failed: ${error.message}`, 'warning');
         setTimeout(() => {
             window.location.href = '/dashboard';
         }, 2000);

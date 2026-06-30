@@ -579,6 +579,44 @@ def upload_files(initiative_id):
     if not files or all(f.filename == '' for f in files):
         return jsonify({'error': 'No files selected'}), 400
 
+    _reconcile_missing_files(initiative)
+
+    allowed = current_app.config.get('ALLOWED_EXTENSIONS', set())
+    valid_uploads = []
+    seen_upload_names = {}
+    duplicate_names = set()
+    for f in files:
+        if not f.filename:
+            continue
+        original_name = secure_filename(f.filename)
+        ext = os.path.splitext(original_name)[1].lower().lstrip('.')
+        if allowed and ext not in allowed:
+            continue
+
+        name_key = original_name.casefold()
+        if name_key in seen_upload_names:
+            duplicate_names.add(original_name)
+        else:
+            seen_upload_names[name_key] = original_name
+        valid_uploads.append((f, original_name, ext))
+
+    if not valid_uploads:
+        return jsonify({'error': 'No valid files were uploaded (check allowed extensions)'}), 400
+
+    if duplicate_names:
+        names = ', '.join(sorted(duplicate_names, key=str.lower))
+        return jsonify({
+            'error': f'Duplicate file name(s) are not allowed: {names}'
+        }), 400
+
+    active_files_by_name = {
+        (record.file_name or '').casefold(): record
+        for record in FileTracking.query.filter_by(
+            initiative_id=initiative_id,
+            is_deleted=False
+        ).all()
+    }
+
     storage_base = current_app.config.get('FILE_STORAGE_PATH')
     if not storage_base:
         fallback_path = current_app.config.get('UPLOADS_FALLBACK_PATH', 'uploads')
@@ -595,34 +633,35 @@ def upload_files(initiative_id):
     initiative_folder = os.path.join(storage_base, str(initiative_id))
     os.makedirs(initiative_folder, exist_ok=True)
 
-    allowed = current_app.config.get('ALLOWED_EXTENSIONS', set())
     saved = []
-    for f in files:
-        if not f.filename:
-            continue
-        original_name = secure_filename(f.filename)
-        ext = os.path.splitext(original_name)[1].lower().lstrip('.')
-        if allowed and ext not in allowed:
-            continue
-        file_path = os.path.join(initiative_folder, original_name)
+    for f, original_name, ext in valid_uploads:
+        existing_record = active_files_by_name.get(original_name.casefold())
+        file_path = existing_record.file_path if existing_record else os.path.join(initiative_folder, original_name)
         f.save(file_path)
-        record = FileTracking(
-            initiative_id=initiative_id,
-            file_name=original_name,
-            file_path=file_path,
-            file_size=os.path.getsize(file_path),
-            file_type=ext,
-            uploaded_by_id=user.id,
-        )
-        db.session.add(record)
+        if existing_record:
+            record = existing_record
+            record.file_name = original_name
+            record.file_path = file_path
+            record.file_size = os.path.getsize(file_path)
+            record.file_type = ext
+            record.uploaded_by_id = user.id
+            record.upload_time = now_eastern()
+            record.updated_at = now_eastern()
+        else:
+            record = FileTracking(
+                initiative_id=initiative_id,
+                file_name=original_name,
+                file_path=file_path,
+                file_size=os.path.getsize(file_path),
+                file_type=ext,
+                uploaded_by_id=user.id,
+            )
+            db.session.add(record)
         saved.append(record)
-
-    if not saved:
-        return jsonify({'error': 'No valid files were uploaded (check allowed extensions)'}), 400
 
     db.session.commit()
     return jsonify({
-        'message': f'{len(saved)} file(s) uploaded',
+        'message': f'{len(saved)} file(s) uploaded or updated',
         'files': [f.to_dict() for f in initiative.files if not f.is_deleted]
     }), 201
 
@@ -674,12 +713,11 @@ def delete_file(initiative_id, file_id):
         initiative_id=initiative_id, is_deleted=False
     ).count()
     if remaining <= 1:
-        return jsonify({'error': 'At least one file attachment is required. Upload a replacement before deleting this one.'}), 400
+        return jsonify({'error': 'At least one file attachment is required. Upload another attachment before deleting this one.'}), 400
 
     # Physically remove from disk, but only when no other active record shares
-    # the same path.  This guards against the upload-first replacement flow
-    # (dashboard modal) where a same-name upload already overwrote the physical
-    # file — removing it here would delete the newly uploaded content.
+    # the same path. This protects older duplicate records or externally-created
+    # path conflicts from deleting content still referenced by another record.
     has_path_conflict = file_record.file_path and FileTracking.query.filter(
         FileTracking.initiative_id == initiative_id,
         FileTracking.is_deleted == False,

@@ -803,7 +803,7 @@ function populateInitiativeModal(data, editMode) {
     // Files / Attachments — clear staged state and render
     window._stagedFiles        = [];
     window._stagedDeletes      = new Set();
-    window._stagedReplacements = new Set();   // names of staged files replacing an existing one
+    window._stagedReplacements = new Set();
     populateModalFiles(data.files || [], editMode);
 
     // Wire file input to stage on change (edit mode)
@@ -813,25 +813,37 @@ function populateInitiativeModal(data, editMode) {
         if (editMode) {
             fileInput.onchange = function() {
                 const newFiles = Array.from(this.files);
-                const warnings = [];
+                const rejected = [];
+                const replacements = [];
                 newFiles.forEach(f => {
-                    // Check for a name collision with an existing (non-pending-delete) server file
-                    const dup = window._serverFiles.find(
-                        sf => sf.file_name.toLowerCase() === f.name.toLowerCase()
-                              && !window._stagedDeletes.has(sf.id)
+                    const nameKey = normalizeUploadFileName(f.name);
+                    const matchesExisting = window._serverFiles.some(
+                        sf => normalizeUploadFileName(sf.file_name || '') === nameKey
                     );
-                    if (dup) {
-                        window._stagedDeletes.add(dup.id);
-                        window._stagedReplacements.add(f.name);
-                        warnings.push(f.name);
+                    const matchesStaged = window._stagedFiles.some(
+                        sf => normalizeUploadFileName(sf.name || '') === nameKey
+                    );
+                    if (matchesExisting || matchesStaged) {
+                        if (matchesStaged) {
+                            rejected.push(f.name);
+                            return;
+                        }
+                        window._stagedReplacements.add(nameKey);
+                        replacements.push(f.name);
                     }
                     window._stagedFiles.push(f);
                 });
                 this.value = '';
-                if (warnings.length) {
+                if (rejected.length) {
                     showModalAlert(
-                        `<strong>Note:</strong> The following file(s) will <strong>replace</strong> the existing version when you click Save Changes: <em>${warnings.join(', ')}</em>`,
+                        `<strong>Duplicate file name(s) not added:</strong> <em>${formatDuplicateFileList(rejected)}</em>`,
                         'warning'
+                    );
+                }
+                if (replacements.length) {
+                    showModalAlert(
+                        `<strong>Existing file(s) will be updated:</strong> <em>${formatDuplicateFileList(replacements)}</em>`,
+                        'info'
                     );
                 }
                 renderModalFiles(window._serverFiles, window._editMode);
@@ -1333,21 +1345,17 @@ function buildChangeSummary(payload, type) {
     // Staged file changes
     const fileLines = [];
     window._stagedFiles.forEach(f => {
-        const isRepl = window._stagedReplacements && window._stagedReplacements.has(f.name);
-        fileLines.push(
-            isRepl
-                ? `<li><span class="badge bg-warning text-dark">Replace</span> ${f.name}</li>`
-                : `<li><span class="badge bg-success">Add</span> ${f.name}</li>`
-        );
+        const isReplacement = window._stagedReplacements &&
+            window._stagedReplacements.has(normalizeUploadFileName(f.name));
+        const badge = isReplacement
+            ? '<span class="badge bg-warning text-dark">Update</span>'
+            : '<span class="badge bg-success">Add</span>';
+        fileLines.push(`<li>${badge} ${escapeModalHtml(f.name)}</li>`);
     });
-    // Pure deletes (not part of a replacement)
     window._stagedDeletes.forEach(id => {
         const srv = (window._serverFiles || []).find(sf => sf.id === id);
         const nm  = srv ? srv.file_name : `File #${id}`;
-        const isRepl = window._stagedReplacements && window._stagedReplacements.has(nm);
-        if (!isRepl) {
-            fileLines.push(`<li><span class="badge bg-danger">Delete</span> ${nm}</li>`);
-        }
+        fileLines.push(`<li><span class="badge bg-danger">Delete</span> ${escapeModalHtml(nm)}</li>`);
     });
 
     const hasFieldChanges = fieldRows.length > 0;
@@ -2038,6 +2046,34 @@ function fileTypeIcon(ext) {
     return 'fas fa-file text-secondary';
 }
 
+function normalizeUploadFileName(name) {
+    return (name || '')
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\x00-\x7F]/g, '')
+        .replace(/[\\/]/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .join('_')
+        .replace(/[^A-Za-z0-9_.-]/g, '')
+        .replace(/^[._]+|[._]+$/g, '')
+        .toLowerCase();
+}
+
+function escapeModalHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[ch]));
+}
+
+function formatDuplicateFileList(names) {
+    return names.map(escapeModalHtml).join(', ');
+}
+
 // Store the server file list so renderModalFiles can always access it
 window._serverFiles        = [];
 window._stagedFiles        = [];
@@ -2095,14 +2131,15 @@ function renderModalFiles(serverFiles, editMode) {
     // Staged new files (not yet uploaded)
     window._stagedFiles.forEach((f, idx) => {
         const ext = f.name.split('.').pop().toLowerCase();
-        const isReplacement = window._stagedReplacements && window._stagedReplacements.has(f.name);
+        const isReplacement = window._stagedReplacements &&
+            window._stagedReplacements.has(normalizeUploadFileName(f.name));
         const row = document.createElement('div');
         row.className = 'd-flex align-items-center gap-2 py-1 border-bottom';
         row.innerHTML = `
             <i class="${fileTypeIcon(ext)}"></i>
             <span class="text-truncate small flex-grow-1" title="${f.name}">${f.name}</span>
             ${ isReplacement
-                ? `<span class="badge bg-warning text-dark small" title="Will overwrite the existing file with this name">Replaces existing</span>`
+                ? `<span class="badge bg-warning text-dark small" title="Will update the existing file with this name">Update</span>`
                 : `<span class="badge bg-info text-dark small">Pending</span>` }
             <span class="text-muted small text-nowrap">${fmtFileSize(f.size)}</span>
             <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" onclick="removeStagedFile(${idx})" title="Cancel"><i class="fas fa-times"></i></button>
@@ -2125,13 +2162,8 @@ function unstageDelete(fileId) {
 
 function removeStagedFile(idx) {
     const f = window._stagedFiles[idx];
-    // If this was a replacement, undo the auto-staged delete for the existing file
-    if (f && window._stagedReplacements && window._stagedReplacements.has(f.name)) {
-        const dup = window._serverFiles.find(
-            sf => sf.file_name.toLowerCase() === f.name.toLowerCase()
-        );
-        if (dup) window._stagedDeletes.delete(dup.id);
-        window._stagedReplacements.delete(f.name);
+    if (f && window._stagedReplacements) {
+        window._stagedReplacements.delete(normalizeUploadFileName(f.name));
     }
     window._stagedFiles.splice(idx, 1);
     renderModalFiles(window._serverFiles, window._editMode);
@@ -2141,13 +2173,8 @@ function removeStagedFile(idx) {
 async function flushStagedFileChanges(initiativeId) {
     const errors = [];
 
-    // Upload new files FIRST so that:
-    // 1. Same-name replacements: f.save() overwrites the physical file; the
-    //    subsequent delete then skips os.remove (handled server-side) and only
-    //    soft-deletes the old DB record.
-    // 2. Different-name additions: the new file exists before the old one is
-    //    removed, so the server's "last file" guard passes when the user is
-    //    replacing the only existing file.
+    // Upload new files before deletes so the server's "last file" guard passes
+    // when a user is replacing the only attachment with a different filename.
     if (window._stagedFiles.length) {
         const formData = new FormData();
         window._stagedFiles.forEach(f => formData.append('files', f));
