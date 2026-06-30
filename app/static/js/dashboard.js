@@ -813,9 +813,14 @@ function populateInitiativeModal(data, editMode) {
         if (editMode) {
             fileInput.onchange = function() {
                 const newFiles = Array.from(this.files);
+                const invalidFiles = [];
                 const rejected = [];
                 const replacements = [];
                 newFiles.forEach(f => {
+                    if (!isAllowedUploadFile(f.name)) {
+                        invalidFiles.push(f.name);
+                        return;
+                    }
                     const nameKey = normalizeUploadFileName(f.name);
                     const matchingExisting = findServerFileByUploadName(f.name);
                     const matchesExisting = !!matchingExisting;
@@ -835,13 +840,20 @@ function populateInitiativeModal(data, editMode) {
                     window._stagedFiles.push(f);
                 });
                 this.value = '';
-                if (rejected.length) {
-                    showModalAlert(
-                        `<strong>Duplicate file name(s) not added:</strong> <em>${formatDuplicateFileList(rejected)}</em>`,
-                        'warning'
+                const warningMessages = [];
+                if (invalidFiles.length) {
+                    warningMessages.push(
+                        `<strong>File type not allowed:</strong> <em>${formatDuplicateFileList(invalidFiles)}</em>. ${ACCEPTED_UPLOAD_FORMATS}`
                     );
                 }
-                if (replacements.length) {
+                if (rejected.length) {
+                    warningMessages.push(
+                        `<strong>Duplicate file name(s) not added:</strong> <em>${formatDuplicateFileList(rejected)}</em>`
+                    );
+                }
+                if (warningMessages.length) {
+                    showModalAlert(warningMessages.join('<br>'), 'warning');
+                } else if (replacements.length) {
                     showModalAlert(
                         `<strong>Existing file(s) will be updated:</strong> <em>${formatDuplicateFileList(replacements)}</em>`,
                         'info'
@@ -2040,6 +2052,15 @@ function hideLoading() {
 }
 
 // ── File Attachments ─────────────────────────────────────────────────────────
+const ALLOWED_UPLOAD_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'zip']);
+const ACCEPTED_UPLOAD_FORMATS = 'Accepted formats: PDF, Word, Excel, PowerPoint, Images, ZIP (Max 500MB total).';
+
+function isAllowedUploadFile(name) {
+    const parts = String(name || '').split('.');
+    if (parts.length < 2) return false;
+    return ALLOWED_UPLOAD_EXTENSIONS.has(parts.pop().toLowerCase());
+}
+
 function fmtFileSize(bytes) {
     if (!bytes) return '0 B';
     const k = 1024, sizes = ['B','KB','MB','GB'];

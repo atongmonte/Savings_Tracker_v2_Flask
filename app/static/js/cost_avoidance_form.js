@@ -3,6 +3,8 @@
 let editInitiativeId = null;
 let existingFileCount = 0;
 let stagedNewFiles = [];
+const ALLOWED_UPLOAD_EXTENSIONS = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'zip']);
+const ACCEPTED_UPLOAD_FORMATS = 'Accepted formats: PDF, Word, Excel, PowerPoint, Images, ZIP (Max 500MB total).';
 
 document.addEventListener('DOMContentLoaded', async function() {
     await loadContractCategorySelect('contractCategory');
@@ -69,16 +71,40 @@ function setupFileUpload() {
     
     fileInput.addEventListener('change', function(e) {
         const newFiles = Array.from(e.target.files);
+        const invalidFiles = [];
         newFiles.forEach(f => {
+            if (!isAllowedUploadFile(f.name)) {
+                invalidFiles.push(f.name);
+                return;
+            }
             if (!stagedNewFiles.some(s => s.name === f.name && s.size === f.size)) {
                 stagedNewFiles.push(f);
             }
         });
         // Clear input so the same file can be re-selected after removal
         fileInput.value = '';
+        if (invalidFiles.length) {
+            showAlert(`File type not allowed: ${formatUploadFileList(invalidFiles)}. ${ACCEPTED_UPLOAD_FORMATS}`, 'warning');
+        }
         displayFileList(stagedNewFiles, fileList);
         if (stagedNewFiles.length > 0) fileInput.classList.remove('is-invalid');
     });
+}
+
+function isAllowedUploadFile(name) {
+    const parts = String(name || '').split('.');
+    if (parts.length < 2) return false;
+    return ALLOWED_UPLOAD_EXTENSIONS.has(parts.pop().toLowerCase());
+}
+
+function formatUploadFileList(names) {
+    return names.map(name => String(name || '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[ch]))).join(', ');
 }
 
 function displayFileList(files, container) {
