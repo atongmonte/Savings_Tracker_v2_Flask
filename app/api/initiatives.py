@@ -609,6 +609,12 @@ def upload_files(initiative_id):
             'error': f'Duplicate file name(s) are not allowed: {names}'
         }), 400
 
+    force_new_names = {
+        secure_filename(name).casefold()
+        for name in request.form.getlist('force_new_names')
+        if name
+    }
+
     active_files_by_name = {
         (record.file_name or '').casefold(): record
         for record in FileTracking.query.filter_by(
@@ -635,7 +641,8 @@ def upload_files(initiative_id):
 
     saved = []
     for f, original_name, ext in valid_uploads:
-        existing_record = active_files_by_name.get(original_name.casefold())
+        original_name_key = original_name.casefold()
+        existing_record = None if original_name_key in force_new_names else active_files_by_name.get(original_name_key)
         file_path = existing_record.file_path if existing_record else os.path.join(initiative_folder, original_name)
         f.save(file_path)
         if existing_record:

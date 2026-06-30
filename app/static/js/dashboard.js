@@ -817,9 +817,8 @@ function populateInitiativeModal(data, editMode) {
                 const replacements = [];
                 newFiles.forEach(f => {
                     const nameKey = normalizeUploadFileName(f.name);
-                    const matchesExisting = window._serverFiles.some(
-                        sf => normalizeUploadFileName(sf.file_name || '') === nameKey
-                    );
+                    const matchingExisting = findServerFileByUploadName(f.name);
+                    const matchesExisting = !!matchingExisting;
                     const matchesStaged = window._stagedFiles.some(
                         sf => normalizeUploadFileName(sf.name || '') === nameKey
                     );
@@ -828,8 +827,10 @@ function populateInitiativeModal(data, editMode) {
                             rejected.push(f.name);
                             return;
                         }
-                        window._stagedReplacements.add(nameKey);
-                        replacements.push(f.name);
+                        if (!window._stagedDeletes.has(matchingExisting.id)) {
+                            window._stagedReplacements.add(nameKey);
+                            replacements.push(f.name);
+                        }
                     }
                     window._stagedFiles.push(f);
                 });
@@ -2074,6 +2075,13 @@ function formatDuplicateFileList(names) {
     return names.map(escapeModalHtml).join(', ');
 }
 
+function findServerFileByUploadName(name) {
+    const nameKey = normalizeUploadFileName(name);
+    return (window._serverFiles || []).find(
+        sf => normalizeUploadFileName(sf.file_name || '') === nameKey
+    );
+}
+
 // Store the server file list so renderModalFiles can always access it
 window._serverFiles        = [];
 window._stagedFiles        = [];
@@ -2150,12 +2158,24 @@ function renderModalFiles(serverFiles, editMode) {
 
 function stageDeleteFile(fileId) {
     window._stagedDeletes.add(fileId);
+    const srv = (window._serverFiles || []).find(sf => sf.id === fileId);
+    if (srv) {
+        window._stagedReplacements.delete(normalizeUploadFileName(srv.file_name || ''));
+    }
     renderModalFiles(window._serverFiles, window._editMode);
     updateModalSaveButtonVisibility();
 }
 
 function unstageDelete(fileId) {
     window._stagedDeletes.delete(fileId);
+    const srv = (window._serverFiles || []).find(sf => sf.id === fileId);
+    const nameKey = srv ? normalizeUploadFileName(srv.file_name || '') : '';
+    const stagedSameName = nameKey && window._stagedFiles.some(
+        f => normalizeUploadFileName(f.name || '') === nameKey
+    );
+    if (stagedSameName) {
+        window._stagedReplacements.add(nameKey);
+    }
     renderModalFiles(window._serverFiles, window._editMode);
     updateModalSaveButtonVisibility();
 }
@@ -2177,7 +2197,13 @@ async function flushStagedFileChanges(initiativeId) {
     // when a user is replacing the only attachment with a different filename.
     if (window._stagedFiles.length) {
         const formData = new FormData();
-        window._stagedFiles.forEach(f => formData.append('files', f));
+        window._stagedFiles.forEach(f => {
+            formData.append('files', f);
+            const matchingExisting = findServerFileByUploadName(f.name);
+            if (matchingExisting && window._stagedDeletes.has(matchingExisting.id)) {
+                formData.append('force_new_names', f.name);
+            }
+        });
         try {
             const r = await fetch(`/api/initiatives/${initiativeId}/files`, { method: 'POST', body: formData });
             const d = await r.json();
