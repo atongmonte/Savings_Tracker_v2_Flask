@@ -105,6 +105,10 @@
         transition: box-shadow 0.2s, transform 0.2s;
     }
 
+    .stats-card .card-body {
+        padding: 0.7rem 0.85rem;
+    }
+
     .stats-card:hover {
         transform: translateY(-3px);
         box-shadow: 0 6px 18px rgba(17, 43, 70, .10);
@@ -113,7 +117,13 @@
     .stat-half {
         cursor: pointer;
         border-radius: 6px;
-        padding: 0.5rem 0.25rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 0.15rem 0.35rem;
+        min-height: 54px;
+        padding: 0.25rem 0.2rem;
         transition: background 0.15s;
     }
 
@@ -140,7 +150,9 @@
     }
 
     .stats-icon {
-        font-size: 2rem;
+        font-size: 0.9rem;
+        line-height: 1;
+        margin-bottom: 0 !important;
         opacity: 0.45;
     }
 
@@ -156,6 +168,27 @@
         font-size: 1.55rem;
         font-weight: 700;
         color: #1A2535;
+    }
+
+    .stats-card h5 {
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .stats-card .stat-half .small {
+        font-size: 0.72rem;
+        margin-bottom: 0 !important;
+    }
+
+    .stats-card .stat-half strong {
+        flex-basis: 100%;
+        font-size: 1.2rem !important;
+        line-height: 1.15;
+    }
+
+    .stats-card small.text-muted {
+        font-size: 0.68rem;
+        margin-top: 0.45rem !important;
     }
 
     /* ── Filter bar ── */
@@ -314,12 +347,47 @@
     </div>
     {% endif %}
 
+    <!-- Filters -->
+    <div class="filter-section">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label"><i class="fas fa-search"></i> Search</label>
+                <input type="text" class="form-control" id="searchBox"
+                    placeholder="Search by ID, owner, type, contract, vendor...">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label"><i class="fas fa-calendar-alt"></i> Initiative Year</label>
+                <select class="form-select" id="filterYear">
+                    <option value="">All Years</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label"><i class="fas fa-tasks"></i> Status</label>
+                <select class="form-select" id="filterStatus">
+                    <option value="">All (excluding deleted)</option>
+                    <option value="Pending Review">Pending Review</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                    <option value="Deleted">Deleted</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button class="btn btn-primary flex-fill" onclick="applyFilters()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Statistics Cards -->
     <div class="d-flex align-items-center gap-3 mb-2">
         <small class="text-muted fw-semibold">SUMMARY</small>
-        <span class="summary-label" id="summaryYearLabel">Initiative Year: 2026</span>
     </div>
-    <div class="row mb-4 row-cols-1 row-cols-md-3 g-3">
+    <div class="row mb-3 row-cols-1 row-cols-md-3 g-2">
         <div class="col">
             <div class="card stats-card savings h-100">
                 <div class="card-body d-flex flex-column justify-content-between">
@@ -389,42 +457,6 @@
                     </div>
                     <small class="text-muted text-center d-block mt-3">&nbsp;</small>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filters -->
-    <div class="filter-section">
-        <div class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label"><i class="fas fa-search"></i> Search</label>
-                <input type="text" class="form-control" id="searchBox"
-                    placeholder="Search by ID, owner, type, contract, vendor...">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label"><i class="fas fa-calendar-alt"></i> Initiative Year</label>
-                <select class="form-select" id="filterYear">
-                    <option value="">All Years</option>
-                    <option value="2026" selected>2026</option>
-                    <option value="2025">2025</option>
-                    <option value="2024">2024</option>
-                    <option value="2023">2023</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label"><i class="fas fa-tasks"></i> Status</label>
-                <select class="form-select" id="filterStatus">
-                    <option value="">All (excluding deleted)</option>
-                    <option value="Pending Review">Pending Review</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Rejected">Rejected</option>
-                    <option value="Deleted">Deleted</option>
-                </select>
-            </div>
-            <div class="col-md-3 d-flex align-items-end">
-                <button class="btn btn-primary flex-fill" onclick="applyFilters()">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
             </div>
         </div>
     </div>
