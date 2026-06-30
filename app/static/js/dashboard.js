@@ -1397,14 +1397,19 @@ function validateModalForm(type) {
     document.querySelectorAll('#modalForm .is-invalid').forEach(el => el.classList.remove('is-invalid'));
     document.querySelectorAll('#modalForm .modal-radio-invalid').forEach(el => el.classList.remove('modal-radio-invalid', 'border', 'border-danger', 'rounded', 'p-1'));
 
-    const errors = [];
+    const requiredErrors = [];
+    const validationErrors = [];
+
+    const addUnique = (list, label) => {
+        if (!list.includes(label)) list.push(label);
+    };
 
     const req = (elId, label) => {
         const el = document.getElementById(elId);
         if (!el) return;
         if (!el.value.trim()) {
             el.classList.add('is-invalid');
-            errors.push(label);
+            addUnique(requiredErrors, label);
         }
     };
     const reqRadio = (name, label, containerId) => {
@@ -1415,7 +1420,7 @@ function validateModalForm(type) {
             if (group) {
                 group.classList.add('modal-radio-invalid', 'border', 'border-danger', 'rounded', 'p-1');
             }
-            errors.push(label);
+            addUnique(requiredErrors, label);
         }
     };
     const reqNum = (elId, label) => {
@@ -1424,24 +1429,23 @@ function validateModalForm(type) {
         const val = numVal(el.value);
         if (isNaN(val) || el.value.trim() === '') {
             el.classList.add('is-invalid');
-            errors.push(label);
+            addUnique(requiredErrors, label);
         }
     };
 
     // Common — all types
-    req('mf_description',     'Description');
-    req('mf_contract_number', 'Contract ID');
+    req('mf_description',       'Description');
+    req('mf_contract_category', 'Contract Category');
+    req('mf_contract_number',   'Contract ID');
     req('mf_vendor_name',     'Vendor Name');
     reqRadio('mf_contract_source_r', 'Contract Source', 'mf_contract_source_radios');
 
     if (type === 'Rebate') {
         const waveCategoryVal = (document.getElementById('mf_wave_category')?.value || '').trim();
         if (!waveCategoryVal) {
-            errors.push('Wave Category');
+            addUnique(requiredErrors, 'Wave Category');
             document.getElementById('mf_wave_category')?.classList.add('is-invalid');
         }
-    } else {
-        req('mf_contract_category', 'Contract Category');
     }
 
     if (type === 'Cost Savings') {
@@ -1456,12 +1460,12 @@ function validateModalForm(type) {
             reqNum('mf_total_savings',   'Total Savings');
             const totalSavingsVal = numVal(document.getElementById('mf_total_savings')?.value || '0');
             if (totalSavingsVal <= 0) {
-                errors.push('Total Savings must be greater than 0');
+                addUnique(validationErrors, 'Total Savings must be greater than 0');
             }
             const startDateVal = document.getElementById('mf_start_date')?.value || '';
             const endDateVal = document.getElementById('mf_end_date')?.value || '';
             if (startDateVal && endDateVal && endDateVal <= startDateVal) {
-                errors.push('End Date must be later than Start Date');
+                addUnique(validationErrors, 'End Date must be later than Start Date');
             }
         }
     } else if (type === 'Cost Avoidance') {
@@ -1474,14 +1478,14 @@ function validateModalForm(type) {
         reqNum('mf_avoidance_amount', 'Avoidance Amount');
         const avoidanceAmountVal = numVal(document.getElementById('mf_avoidance_amount')?.value || '0');
         if (avoidanceAmountVal <= 0) {
-            errors.push('Avoidance Amount must be greater than 0');
+            addUnique(validationErrors, 'Avoidance Amount must be greater than 0');
         }
     } else if (type === 'Rebate') {
         req('mf_rebate_type',            'Rebate Type');
         reqNum('mf_rebate_amount',       'Rebate Amount');
         const rebateAmountVal = numVal(document.getElementById('mf_rebate_amount')?.value || '0');
         if (rebateAmountVal <= 0) {
-            errors.push('Rebate Amount must be greater than 0');
+            addUnique(validationErrors, 'Rebate Amount must be greater than 0');
         }
         req('mf_transaction_date',       'Transaction Date');
         reqRadio('mf_transaction_type',  'Transaction Type');
@@ -1505,15 +1509,22 @@ function validateModalForm(type) {
             if (mainAmtId) {
                 const mainAmt = numVal(document.getElementById(mainAmtId)?.value || '0');
                 if (mainAmt > 0 && Math.abs(mainAmt - allocTotal) > allocTolerance) {
-                    errors.push('Facility Allocation (must be fully allocated)');
+                    addUnique(validationErrors, 'Facility Allocation must be fully allocated');
                     document.getElementById('mf_alloc_remaining')?.scrollIntoView({behavior: 'smooth', block: 'center'});
                 }
             }
         }
     }
 
-    if (errors.length > 0) {
-        showModalAlert(`Please fill in required fields: ${errors.join(', ')}`, 'warning');
+    if (requiredErrors.length > 0 || validationErrors.length > 0) {
+        const messages = [];
+        if (requiredErrors.length > 0) {
+            messages.push(`Please complete all required fields before saving: ${requiredErrors.join(', ')}.`);
+        }
+        if (validationErrors.length > 0) {
+            messages.push(validationErrors.join(' '));
+        }
+        showModalAlert(messages.join('<br>'), 'warning');
         return false;
     }
     return true;
