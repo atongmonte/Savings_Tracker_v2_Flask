@@ -523,10 +523,8 @@ def savings_dashboard():
 @login_required
 def cost_savings_form():
     """Serve the cost savings form page."""
-    if _is_read_only_user(g.current_user):
-        flash('Read-only users cannot access detailed forms. Use the role request email button to request access.', 'warning')
-        return redirect(url_for('main.dashboard'))
-    return render_template('cost_savings_form.html', current_user=_get_template_current_user_name())
+    flash('Cost Savings initiatives are read-only. New Cost Savings forms are currently unavailable.', 'warning')
+    return redirect(url_for('main.dashboard'))
 
 
 @main_bp.route('/rebate/form')

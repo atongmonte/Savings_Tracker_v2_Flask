@@ -20,6 +20,17 @@ from app.utils.contract_categories import (
 )
 
 
+READ_ONLY_COST_SAVINGS_ERROR = 'Cost Savings initiatives are read-only.'
+
+
+def _is_locked_cost_savings(initiative):
+    return initiative and initiative.initiative_type == 'Cost Savings'
+
+
+def _locked_cost_savings_response():
+    return jsonify({'error': READ_ONLY_COST_SAVINGS_ERROR}), 403
+
+
 @initiatives_bp.route('', methods=['GET'])
 @login_required
 def get_initiatives():
@@ -211,8 +222,10 @@ def get_initiative(initiative_id):
     if not initiative:
         return jsonify({'error': 'Initiative not found'}), 404
 
-    # Auto-reconcile any files that were deleted from disk outside the application
-    _reconcile_missing_files(initiative)
+    # Auto-reconcile any files that were deleted from disk outside the application.
+    # Cost Savings records are locked to read-only, so avoid DB writes while viewing.
+    if not _is_locked_cost_savings(initiative):
+        _reconcile_missing_files(initiative)
 
     return jsonify(initiative.to_dict(include_details=True)), 200
 
@@ -249,6 +262,9 @@ def delete_initiative(initiative_id):
     
     if not initiative:
         return jsonify({'error': 'Initiative not found'}), 404
+
+    if _is_locked_cost_savings(initiative):
+        return _locked_cost_savings_response()
     
     # Check permissions
     can_delete = False
@@ -301,6 +317,9 @@ def restore_initiative(initiative_id):
     
     if not initiative:
         return jsonify({'error': 'Deleted initiative not found'}), 404
+
+    if _is_locked_cost_savings(initiative):
+        return _locked_cost_savings_response()
     
     try:
         initiative.is_deleted   = False
@@ -339,6 +358,9 @@ def approve_initiative(initiative_id):
     
     if not initiative:
         return jsonify({'error': 'Initiative not found'}), 404
+
+    if _is_locked_cost_savings(initiative):
+        return _locked_cost_savings_response()
     
     if initiative.status != 'Pending Review':
         return jsonify({'error': 'Initiative is not pending review'}), 400
@@ -402,6 +424,9 @@ def reject_initiative(initiative_id):
     
     if not initiative:
         return jsonify({'error': 'Initiative not found'}), 404
+
+    if _is_locked_cost_savings(initiative):
+        return _locked_cost_savings_response()
     
     if initiative.status not in ('Pending Review', 'Approved'):
         return jsonify({'error': 'Only Pending Review or Approved initiatives can be rejected'}), 400
@@ -462,6 +487,9 @@ def unapprove_initiative(initiative_id):
     initiative = Initiative.query.filter_by(id=initiative_id, is_deleted=False).first()
     if not initiative:
         return jsonify({'error': 'Initiative not found'}), 404
+
+    if _is_locked_cost_savings(initiative):
+        return _locked_cost_savings_response()
 
     if initiative.status != 'Approved':
         return jsonify({'error': 'Only approved initiatives can be reverted to pending'}), 400
@@ -524,6 +552,9 @@ def revert_initiative(initiative_id):
     if not initiative:
         return jsonify({'error': 'Initiative not found'}), 404
 
+    if _is_locked_cost_savings(initiative):
+        return _locked_cost_savings_response()
+
     if initiative.status != 'Rejected':
         return jsonify({'error': 'Only rejected initiatives can be reverted'}), 400
 
@@ -571,6 +602,9 @@ def upload_files(initiative_id):
     initiative = Initiative.query.filter_by(id=initiative_id, is_deleted=False).first()
     if not initiative:
         return jsonify({'error': 'Initiative not found'}), 404
+
+    if _is_locked_cost_savings(initiative):
+        return _locked_cost_savings_response()
 
     if 'files' not in request.files:
         return jsonify({'error': 'No files provided'}), 400
@@ -700,6 +734,9 @@ def delete_file(initiative_id, file_id):
     initiative = Initiative.query.filter_by(id=initiative_id, is_deleted=False).first()
     if not initiative:
         return jsonify({'error': 'Initiative not found'}), 404
+
+    if _is_locked_cost_savings(initiative):
+        return _locked_cost_savings_response()
 
     # Auto-clean any files already removed from disk so the "remaining" count
     # only reflects files that actually exist, and ghost records don't block deletions.

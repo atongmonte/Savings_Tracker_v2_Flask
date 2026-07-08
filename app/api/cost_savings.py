@@ -25,6 +25,17 @@ def _normalize_wave_id(value):
     return text or 'N/A'
 
 
+def _locked_cost_savings_response():
+    return jsonify({'error': 'Cost Savings initiatives are read-only.'}), 403
+
+
+@cost_savings_bp.before_request
+def block_cost_savings_mutations():
+    """Cost Savings records are currently available for read-only display only."""
+    if request.method != 'GET':
+        return _locked_cost_savings_response()
+
+
 @cost_savings_bp.route('', methods=['POST'])
 @permission_required('create')
 def create_cost_savings():

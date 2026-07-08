@@ -21,8 +21,12 @@ function isAdminUser() {
     return roleName === 'admin';
 }
 
+function isLockedCostSavings(initiativeLike) {
+    return initiativeLike && initiativeLike.initiative_type === 'Cost Savings';
+}
+
 function canCurrentUserEditInitiative(initiativeLike) {
-    if (!initiativeLike || isReadOnlyUser()) {
+    if (!initiativeLike || isReadOnlyUser() || isLockedCostSavings(initiativeLike)) {
         return false;
     }
     if (isAdminUser()) {
@@ -195,22 +199,25 @@ function renderTableRows(rows) {
             actionBtns = '<span class="text-muted small">Summary only</span>';
         } else if (r.is_deleted) {
             // Deleted row — admin can restore
-            if (cu.can_delete_all) {
+            if (cu.can_delete_all && !isLockedCostSavings(r)) {
                 actionBtns = `<button class="btn btn-sm btn-outline-warning" onclick="restoreInitiative(${r.id})" title="Restore"><i class="fas fa-trash-restore"></i></button>`;
             }
         } else {
             // Normal row — view, edit, optional delete
-            const canDel = cu.can_delete_all || (cu.can_delete_own && r.created_by_id === cu.id);
+            const isCostSavingsLocked = isLockedCostSavings(r);
+            const canDel = !isCostSavingsLocked && (cu.can_delete_all || (cu.can_delete_own && r.created_by_id === cu.id));
             const canEdit = canCurrentUserEditInitiative(r);
 
             // Approved initiatives are read-only — only view is allowed.
             let editBtn = '';
-            if (r.status === 'Approved') {
-                editBtn = `<button class="btn btn-sm btn-outline-secondary" onclick="viewInitiative(${r.id})" title="Approved — view only" disabled><i class="fas fa-lock"></i></button>`;
+            if (isCostSavingsLocked) {
+                editBtn = `<button class="btn btn-sm btn-outline-secondary" title="Cost Savings - view only" disabled><i class="fas fa-lock"></i></button>`;
+            } else if (r.status === 'Approved') {
+                editBtn = `<button class="btn btn-sm btn-outline-secondary" title="Approved - view only" disabled><i class="fas fa-lock"></i></button>`;
             } else if (canEdit) {
                 editBtn = `<button class="btn btn-sm btn-outline-info" onclick="editInitiative(${r.id})" title="Edit"><i class="fas fa-edit"></i></button>`;
             } else {
-                editBtn = `<button class="btn btn-sm btn-outline-secondary" onclick="viewInitiative(${r.id})" title="Locked — only Admin or the initiative owner can edit" disabled><i class="fas fa-lock"></i></button>`;
+                editBtn = `<button class="btn btn-sm btn-outline-secondary" title="Locked - only Admin or the initiative owner can edit" disabled><i class="fas fa-lock"></i></button>`;
             }
             actionBtns = `
                 <button class="btn btn-sm btn-outline-primary" onclick="viewInitiative(${r.id})" title="View"><i class="fas fa-eye"></i></button>
@@ -391,12 +398,17 @@ function updateStatisticsFromServer(stats) {
         if (Math.abs(v) >= 1_000)     return '$' + (v / 1_000).toFixed(2) + 'K';
         return '$' + Math.round(v).toLocaleString('en-US');
     };
-    document.getElementById('savingsApproved').textContent   = abbrev(stats.savings_approved);
-    document.getElementById('savingsPending').textContent    = abbrev(stats.savings_pending);
-    document.getElementById('rebateApproved').textContent    = abbrev(stats.rebate_approved);
-    document.getElementById('rebatePending').textContent     = abbrev(stats.rebate_pending);
-    document.getElementById('avoidanceApproved').textContent = abbrev(stats.avoidance_approved);
-    document.getElementById('avoidancePending').textContent  = abbrev(stats.avoidance_pending);
+    const setStat = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = abbrev(value);
+    };
+
+    setStat('savingsApproved', stats.savings_approved);
+    setStat('savingsPending', stats.savings_pending);
+    setStat('rebateApproved', stats.rebate_approved);
+    setStat('rebatePending', stats.rebate_pending);
+    setStat('avoidanceApproved', stats.avoidance_approved);
+    setStat('avoidancePending', stats.avoidance_pending);
 }
 
 // Setup filter event listeners
@@ -542,7 +554,10 @@ function showInitiativeModal(id, editMode) {
         .then(([data, categories]) => {
             const effectiveEditMode = editMode && canCurrentUserEditInitiative(data);
             if (editMode && !effectiveEditMode) {
-                showGlobalPopup('Only Admin or the initiative owner can edit this initiative.', 'warning');
+                const message = isLockedCostSavings(data)
+                    ? 'Cost Savings initiatives are read-only.'
+                    : 'Only Admin or the initiative owner can edit this initiative.';
+                showGlobalPopup(message, 'warning');
             }
             populateModalContractCategorySelect('mf_contract_category', categories || []);
             populateModalWaveCategorySelect('mf_wave_category', categories || []);
@@ -779,11 +794,12 @@ function populateInitiativeModal(data, editMode) {
     const revertBtn     = document.getElementById('modalRevertBtn');
     const unapproveBtn  = document.getElementById('modalUnapproveBtn');
     const revokeBtn     = document.getElementById('modalRevokeBtn');
-    if (approveBtn)   approveBtn.classList.toggle('d-none',   !(canActOnReview && isPendingReview && !editMode));
-    if (rejectBtn)    rejectBtn.classList.toggle('d-none',    !(canActOnReview && isPendingReview && !editMode));
-    if (revertBtn)    revertBtn.classList.toggle('d-none',    !(canActOnReview && isRejected && !editMode));
-    if (unapproveBtn) unapproveBtn.classList.toggle('d-none', !(canActOnReview && isApproved && !editMode));
-    if (revokeBtn)    revokeBtn.classList.toggle('d-none',    !(canActOnReview && isApproved && !editMode));
+    const canReviewLockedType = !isLockedCostSavings(data);
+    if (approveBtn)   approveBtn.classList.toggle('d-none',   !(canReviewLockedType && canActOnReview && isPendingReview && !editMode));
+    if (rejectBtn)    rejectBtn.classList.toggle('d-none',    !(canReviewLockedType && canActOnReview && isPendingReview && !editMode));
+    if (revertBtn)    revertBtn.classList.toggle('d-none',    !(canReviewLockedType && canActOnReview && isRejected && !editMode));
+    if (unapproveBtn) unapproveBtn.classList.toggle('d-none', !(canReviewLockedType && canActOnReview && isApproved && !editMode));
+    if (revokeBtn)    revokeBtn.classList.toggle('d-none',    !(canReviewLockedType && canActOnReview && isApproved && !editMode));
 
     // Audit History section — visible to reviewer/admin in view mode
     const auditSection = document.getElementById('mf_audit_section');
@@ -1547,6 +1563,11 @@ function saveModalChanges() {
     const id   = window._modalInitiativeId;
     const type = window._modalInitiativeType;
     if (!id || !type) return;
+
+    if (type === 'Cost Savings') {
+        showModalAlert('Cost Savings initiatives are read-only.', 'warning');
+        return;
+    }
 
     if (!hasModalPendingChanges(type)) {
         showModalAlert('No changes detected.', 'info');
