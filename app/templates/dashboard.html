@@ -288,17 +288,39 @@
     /* Column widths and right offsets */
     #initiativesTable .col-actions {
         right: 0;
+        width: 120px;
         min-width: 120px;
+        max-width: 120px;
     }
 
     #initiativesTable .col-status {
         right: 120px;
+        width: 110px;
         min-width: 110px;
+        max-width: 110px;
     }
 
     #initiativesTable .col-last-updated {
         right: 230px;
+        width: 105px;
         min-width: 105px;
+        max-width: 105px;
+    }
+
+    #initiativesTable .col-init-year {
+        right: 335px;
+        width: 90px;
+        min-width: 90px;
+        max-width: 90px;
+    }
+
+    #initiativesTable .col-savings-amount {
+        right: 425px;
+        width: 140px;
+        min-width: 140px;
+        max-width: 140px;
+        white-space: nowrap;
+        box-shadow: -4px 0 6px -5px rgba(17, 43, 70, 0.55);
     }
 
     #initiativesTable .col-type {
@@ -456,13 +478,14 @@
                             <th>Contract ID</th>
                             <th>Contract Category</th>
                             <th>Vendor Name</th>
-                            <th class="text-end sortable" onclick="toggleSort('amount')" title="Sort by Saving Amount">
+                            <th class="text-end sortable col-sticky-right col-savings-amount"
+                                onclick="toggleSort('amount')" title="Sort by Saving Amount">
                                 <span class="sortable-header-content">
                                     <span class="sortable-header-label">Saving Amount</span>
                                     <i id="sort-icon-amount" class="fas fa-sort text-muted sort-icon-inactive"></i>
                                 </span>
                             </th>
-                            <th class="sortable" onclick="toggleSort('initiative_date')"
+                            <th class="sortable col-sticky-right col-init-year" onclick="toggleSort('initiative_date')"
                                 title="Sort by Initiative Year">
                                 <span class="sortable-header-content">
                                     <span class="sortable-header-label">Init Yr</span>

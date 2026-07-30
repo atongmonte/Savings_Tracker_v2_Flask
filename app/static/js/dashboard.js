@@ -184,7 +184,12 @@ function renderTableRows(rows) {
         const icon        = typeIcons[r.initiative_type]  || '';
         const sCls        = statusClass[r.status] || '';
         const amount      = parseFloat(r.amount) || 0;
-        const fmtAmt      = '$' + Math.round(amount).toLocaleString('en-US');
+        const fmtAmt      = amount.toLocaleString('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
         const initDateRaw = r.initiative_date || r.created_at;
         const initDateFmt = initDateRaw ? new Date(initDateRaw + 'T00:00:00').getFullYear() : '';
         const lastUpdatedRaw = r.updated_at || r.created_at;
@@ -238,8 +243,8 @@ function renderTableRows(rows) {
             <td>${r.contract_id || 'N/A'}</td>
             <td>${r.contract_category || ''}</td>
             <td>${r.vendor_name || ''}</td>
-            <td class="text-end">${fmtAmt}</td>
-            <td>${initDateFmt}</td>
+            <td class="text-end col-sticky-right col-savings-amount">${fmtAmt}</td>
+            <td class="col-sticky-right col-init-year">${initDateFmt}</td>
             <td class="col-sticky-right col-last-updated">${updatedDate}</td>
             <td class="col-sticky-right col-status">${statusCell}</td>
             <td class="col-sticky-right col-actions">
@@ -1059,7 +1064,7 @@ function setupModalCalculations(type) {
             const b = numVal(baseline.value);
             const n = numVal(expected.value);
             const savings = b - n;
-            annual.value = savings !== 0 ? fmtNum(Math.round(savings)) : '';
+            annual.value = savings !== 0 ? fmtNum(savings) : '';
             calcTotal();
         }
 
