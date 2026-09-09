@@ -249,7 +249,7 @@ def _format_currency_display(value):
 
 
 def _get_rebate_extraction_data(start_date=None, end_date=None, search_term=''):
-    """Build rebate extraction rows, optionally filtered by check date and search text."""
+    """Build approved rebate extraction rows, optionally filtered by check date and search text."""
     query = (
         Initiative.query.join(Initiative.rebate)
         .options(
@@ -259,6 +259,7 @@ def _get_rebate_extraction_data(start_date=None, end_date=None, search_term=''):
         )
         .filter(
             Initiative.initiative_type == 'Rebate',
+            Initiative.status == 'Approved',
             Initiative.is_deleted == False
         )
     )
@@ -540,7 +541,7 @@ def rebate_form():
 @main_bp.route('/rebate/extraction')
 @login_required
 def rebate_extraction():
-    """Display all rebate initiatives with their detailed facility allocations."""
+    """Display approved rebate initiatives with their detailed facility allocations."""
     user = g.current_user
     if not (_is_admin_user(user) or _is_finance_user(user)):
         flash('Admin or Finance access is required for rebate extraction.', 'error')
