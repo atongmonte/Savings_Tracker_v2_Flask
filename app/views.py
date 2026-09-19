@@ -53,6 +53,7 @@ def inject_template_user():
     return {
         'template_current_user': user,
         'template_is_readonly_user': _is_read_only_user(user),
+        'template_can_access_rebate_extraction': _can_access_rebate_extraction(user),
         'template_role_request_mailto': _build_role_request_mailto(user),
         'template_environment': env_name,
     }
@@ -146,6 +147,11 @@ def _is_read_only_role(role):
 def _is_read_only_user(user):
     """Return True when the current user has a read-only role."""
     return _normalize_role_key(_normalize_role_name(user)) == _READ_ONLY_ROLE_KEY
+
+
+def _can_access_rebate_extraction(user):
+    """Allow active users once they have a role beyond the new-user default."""
+    return bool(user and user.is_active and _normalize_role_name(user) and not _is_read_only_user(user))
 
 
 def _get_canonical_read_only_role(roles):
@@ -543,8 +549,8 @@ def rebate_form():
 def rebate_extraction():
     """Display approved rebate initiatives with their detailed facility allocations."""
     user = g.current_user
-    if not (_is_admin_user(user) or _is_finance_user(user)):
-        flash('Admin or Finance access is required for rebate extraction.', 'error')
+    if not _can_access_rebate_extraction(user):
+        flash('Please request a role update to access rebate extraction.', 'error')
         return redirect(url_for('main.dashboard'))
 
     start_date_raw = (request.args.get('start_date') or '').strip()
@@ -573,8 +579,8 @@ def rebate_extraction():
 def rebate_extraction_export():
     """Export rebate extraction results as a ZIP containing an Excel workbook and attachments."""
     user = g.current_user
-    if not (_is_admin_user(user) or _is_finance_user(user)):
-        flash('Admin or Finance access is required for rebate extraction export.', 'error')
+    if not _can_access_rebate_extraction(user):
+        flash('Please request a role update to access rebate extraction export.', 'error')
         return redirect(url_for('main.dashboard'))
 
     start_date = _parse_filter_date((request.args.get('start_date') or '').strip())

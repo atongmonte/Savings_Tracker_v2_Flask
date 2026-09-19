@@ -464,7 +464,7 @@
                     </li>
                     {% endif %}
                     {% endif %}
-                    {% if is_admin_user or is_finance_user %}
+                    {% if template_can_access_rebate_extraction %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.rebate_extraction') }}">
                             <i class="fas fa-file-export me-1"></i>Rebate Extraction
@@ -557,7 +557,7 @@
                         {% if not is_finance_user %}
                         <li><a href="{{ url_for('main.dashboard') }}"><i class="fas fa-table-columns fa-fw me-1"></i>Dashboard</a></li>
                         {% endif %}
-                        {% if is_admin_user or is_finance_user %}
+                        {% if template_can_access_rebate_extraction %}
                         <li><a href="{{ url_for('main.rebate_extraction') }}"><i class="fas fa-file-export fa-fw me-1"></i>Rebate Extraction</a></li>
                         {% endif %}
                         {# <li><a href="{{ url_for('main.savings_dashboard') }}"><i class="fas fa-chart-bar fa-fw me-1"></i>Analytics</a></li> #}
