@@ -111,6 +111,12 @@ notepad .env
 python init_db.py
 ```
 
+Initialization also creates or updates the Finance role with the current permissions;
+no separate Finance migration command is needed. Existing Finance user assignments
+are preserved. The environment defaults to `ENVIRONMENT`, then `FLASK_ENV`, then
+`development`. To explicitly initialize production, run
+`python init_db.py --environment production`.
+
 This will create:
 - All database tables with proper relationships and indexes
 - Default user roles (Admin, Finance, Reviewer, User, Read-Only)

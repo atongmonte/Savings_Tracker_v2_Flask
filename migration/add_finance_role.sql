@@ -18,7 +18,7 @@ BEGIN
     )
     VALUES (
         'Finance',
-        'Finance users with access to rebate extraction only',
+        'Can view initiatives and extract rebates; cannot modify initiatives',
         0,
         0,
         0,

@@ -2,15 +2,30 @@
 Database initialization script.
 Run this to create the initial database schema and seed data.
 """
+import argparse
+import os
+
 from app import create_app, db
 from app.models import UserRole, User, Facility
 
 
-def init_database():
+FINANCE_DESCRIPTION = 'Can view initiatives and extract rebates; cannot modify initiatives'
+FINANCE_PERMISSIONS = {
+    'can_create': False, 'can_edit_own': False, 'can_edit_all': False,
+    'can_delete_own': False, 'can_delete_all': False, 'can_review': False,
+    'can_approve': False, 'can_export': True, 'can_manage_users': False,
+}
+
+
+def init_database(environment=None):
     """Initialize database with schema and seed data."""
-    app = create_app('development')
+    environment = environment or os.getenv('ENVIRONMENT', os.getenv('FLASK_ENV', 'development')).lower()
+    if environment not in ('development', 'testing', 'production'):
+        raise ValueError(f'Unsupported environment: {environment}')
+    app = create_app(environment)
     
     with app.app_context():
+        print(f"Environment: {environment}; database: {app.config['DB_NAME']}")
         # Create all tables
         print("Creating database tables...")
         db.create_all()
@@ -72,16 +87,8 @@ def init_database():
             },
             {
                 'name': 'Finance',
-                'description': 'Finance users with access to rebate extraction only',
-                'can_create': False,
-                'can_edit_own': False,
-                'can_edit_all': False,
-                'can_delete_own': False,
-                'can_delete_all': False,
-                'can_review': False,
-                'can_approve': False,
-                'can_export': True,
-                'can_manage_users': False
+                'description': FINANCE_DESCRIPTION,
+                **FINANCE_PERMISSIONS,
             }
         ]
         
@@ -91,6 +98,10 @@ def init_database():
                 role = UserRole(**role_data)
                 db.session.add(role)
                 print(f"  - Created role: {role_data['name']}")
+            elif role_data['name'] == 'Finance':
+                for key, value in role_data.items():
+                    setattr(existing_role, key, value)
+                print('  - Updated role: Finance')
         
         db.session.commit()
         
@@ -126,4 +137,8 @@ def init_database():
 
 
 if __name__ == '__main__':
-    init_database()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--environment', choices=('development', 'testing', 'production'),
+                        help='Defaults to ENVIRONMENT, then FLASK_ENV, then development.')
+    args = parser.parse_args()
+    init_database(args.environment)
