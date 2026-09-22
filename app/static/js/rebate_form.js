@@ -495,7 +495,7 @@ function handleSubmit(e) {
     
     const formData = new FormData(e.target);
     
-    // Add facility allocations — always send all 8 facilities
+    // Add facility allocations — always send all displayed facilities
     const facilities = [];
     document.querySelectorAll('.facility-allocation').forEach(input => {
         facilities.push({

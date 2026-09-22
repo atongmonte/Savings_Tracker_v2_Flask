@@ -13,7 +13,7 @@ def get_current_user():
     Get current user from IIS Windows Authentication.
     IIS passes the authenticated username via REMOTE_USER or AUTH_USER.
     In development, first-time users are automatically assigned the Admin role.
-    In all other environments, first-time users are assigned the Read-Only role.
+    In all other environments, first-time users are assigned the ReadOnly role.
     """
     from app.models import UserRole
 
@@ -58,16 +58,16 @@ def get_current_user():
                 db.session.add(assigned_role)
                 db.session.flush()
         else:
-            # All other environments: auto-assign Read-Only role
-            assigned_role = UserRole.query.filter_by(name='Read-Only').first()
+            # All other environments: auto-assign ReadOnly role
+            assigned_role = UserRole.query.filter_by(name='ReadOnly').first()
             if not assigned_role:
                 assigned_role = UserRole.query.filter_by(name='Read Only').first()
             if not assigned_role:
-                assigned_role = UserRole.query.filter_by(name='Readonly').first()
+                assigned_role = UserRole.query.filter_by(name='Read-Only').first()
             if not assigned_role:
                 assigned_role = UserRole(
-                    name='Read-Only',
-                    description='Can only view summary information',
+                    name='ReadOnly',
+                    description='Can view initiatives; cannot modify data or download attachments',
                     can_create=False,
                     can_edit_own=False,
                     can_edit_all=False,
@@ -75,7 +75,7 @@ def get_current_user():
                     can_delete_all=False,
                     can_review=False,
                     can_approve=False,
-                    can_export=True,
+                    can_export=False,
                     can_manage_users=False,
                 )
                 db.session.add(assigned_role)

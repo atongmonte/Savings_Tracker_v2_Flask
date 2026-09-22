@@ -26,7 +26,7 @@ function isLockedCostSavings(initiativeLike) {
 }
 
 function canCurrentUserEditInitiative(initiativeLike) {
-    if (!initiativeLike || isReadOnlyUser() || isLockedCostSavings(initiativeLike)) {
+    if (!initiativeLike || isReadOnlyUser() || window._currentUser?.role === 'Finance' || isLockedCostSavings(initiativeLike)) {
         return false;
     }
     if (isAdminUser()) {
@@ -196,7 +196,7 @@ function renderTableRows(rows) {
 
         let actionBtns = '';
         if (isReadOnly) {
-            actionBtns = '<span class="text-muted small">Summary only</span>';
+            actionBtns = `<button class="btn btn-sm btn-outline-primary" onclick="viewInitiative(${r.id})" title="View"><i class="fas fa-eye"></i></button>`;
         } else if (r.is_deleted) {
             // Deleted row — admin can restore
             if (cu.can_delete_all && !isLockedCostSavings(r)) {
@@ -454,10 +454,6 @@ function filterByStatus(status) {
 
 // View initiative details (read-only modal)
 function viewInitiative(id) {
-    if (isReadOnlyUser()) {
-        showGlobalPopup('Read-only users can only view summary data. Use the email admin button to request role access.', 'info');
-        return;
-    }
     showInitiativeModal(id, false);
 }
 
@@ -536,10 +532,6 @@ function populateModalWaveCategorySelect(selectId, categories) {
 
 // Open the initiative modal (view or edit mode)
 function showInitiativeModal(id, editMode) {
-    if (isReadOnlyUser()) {
-        showGlobalPopup('Read-only users can only view summary data. Use the email admin button to request role access.', 'info');
-        return;
-    }
 
     Promise.all([
         fetch(`/api/initiatives/${id}`).then(response => response.json()),
@@ -1652,7 +1644,7 @@ function saveModalChanges() {
         });
     }
 
-    // Facility allocations — send all 8 as array, default 0 when blank
+    // Facility allocations — send all displayed entities as an array, default 0 when blank
     const facilityAllocations = [];
     document.querySelectorAll('.modal-alloc').forEach(inp => {
         facilityAllocations.push({
@@ -2177,6 +2169,8 @@ function renderModalFiles(serverFiles, editMode) {
             <i class="${icon}"></i>
             ${ pendingDelete
                 ? `<span class="text-truncate small flex-grow-1 text-decoration-line-through text-danger" title="${f.file_name}">${f.file_name}</span>`
+                : isReadOnlyUser()
+                ? `<span class="text-truncate small flex-grow-1" title="Attachment downloads are restricted">${f.file_name}</span>`
                 : `<a href="/api/initiatives/${f.initiative_id}/files/${f.id}/download"
                       class="text-truncate small flex-grow-1" title="${f.file_name}">${f.file_name}</a>` }
             <span class="text-muted small text-nowrap">${size}</span>

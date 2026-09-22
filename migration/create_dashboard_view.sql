@@ -135,6 +135,8 @@ SELECT
   , FA_WPH.allocation_amount                            AS WPH_ALLOC
 
   , GETDATE()                                           AS DASHBOARD_UPDATE_TIME
+  , ISNULL(FA_GARNETT.allocation_amount, 0)                AS GARNETT_ALLOC
+  , ISNULL(FA_SJRH.allocation_amount, 0)                   AS SJRH_ALLOC
 
 FROM initiatives AS I
 
@@ -180,5 +182,13 @@ LEFT JOIN facility_allocations AS FA_SLCH
 LEFT JOIN facility_allocations AS FA_WPH
     ON FA_WPH.initiative_id   = I.id
    AND FA_WPH.facility_id     = (SELECT id FROM facilities WHERE code = 'WPH')
+
+LEFT JOIN facility_allocations AS FA_GARNETT
+    ON FA_GARNETT.initiative_id = I.id
+   AND FA_GARNETT.facility_id = (SELECT id FROM facilities WHERE code = 'GARNETT')
+
+LEFT JOIN facility_allocations AS FA_SJRH
+    ON FA_SJRH.initiative_id = I.id
+   AND FA_SJRH.facility_id = (SELECT id FROM facilities WHERE code = 'SJRH')
 
 WHERE I.is_deleted = 0;

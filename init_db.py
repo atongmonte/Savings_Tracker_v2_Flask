@@ -58,8 +58,8 @@ def init_database():
                 'can_manage_users': False
             },
             {
-                'name': 'Read-Only',
-                'description': 'Can only view initiatives',
+                'name': 'ReadOnly',
+                'description': 'Can view initiatives; cannot modify data or download attachments',
                 'can_create': False,
                 'can_edit_own': False,
                 'can_edit_all': False,
@@ -67,7 +67,7 @@ def init_database():
                 'can_delete_all': False,
                 'can_review': False,
                 'can_approve': False,
-                'can_export': True,
+                'can_export': False,
                 'can_manage_users': False
             },
             {
@@ -104,7 +104,9 @@ def init_database():
             {'code': 'MSSO', 'name': 'Montefiore Spring Valley'},
             {'code': 'NYACK', 'name': 'Nyack Hospital'},
             {'code': 'SLCH', 'name': 'St. Luke\'s Cornwall Hospital'},
-            {'code': 'WPH', 'name': 'White Plains Hospital'}
+            {'code': 'WPH', 'name': 'White Plains Hospital'},
+            {'code': 'GARNETT', 'name': 'Garnett'},
+            {'code': 'SJRH', 'name': 'SJRH'}
         ]
         
         for facility_data in facilities_data:

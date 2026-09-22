@@ -432,7 +432,6 @@
                 {% set is_finance_user = template_current_user and template_current_user.role and template_current_user.role.name == 'Finance' %}
                 {% set can_create_initiatives = template_current_user and template_current_user.has_permission('create') and not is_finance_user %}
                 <ul class="navbar-nav ms-4 me-auto">
-                    {% if not is_finance_user %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.dashboard') }}">
                             <i class="fas fa-table-columns me-1"></i>Dashboard
@@ -462,7 +461,6 @@
                             </li>
                         </ul>
                     </li>
-                    {% endif %}
                     {% endif %}
                     {% if template_can_access_rebate_extraction %}
                     <li class="nav-item">
@@ -554,9 +552,7 @@
                 <div class="col-md-3 mb-3">
                     <div class="fw-600 mb-2" style="color:rgba(255,255,255,.5); font-size:0.72rem; text-transform:uppercase; letter-spacing:.08em;">Quick Links</div>
                     <ul class="list-unstyled mb-0" style="line-height:2;">
-                        {% if not is_finance_user %}
                         <li><a href="{{ url_for('main.dashboard') }}"><i class="fas fa-table-columns fa-fw me-1"></i>Dashboard</a></li>
-                        {% endif %}
                         {% if template_can_access_rebate_extraction %}
                         <li><a href="{{ url_for('main.rebate_extraction') }}"><i class="fas fa-file-export fa-fw me-1"></i>Rebate Extraction</a></li>
                         {% endif %}

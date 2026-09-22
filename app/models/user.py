@@ -81,8 +81,17 @@ class User(db.Model):
     def __repr__(self):
         return f'<User {self.username}>'
     
+    @property
+    def is_read_only(self):
+        name = self.role.name if self.role else ''
+        return ''.join(ch for ch in name.lower() if ch.isalnum()) == 'readonly'
+
     def has_permission(self, permission):
         """Check if user has a specific permission."""
+        if self.is_read_only:
+            return False
+        if self.role and self.role.name == 'Finance' and permission != 'export':
+            return False
         return getattr(self.role, f'can_{permission}', False)
     
     def to_dict(self):
@@ -96,8 +105,8 @@ class User(db.Model):
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None,
-            'can_approve':    self.role.can_approve    if self.role else False,
-            'can_review':      self.role.can_review      if self.role else False,
-            'can_delete_all':  self.role.can_delete_all  if self.role else False,
-            'can_delete_own':  self.role.can_delete_own  if self.role else False,
+            'can_approve': self.has_permission('approve'),
+            'can_review': self.has_permission('review'),
+            'can_delete_all': self.has_permission('delete_all'),
+            'can_delete_own': self.has_permission('delete_own'),
         }

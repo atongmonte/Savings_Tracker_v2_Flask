@@ -224,7 +224,7 @@ def get_initiative(initiative_id):
 
     # Auto-reconcile any files that were deleted from disk outside the application.
     # Cost Savings records are locked to read-only, so avoid DB writes while viewing.
-    if not _is_locked_cost_savings(initiative):
+    if not _is_locked_cost_savings(initiative) and g.current_user.role.name != 'Finance' and not g.current_user.is_read_only:
         _reconcile_missing_files(initiative)
 
     return jsonify(initiative.to_dict(include_details=True)), 200
@@ -711,6 +711,8 @@ def upload_files(initiative_id):
 @login_required
 def download_file(initiative_id, file_id):
     """Download a file attachment."""
+    if g.current_user.is_read_only:
+        return jsonify({'error': 'Read-Only users cannot download attachments.'}), 403
     file_record = FileTracking.query.filter_by(
         id=file_id, initiative_id=initiative_id, is_deleted=False
     ).first()

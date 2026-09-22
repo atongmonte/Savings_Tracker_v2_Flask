@@ -32,6 +32,8 @@ _REVIEW_NOTIFICATION_DEFAULT_EMAIL = 'procurementdatateam@montefiore.org'
 _READ_ONLY_ROLE_KEY = 'readonly'
 
 _FINANCE_ALLOWED_ENDPOINTS = {
+    'main.index',
+    'main.dashboard',
     'main.rebate_extraction',
     'main.rebate_extraction_export',
     'main.logout',
@@ -61,7 +63,7 @@ def inject_template_user():
 
 @main_bp.before_request
 def enforce_finance_page_access():
-    """Finance users can only access rebate extraction pages."""
+    """Finance users can view initiatives and use rebate extraction."""
     user = get_current_user()
     if not user:
         return None
@@ -86,6 +88,8 @@ _REBATE_ALLOC_COLUMNS = [
     ('NYACK', 'NYACK_ALLOC'),
     ('SLCH', 'SLCH_ALLOC'),
     ('WPH', 'WPH_ALLOC'),
+    ('GARNETT', 'GARNETT_ALLOC'),
+    ('SJRH', 'SJRH_ALLOC'),
 ]
 
 _REBATE_ALLOC_CODE_MAP = {
@@ -101,6 +105,8 @@ _REBATE_ALLOC_CODE_MAP = {
     'NYACK': 'NYACK_ALLOC',
     'SLCH': 'SLCH_ALLOC',
     'WPH': 'WPH_ALLOC',
+    'GARNETT': 'GARNETT_ALLOC',
+    'SJRH': 'SJRH_ALLOC',
 }
 
 _REBATE_FILE_PATH_HEADERS = [f'FILE_PATH_{index}' for index in range(1, 11)]
@@ -150,17 +156,17 @@ def _is_read_only_user(user):
 
 
 def _can_access_rebate_extraction(user):
-    """Allow active users once they have a role beyond the new-user default."""
-    return bool(user and user.is_active and _normalize_role_name(user) and not _is_read_only_user(user))
+    """Restrict extraction and its export to active Admin and Finance users."""
+    return bool(user and user.is_active and _normalize_role_name(user) in {'admin', 'finance'})
 
 
 def _get_canonical_read_only_role(roles):
-    """Prefer the canonical Read-Only role from a role collection."""
+    """Prefer the canonical ReadOnly role from a role collection."""
     read_only_roles = [role for role in roles if _is_read_only_role(role)]
     if not read_only_roles:
         return None
 
-    canonical = next((role for role in read_only_roles if role.name == 'Read-Only'), None)
+    canonical = next((role for role in read_only_roles if role.name == 'ReadOnly'), None)
     return canonical or min(read_only_roles, key=lambda role: role.id or 0)
 
 
@@ -195,8 +201,8 @@ def _prepare_admin_roles(users, roles):
     for role in prepared_roles:
         role_filter_value = _get_admin_role_filter_value(role)
         role.admin_filter_value = role_filter_value
-        role.admin_display_name = 'Read-only' if _is_read_only_role(role) else role.name
-        role.admin_css_name = 'Read-Only' if _is_read_only_role(role) else role.name.replace(' ', '-')
+        role.admin_display_name = 'ReadOnly' if _is_read_only_role(role) else role.name
+        role.admin_css_name = 'ReadOnly' if _is_read_only_role(role) else role.name.replace(' ', '-')
         role.admin_active_user_count = active_user_counts.get(role_filter_value, 0)
 
     return prepared_roles
@@ -520,9 +526,6 @@ def dashboard():
 @login_required
 def savings_dashboard():
     """Serve the savings analytics dashboard (reviewer / admin)."""
-    if _is_read_only_user(g.current_user):
-        flash('Read-only users can access summary information only.', 'warning')
-        return redirect(url_for('main.dashboard'))
     return render_template('savings_dashboard.html', current_user=_get_template_current_user_name())
 
 
