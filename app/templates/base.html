@@ -494,6 +494,20 @@
 
                 <!-- Right: user + logout -->
                 <ul class="navbar-nav align-items-center gap-3">
+                    {% if template_preview_roles %}
+                    <li class="nav-item">
+                        <form method="post" action="{{ url_for('main.switch_role') }}" class="d-flex align-items-center gap-2">
+                            <input type="hidden" name="csrf_token" value="{{ template_role_preview_csrf }}">
+                            <label for="rolePreview" class="navbar-user text-nowrap mb-0">{{ 'Viewing as' if template_role_preview_active else 'View as role' }}</label>
+                            <select id="rolePreview" name="role_id" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
+                                <option value="">{{ 'Return to Admin' if template_role_preview_active else 'Admin (your role)' }}</option>
+                                {% for role in template_preview_roles if role.name != 'Admin' %}
+                                <option value="{{ role.id }}" {% if template_role_preview_active and template_current_user.role_id == role.id %}selected{% endif %}>{{ role.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                    </li>
+                    {% endif %}
                     {% if template_is_readonly_user and template_role_request_mailto %}
                     <li class="nav-item">
                         <a class="btn-logout" href="{{ template_role_request_mailto }}" title="Request role update">

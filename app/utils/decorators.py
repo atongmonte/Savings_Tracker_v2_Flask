@@ -3,12 +3,12 @@ Authentication and authorization utilities.
 """
 import os
 from functools import wraps
-from flask import request, jsonify, g
+from flask import request, jsonify, g, session
 from app import db
 from app.models import User
 
 
-def get_current_user():
+def get_authenticated_user():
     """
     Get current user from IIS Windows Authentication.
     IIS passes the authenticated username via REMOTE_USER or AUTH_USER.
@@ -92,6 +92,40 @@ def get_current_user():
         db.session.commit()
 
     return user
+
+
+class RolePreviewUser:
+    """Request-local permissions without modifying the persistent user record."""
+
+    def __init__(self, user, role):
+        self._user = user
+        self.role = role
+        self.role_id = role.id
+
+    def __getattr__(self, name):
+        return getattr(self._user, name)
+
+    is_read_only = User.is_read_only
+    has_permission = User.has_permission
+    to_dict = User.to_dict
+
+
+def get_current_user():
+    user = get_authenticated_user()
+    preview = session.get('role_preview')
+    if not preview:
+        return user
+    if (not user or not user.is_active or not user.role or
+            user.role.name != 'Admin' or not isinstance(preview, dict) or
+            preview.get('user_id') != user.id):
+        session.pop('role_preview', None)
+        return user
+    from app.models import UserRole
+    role = db.session.get(UserRole, preview.get('role_id'))
+    if role is None:
+        session.pop('role_preview', None)
+        return user
+    return RolePreviewUser(user, role)
 
 
 def login_required(f):

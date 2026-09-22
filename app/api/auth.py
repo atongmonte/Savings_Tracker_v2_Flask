@@ -3,7 +3,7 @@ Authentication API endpoints.
 """
 from flask import jsonify, g
 from app.api import auth_bp
-from app.utils.decorators import get_current_user, login_required
+from app.utils.decorators import get_authenticated_user, get_current_user, login_required
 from datetime import datetime
 from app.utils.timezone import now_eastern
 
@@ -15,7 +15,7 @@ def current_user():
     user = g.current_user
     
     # Update last login
-    user.last_login = now_eastern()
+    get_authenticated_user().last_login = now_eastern()
     from app import db
     db.session.commit()
     

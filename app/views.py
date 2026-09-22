@@ -4,10 +4,11 @@ Main routes for serving HTML pages.
 import io
 import os
 import zipfile
+import secrets
 from datetime import datetime
 from urllib.parse import quote
 
-from flask import Blueprint, current_app, flash, g, send_file, send_from_directory, render_template, redirect, request, url_for
+from flask import Blueprint, current_app, flash, g, send_file, send_from_directory, render_template, redirect, request, url_for, session, abort
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -15,7 +16,7 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 from sqlalchemy.orm import joinedload
 
 from app.models import Initiative, FacilityAllocation, Rebate, User, UserRole
-from app.utils.decorators import get_current_user, login_required
+from app.utils.decorators import get_authenticated_user, get_current_user, login_required
 from app.utils.email import (
     is_graph_mail_configured,
     send_initiative_approved_notification,
@@ -37,6 +38,7 @@ _FINANCE_ALLOWED_ENDPOINTS = {
     'main.rebate_extraction',
     'main.rebate_extraction_export',
     'main.logout',
+    'main.switch_role',
     'main.send_static',
     'static',
 }
@@ -52,13 +54,50 @@ def inject_template_user():
         except Exception:
             user = None
     env_name = os.getenv('ENVIRONMENT', os.getenv('FLASK_ENV', 'production')).lower()
+    actual_user = get_authenticated_user() if user else None
+    can_switch_role = bool(actual_user and actual_user.is_active and actual_user.role
+                           and actual_user.role.name == 'Admin')
+    if can_switch_role and 'role_preview_csrf' not in session:
+        session['role_preview_csrf'] = secrets.token_urlsafe(32)
     return {
+        'template_preview_roles': UserRole.query.order_by(UserRole.name).all() if can_switch_role else [],
+        'template_role_preview_active': can_switch_role and bool(session.get('role_preview')),
+        'template_role_preview_csrf': session.get('role_preview_csrf', ''),
         'template_current_user': user,
         'template_is_readonly_user': _is_read_only_user(user),
         'template_can_access_rebate_extraction': _can_access_rebate_extraction(user),
         'template_role_request_mailto': _build_role_request_mailto(user),
         'template_environment': env_name,
     }
+
+
+@main_bp.route('/switch-role', methods=['POST'])
+def switch_role():
+    """Only the authenticated administrator may select a session role."""
+    user = get_authenticated_user()
+    if not user:
+        abort(401)
+    if not user.is_active or not user.role or user.role.name != 'Admin':
+        abort(403)
+    token = session.get('role_preview_csrf')
+    if not token or not secrets.compare_digest(token, request.form.get('csrf_token', '')):
+        abort(400)
+    role_id = request.form.get('role_id', '')
+    if role_id == '':
+        session.pop('role_preview', None)
+    else:
+        from app import db
+        try:
+            role = db.session.get(UserRole, int(role_id))
+        except ValueError:
+            abort(400)
+        if role is None:
+            abort(400)
+        if role.name == 'Admin':
+            session.pop('role_preview', None)
+        else:
+            session['role_preview'] = {'user_id': user.id, 'role_id': role.id}
+    return redirect(url_for('main.dashboard'))
 
 
 @main_bp.before_request
@@ -1009,6 +1048,8 @@ def user_delete(user_id):
 @main_bp.route('/logout')
 def logout():
     """Handle logout."""
+    session.pop('role_preview', None)
+    session.pop('role_preview_csrf', None)
     # For IIS Windows Authentication, we can't really logout
     # Just redirect to a goodbye page or back to index
     return '''
