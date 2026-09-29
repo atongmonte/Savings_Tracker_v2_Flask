@@ -128,11 +128,11 @@
                 <form method="get" action="{{ url_for('main.rebate_extraction') }}" class="toolbar-group">
                     <div>
                         <label for="startDate">Check Date From</label>
-                        <input id="startDate" name="start_date" type="date" class="form-control" value="{{ filter_start_date }}">
+                        <input id="startDate" name="start_date" type="date" class="form-control" value="{{ filter_start_date }}" max="{{ filter_end_date }}">
                     </div>
                     <div>
                         <label for="endDate">Check Date To</label>
-                        <input id="endDate" name="end_date" type="date" class="form-control" value="{{ filter_end_date }}">
+                        <input id="endDate" name="end_date" type="date" class="form-control" value="{{ filter_end_date }}" min="{{ filter_start_date }}">
                     </div>
                     <div>
                         <button class="btn btn-primary" type="submit">
@@ -221,6 +221,13 @@
 
 {% block extra_js %}
 <script>
+    function updateDateBounds() {
+        const startDate = document.getElementById('startDate');
+        const endDate = document.getElementById('endDate');
+        startDate.max = endDate.value;
+        endDate.min = startDate.value;
+    }
+
     function filterRebateRows() {
         const term = (document.getElementById('rebateSearch')?.value || '').toLowerCase().trim();
         const rows = Array.from(document.querySelectorAll('#rebateExtractionTable tbody tr[data-row="rebate"]'));
@@ -239,6 +246,8 @@
     }
 
     function exportRebateZip() {
+        if (!document.getElementById('startDate').form.reportValidity()) return;
+
         const params = new URLSearchParams();
         const startDate = document.getElementById('startDate')?.value || '';
         const endDate = document.getElementById('endDate')?.value || '';
@@ -254,6 +263,12 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        ['startDate', 'endDate'].forEach(id => {
+            const input = document.getElementById(id);
+            input.addEventListener('input', updateDateBounds);
+            input.addEventListener('change', updateDateBounds);
+        });
+        updateDateBounds();
         filterRebateRows();
     });
 </script>
