@@ -471,3 +471,22 @@ def send_weekly_review_reminder(initiatives=None, return_details=False):
         cc_addresses=current_app.config.get('PROCUREMENT_DATA_TEAM_EMAIL'),
         return_details=return_details,
     )
+
+
+def send_access_request_notification(user):
+    """Send the user's access request to the procurement team."""
+    username = html.escape(user.username or '')
+    full_name = html.escape(user.full_name or user.username or '')
+    email = html.escape(user.email or 'Not provided')
+    role = html.escape(user.role.name if user.role else 'Unassigned')
+    return send_email(
+        to_addresses=FIXED_NOTIFICATION_MAILBOX,
+        subject='Savings Tracker Role Update Request',
+        html_content=(
+            '<p>Hello Procurement Data Team,</p>'
+            '<p>The following user has requested additional access to Savings Tracker.</p>'
+            f'<p>Name: {full_name}<br>Username: {username}<br>Email: {email}</p>'
+            f'<p>Current role: {role}</p>'
+            '<p>Please review the request and assign the appropriate role in User Management.</p>'
+        ),
+    )

@@ -508,11 +508,14 @@
                         </form>
                     </li>
                     {% endif %}
-                    {% if template_is_readonly_user and template_role_request_mailto %}
+                    {% if template_is_readonly_user %}
                     <li class="nav-item">
-                        <a class="btn-logout" href="{{ template_role_request_mailto }}" title="Request role update">
-                            <i class="fas fa-envelope me-1"></i>Request Access
-                        </a>
+                        <form method="post" action="{{ url_for('main.request_access') }}" onsubmit="this.querySelector('button').disabled = true">
+                            <input type="hidden" name="csrf_token" value="{{ template_access_request_csrf }}">
+                            <button type="submit" class="btn-logout" title="Email the procurement team to request access">
+                                <i class="fas fa-envelope me-1"></i>Request Access
+                            </button>
+                        </form>
                     </li>
                     {% endif %}
                     <li class="nav-item">

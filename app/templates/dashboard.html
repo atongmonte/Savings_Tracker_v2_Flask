@@ -339,11 +339,12 @@
             <strong>Read-only access:</strong> You can view initiatives and their details.
             Editing and attachment downloads are restricted.
         </div>
-        {% if role_request_mailto %}
-        <a class="btn btn-sm btn-outline-primary" href="{{ role_request_mailto }}">
-            <i class="fas fa-envelope me-1"></i>Email Admin For Role Update
-        </a>
-        {% endif %}
+        <form method="post" action="{{ url_for('main.request_access') }}" onsubmit="this.querySelector('button').disabled = true">
+            <input type="hidden" name="csrf_token" value="{{ template_access_request_csrf }}">
+            <button type="submit" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-envelope me-1"></i>Request Access
+            </button>
+        </form>
     </div>
     {% endif %}
 

@@ -6,7 +6,6 @@ import os
 import zipfile
 import secrets
 from datetime import datetime
-from urllib.parse import quote
 
 from flask import Blueprint, current_app, flash, g, send_file, send_from_directory, render_template, redirect, request, url_for, session, abort
 from openpyxl import Workbook
@@ -19,6 +18,7 @@ from app.models import Initiative, FacilityAllocation, Rebate, User, UserRole
 from app.utils.decorators import get_authenticated_user, get_current_user, login_required
 from app.utils.email import (
     is_graph_mail_configured,
+    send_access_request_notification,
     send_initiative_approved_notification,
     send_initiative_creator_notification,
     send_initiative_review_notification,
@@ -59,6 +59,8 @@ def inject_template_user():
                            and actual_user.role.name == 'Admin')
     if can_switch_role and 'role_preview_csrf' not in session:
         session['role_preview_csrf'] = secrets.token_urlsafe(32)
+    if user and 'access_request_csrf' not in session:
+        session['access_request_csrf'] = secrets.token_urlsafe(32)
     return {
         'template_preview_roles': UserRole.query.order_by(UserRole.name).all() if can_switch_role else [],
         'template_role_preview_active': can_switch_role and bool(session.get('role_preview')),
@@ -66,7 +68,7 @@ def inject_template_user():
         'template_current_user': user,
         'template_is_readonly_user': _is_read_only_user(user),
         'template_can_access_rebate_extraction': _can_access_rebate_extraction(user),
-        'template_role_request_mailto': _build_role_request_mailto(user),
+        'template_access_request_csrf': session.get('access_request_csrf', ''),
         'template_environment': env_name,
     }
 
@@ -247,40 +249,21 @@ def _prepare_admin_roles(users, roles):
     return prepared_roles
 
 
-def _get_role_update_admin_email():
-    """Return the mailbox users should contact for role updates."""
-    return (
-        current_app.config.get('REVIEW_NOTIFICATION_TO')
-        or current_app.config.get('PROCUREMENT_DATA_TEAM_EMAIL')
-        or current_app.config.get('FROM_EMAIL')
-        or 'procurementdatateam@montefiore.org'
-    )
-
-
-def _get_role_update_cc_email():
-    """Return the fixed CC mailbox for role update requests."""
-    return (
-        current_app.config.get('PROCUREMENT_DATA_TEAM_EMAIL')
-        or current_app.config.get('FROM_EMAIL')
-        or 'procurementdatateam@montefiore.org'
-    )
-
-
-def _build_role_request_mailto(user):
-    """Build a prefilled mailto link to request role access changes."""
-    to_email = _get_role_update_admin_email()
-    cc_email = _get_role_update_cc_email()
-    username = getattr(user, 'username', None) or 'unknown-user'
-    full_name = getattr(user, 'full_name', None) or username
-    subject = quote('Savings Tracker Role Update Request')
-    body = quote(
-        f"Hello Admin,\r\n\r\n"
-        f"Please update my Savings Tracker role.\r\n"
-        f"User: {full_name} ({username})\r\n\r\n"
-        f"Requested role:\r\n"
-    )
-    cc = quote(cc_email)
-    return f'mailto:{to_email}?cc={cc}&subject={subject}&body={body}'
+@main_bp.route('/request-access', methods=['POST'])
+@login_required
+def request_access():
+    """Send an access request for the authenticated user."""
+    user = get_authenticated_user()
+    if not user or not user.is_active or not _is_read_only_user(g.current_user):
+        abort(403)
+    token = session.get('access_request_csrf')
+    if not token or not secrets.compare_digest(token, request.form.get('csrf_token', '')):
+        abort(400)
+    if send_access_request_notification(user):
+        flash('Your access request was sent to procurementdatateam@montefiore.org.', 'success')
+    else:
+        flash('Your access request could not be sent. Please try again or contact procurementdatateam@montefiore.org.', 'danger')
+    return redirect(url_for('main.dashboard'))
 
 
 def _get_allocation_numeric_value(allocation, rebate_amount=0):
@@ -557,7 +540,6 @@ def dashboard():
         'dashboard.html',
         current_user=_get_template_current_user_name(),
         is_readonly_user=_is_read_only_user(user),
-        role_request_mailto=_build_role_request_mailto(user),
     )
 
 
@@ -581,7 +563,7 @@ def cost_savings_form():
 def rebate_form():
     """Serve the rebate form page."""
     if _is_read_only_user(g.current_user):
-        flash('Read-only users cannot access detailed forms. Use the role request email button to request access.', 'warning')
+        flash('Read-only users cannot access detailed forms. Use the Request Access button to request access.', 'warning')
         return redirect(url_for('main.dashboard'))
     return render_template('rebate_form.html', current_user=_get_template_current_user_name())
 
@@ -697,7 +679,7 @@ def rebate_extraction_export():
 def cost_avoidance_form():
     """Serve the cost avoidance form page."""
     if _is_read_only_user(g.current_user):
-        flash('Read-only users cannot access detailed forms. Use the role request email button to request access.', 'warning')
+        flash('Read-only users cannot access detailed forms. Use the Request Access button to request access.', 'warning')
         return redirect(url_for('main.dashboard'))
     return render_template('cost_avoidance_form.html', current_user=_get_template_current_user_name())
 
