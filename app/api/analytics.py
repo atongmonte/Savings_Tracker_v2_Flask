@@ -21,7 +21,7 @@ _FAC_ALLOC_COL = {
     'NYACK': 'NYACK_ALLOC',
     'SLCH':  'SLCH_ALLOC',
     'WPH':   'WPH_ALLOC',
-    'GARNETT': 'GARNETT_ALLOC',
+    'GARNET': 'GARNET_ALLOC',
     'SJRH':   'SJRH_ALLOC',
 }
 

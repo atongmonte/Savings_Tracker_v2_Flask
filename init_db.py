@@ -116,7 +116,7 @@ def init_database(environment=None):
             {'code': 'NYACK', 'name': 'Nyack Hospital'},
             {'code': 'SLCH', 'name': 'St. Luke\'s Cornwall Hospital'},
             {'code': 'WPH', 'name': 'White Plains Hospital'},
-            {'code': 'GARNETT', 'name': 'Garnett'},
+            {'code': 'GARNET', 'name': 'Garnet'},
             {'code': 'SJRH', 'name': 'SJRH'}
         ]
         

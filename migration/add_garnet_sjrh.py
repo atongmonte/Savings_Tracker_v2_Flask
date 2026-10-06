@@ -1,8 +1,8 @@
 """Add allocation entities and zero backfills; preview unless --apply is supplied.
 
 Run from the project root with:
-    python -m migration.add_garnett_sjrh --environment development --apply
-    python -m migration.add_garnett_sjrh --environment production --apply
+    python -m migration.add_garnet_sjrh --environment development --apply
+    python -m migration.add_garnet_sjrh --environment production --apply
 
 Existing allocation values and environment-specific SQL definitions are preserved.
 The daily distribution procedure is updated, but never executed by this migration.
@@ -15,7 +15,7 @@ from sqlalchemy import create_engine, text
 from app.config import config
 
 
-FACILITIES = (("GARNETT", "Garnett"), ("SJRH", "SJRH"))
+FACILITIES = (("GARNET", "Garnet"), ("SJRH", "SJRH"))
 VIEW = "dbo.vw_initiative_dashboard"
 PROCEDURE = "dbo.SAVINGS_TRACKER_DAILY_DISTRIBUTION_PROCEDURE"
 REPORT = "dbo.SAVINGS_TRACKER_REPORT_DAILY_DISTRIBUTION"
@@ -55,7 +55,7 @@ def extend_procedure(source):
         r"^[ \t]*SET @daily_alloc_AECOM = @alloc_AECOM / @days;[ \t]*$",
     ):
         source = replace_checked(source, pattern, lambda m: m[0] + "\n" + "\n".join(m[0].replace("AECOM", code) for code, _ in FACILITIES), 1)
-    source = replace_checked(source, r"^[ \t]*,AECOM_ALLOC[ \t]*$", lambda m: m[0] + "\n    ,GARNETT_ALLOC\n    ,SJRH_ALLOC", 1)
+    source = replace_checked(source, r"^[ \t]*,AECOM_ALLOC[ \t]*$", lambda m: m[0] + "\n    ,GARNET_ALLOC\n    ,SJRH_ALLOC", 1)
     for token, count in (("@alloc_AECOM", 3), ("@daily_alloc_AECOM", 1), ("AECOM_alloc", 1), ("daily_alloc_AECOM", 1)):
         replacement = token + ", " + ", ".join(token.replace("AECOM", code) for code, _ in FACILITIES) + ","
         source = replace_checked(source, r"(?<![\w@])" + re.escape(token) + r",", replacement, count)
@@ -83,7 +83,7 @@ def migrate(environment, apply=False):
         original_allocations = conn.execute(text("""
             SELECT a.id, a.initiative_id, a.facility_id, a.allocation_percentage, a.allocation_amount
             FROM dbo.facility_allocations a JOIN dbo.facilities f ON f.id = a.facility_id
-            WHERE f.code NOT IN ('GARNETT', 'SJRH') ORDER BY a.id
+            WHERE f.code NOT IN ('GARNET', 'SJRH') ORDER BY a.id
         """)).all()
         for code, name in FACILITIES:
             conn.execute(text("""
@@ -118,7 +118,7 @@ def migrate(environment, apply=False):
         current_allocations = conn.execute(text("""
             SELECT a.id, a.initiative_id, a.facility_id, a.allocation_percentage, a.allocation_amount
             FROM dbo.facility_allocations a JOIN dbo.facilities f ON f.id = a.facility_id
-            WHERE f.code NOT IN ('GARNETT', 'SJRH') ORDER BY a.id
+            WHERE f.code NOT IN ('GARNET', 'SJRH') ORDER BY a.id
         """)).all()
         if current_allocations != original_allocations:
             raise ValueError("Existing entity allocations changed; rolling back")
@@ -132,7 +132,7 @@ def migrate(environment, apply=False):
             if row.allocations != count:
                 raise ValueError(f"Incomplete allocation backfill for {code}")
             print(f"  {code}: {row.allocations} allocations, {row.zeros or 0} zero values")
-        conn.exec_driver_sql(f"SELECT TOP (1) GARNETT_ALLOC, SJRH_ALLOC FROM {VIEW}").all()
+        conn.exec_driver_sql(f"SELECT TOP (1) GARNET_ALLOC, SJRH_ALLOC FROM {VIEW}").all()
         print(f"  Verified: {len(original_allocations)} existing allocation rows unchanged.")
     print(f"{database}: committed.")
 

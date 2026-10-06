@@ -129,7 +129,7 @@ _REBATE_ALLOC_COLUMNS = [
     ('NYACK', 'NYACK_ALLOC'),
     ('SLCH', 'SLCH_ALLOC'),
     ('WPH', 'WPH_ALLOC'),
-    ('GARNETT', 'GARNETT_ALLOC'),
+    ('GARNET', 'GARNET_ALLOC'),
     ('SJRH', 'SJRH_ALLOC'),
 ]
 
@@ -146,7 +146,7 @@ _REBATE_ALLOC_CODE_MAP = {
     'NYACK': 'NYACK_ALLOC',
     'SLCH': 'SLCH_ALLOC',
     'WPH': 'WPH_ALLOC',
-    'GARNETT': 'GARNETT_ALLOC',
+    'GARNET': 'GARNET_ALLOC',
     'SJRH': 'SJRH_ALLOC',
 }
 
