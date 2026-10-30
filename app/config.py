@@ -42,6 +42,27 @@ class Config:
     PRIME_DB_USER = os.getenv('PRIME_DB_USER', DB_USER)
     PRIME_DB_PASSWORD = os.getenv('PRIME_DB_PASSWORD', DB_PASSWORD)
     PRIME_DB_TIMEOUT = int(os.getenv('PRIME_DB_TIMEOUT', '5'))
+    # Wave File refresh target: PBI database behind the SCS Savings Power BI dashboard.
+    WAVE_DB_SERVER = os.getenv('WAVE_DB_SERVER', r'YNBBSTVWP02\PROCDATASRVPROD')
+    WAVE_DB_NAME = os.getenv('WAVE_DB_NAME', 'PBI')
+    WAVE_DB_DRIVER = os.getenv('WAVE_DB_DRIVER', DB_DRIVER)
+    WAVE_DB_TRUSTED_CONNECTION = os.getenv('WAVE_DB_TRUSTED_CONNECTION', DB_TRUSTED_CONNECTION)
+    WAVE_DB_USER = os.getenv('WAVE_DB_USER', DB_USER)
+    WAVE_DB_PASSWORD = os.getenv('WAVE_DB_PASSWORD', DB_PASSWORD)
+    WAVE_DB_TIMEOUT = int(os.getenv('WAVE_DB_TIMEOUT', '8'))
+    WAVE_MAX_EXPORT_AGE_DAYS = int(os.getenv('WAVE_MAX_EXPORT_AGE_DAYS', '10'))
+    WAVE_PBI_REPORT_URL = os.getenv(
+        'WAVE_PBI_REPORT_URL',
+        'https://app.powerbi.com/Redirect?action=OpenReport&appId=3b498838-9c61-46f0-9809-45b8787d4d66'
+        '&reportObjectId=fb26ed47-bcdd-4154-a7c5-c0c146ac0206&ctid=9c01f0fd-65e0-40c0-89a8-2dfd51e62025'
+        '&reportPage=9f7a0e64d04fa4d23cda&pbi_source=appShareLink',
+    )
+    # Power BI dataset refresh schedule (Eastern), used to estimate when a Wave load shows on the report.
+    WAVE_PBI_FIRST_REFRESH = os.getenv('WAVE_PBI_FIRST_REFRESH', '09:00')
+    WAVE_PBI_LAST_REFRESH = os.getenv('WAVE_PBI_LAST_REFRESH', '17:00')
+    WAVE_PBI_REFRESH_INTERVAL_MINUTES = int(os.getenv('WAVE_PBI_REFRESH_INTERVAL_MINUTES', '60'))
+    WAVE_PBI_PUBLISH_MINUTES = int(os.getenv('WAVE_PBI_PUBLISH_MINUTES', '15'))
+    WAVE_PBI_LEAD_MINUTES = int(os.getenv('WAVE_PBI_LEAD_MINUTES', '15'))
     SQLALCHEMY_DATABASE_URI = build_sqlalchemy_uri(
         DB_SERVER,
         DB_NAME,

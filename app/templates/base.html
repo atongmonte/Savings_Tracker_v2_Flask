@@ -222,6 +222,11 @@
             background-color: var(--monte-navy);
             border-color: var(--monte-navy);
             color: #fff;
+            /* Bootstrap's disabled and pressed states default to its own blue */
+            --bs-btn-disabled-bg: var(--monte-navy);
+            --bs-btn-disabled-border-color: var(--monte-navy);
+            --bs-btn-active-bg: var(--monte-navy-dk);
+            --bs-btn-active-border-color: var(--monte-navy-dk);
         }
         .btn-primary:hover, .btn-primary:focus {
             background-color: var(--monte-navy-dk);
@@ -239,6 +244,10 @@
         .btn-outline-primary {
             color: var(--monte-navy);
             border-color: var(--monte-navy);
+            --bs-btn-disabled-color: var(--monte-navy);
+            --bs-btn-disabled-border-color: var(--monte-navy);
+            --bs-btn-active-bg: var(--monte-navy);
+            --bs-btn-active-border-color: var(--monte-navy);
         }
         .btn-outline-primary:hover {
             background-color: var(--monte-navy);
@@ -460,6 +469,13 @@
                                 </a>
                             </li>
                         </ul>
+                    </li>
+                    {% endif %}
+                    {% if template_can_refresh_wave %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.wave_refresh') }}">
+                            <i class="fas fa-upload me-1"></i>Wave File
+                        </a>
                     </li>
                     {% endif %}
                     {% if template_can_access_rebate_extraction %}

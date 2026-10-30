@@ -193,6 +193,43 @@ Access the application at `http://localhost:5000`
 - `POST /api/cost-avoidance` - Create cost avoidance initiative
 - `POST /api/cost-avoidance/<id>` - Update cost avoidance initiative
 
+### Wave File Refresh
+- `GET /api/wave-refresh/status` - Current dashboard savings totals and recent refreshes
+- `POST /api/wave-refresh/upload` - Upload the weekly Wave export (`mode=validate` or `mode=refresh`)
+
+## Wave File Refresh
+
+The **Wave File** page (`/wave-refresh`, available to roles that can create
+initiatives) lets users load the weekly Wave export themselves instead of
+sending it to the data team. It ports the WaveL5 `fileprocess.ipynb`
+transformation and `refresh_wave.py` guards into `app/utils/wave_refresh.py`:
+
+1. Validates the workbook: `initiative` tab, required columns, L3/L4/L5 rows,
+   unique whole-number IDs, staging column lengths, and an export date that is
+   not in the future, not older than `WAVE_MAX_EXPORT_AGE_DAYS` (default 10),
+   and not older than the data already loaded.
+2. Archives the exact upload to `<file storage path>\Wave_Exports`.
+3. In one transaction on `PBI`: clears and reloads `SCSSaving.Initiatives_stg`,
+   runs `SCSSaving.sp_MergeInitiativesFromStage`, and reads savings by channel
+   from `SCSSaving.vw_MainSavings` before and after. Any failure rolls back.
+   The `WaveL5.refresh` application lock keeps it from overlapping the
+   command-line runner.
+4. Records each refresh attempt in `system_event_logs` (`event_type = WAVE_REFRESH`).
+5. Estimates when Power BI will show the load and links to the report
+   (`WAVE_PBI_REPORT_URL`). The schedule is set in Eastern time by
+   `WAVE_PBI_FIRST_REFRESH` / `WAVE_PBI_LAST_REFRESH` (`HH:MM`, default 09:00–17:00),
+   `WAVE_PBI_REFRESH_INTERVAL_MINUTES` (60), `WAVE_PBI_PUBLISH_MINUTES` (15) and
+   `WAVE_PBI_LEAD_MINUTES` (15, how long before a refresh a load must finish).
+   Example with the defaults: a load finishing at 10:20 AM misses the 10:00 AM
+   refresh, so the 11:00 AM refresh picks it up and Power BI shows it after 11:15 AM.
+
+Business rules must stay in step with `fileprocess.ipynb`. Configure the
+target with `WAVE_DB_SERVER` / `WAVE_DB_NAME` (defaults: the production `PBI`
+database). The IIS app pool identity needs, on `PBI`: `SELECT, INSERT, DELETE`
+on `SCSSaving.Initiatives_stg`, `EXECUTE` on
+`SCSSaving.sp_MergeInitiativesFromStage`, and `SELECT` on
+`SCSSaving.vw_MainSavings`.
+
 ## Key Improvements from v1
 
 1. **Normalized Database**

@@ -26,6 +26,7 @@ from app.utils.email import (
 )
 from app.utils.runtime_settings import apply_static_settings, load_static_settings, save_static_settings
 from app.utils.timezone import now_eastern
+from app.utils.wave_refresh import PowerBiSchedule, can_refresh_wave, target_label
 
 main_bp = Blueprint('main', __name__)
 
@@ -68,6 +69,7 @@ def inject_template_user():
         'template_current_user': user,
         'template_is_readonly_user': _is_read_only_user(user),
         'template_can_access_rebate_extraction': _can_access_rebate_extraction(user),
+        'template_can_refresh_wave': can_refresh_wave(user),
         'template_access_request_csrf': session.get('access_request_csrf', ''),
         'template_environment': env_name,
     }
@@ -671,6 +673,26 @@ def rebate_extraction_export():
         mimetype='application/zip',
         as_attachment=True,
         download_name=zip_name
+    )
+
+
+@main_bp.route('/wave-refresh')
+@login_required
+def wave_refresh():
+    """Serve the Wave File upload page that refreshes the PBI savings tables."""
+    if not can_refresh_wave(g.current_user):
+        flash('Please request a role update to refresh Wave data.', 'error')
+        return redirect(url_for('main.dashboard'))
+    if 'wave_refresh_csrf' not in session:
+        session['wave_refresh_csrf'] = secrets.token_urlsafe(32)
+    return render_template(
+        'wave_refresh.html',
+        current_user=_get_template_current_user_name(),
+        csrf_token=session['wave_refresh_csrf'],
+        target=target_label(current_app.config),
+        max_age_days=current_app.config.get('WAVE_MAX_EXPORT_AGE_DAYS'),
+        pbi_report_url=current_app.config.get('WAVE_PBI_REPORT_URL'),
+        pbi_schedule_text=PowerBiSchedule.from_config(current_app.config).describe(),
     )
 
 

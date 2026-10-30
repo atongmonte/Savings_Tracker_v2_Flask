@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+
+{% block title %}Wave File Refresh - Savings Tracker{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+<style>
+    /* Filter bar, stats cards and status badges match dashboard.html. */
+    .filter-section {
+        background-color: #FFFFFF;
+        padding: 1rem 1.25rem;
+        border-radius: 6px;
+        border: 1px solid #DDE3EA;
+        margin-bottom: 1.25rem;
+    }
+
+    .stats-card {
+        border-top: 3px solid #112B46;
+        transition: box-shadow 0.2s, transform 0.2s;
+    }
+
+    .stats-card .card-body {
+        padding: 0.7rem 0.85rem;
+    }
+
+    .stats-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 18px rgba(17, 43, 70, .10);
+    }
+
+    .stats-card.savings {
+        border-top-color: #1A7A4A;
+    }
+
+    .stats-card.rebate {
+        border-top-color: #0072BC;
+    }
+
+    .stats-card.avoidance {
+        border-top-color: #00A8A8;
+    }
+
+    .stats-card .stat-value {
+        font-size: 1.2rem;
+        font-weight: 700;
+        line-height: 1.15;
+        color: #112B46;
+    }
+
+    .stats-card.savings .stat-value { color: #1A7A4A; }
+    .stats-card.rebate .stat-value { color: #0072BC; }
+    .stats-card.avoidance .stat-value { color: #00A8A8; }
+
+    .stats-card h5 {
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .stats-card small.text-muted {
+        font-size: 0.68rem;
+        margin-top: 0.45rem !important;
+    }
+
+    .status-badge {
+        padding: 0.22rem 0.75rem;
+        border-radius: 3px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        display: inline-block;
+    }
+
+    .status-submitted {
+        background-color: #EFF5FC;
+        color: #004D80;
+    }
+
+    .status-approved {
+        background-color: #F0FBF5;
+        color: #0E4D2D;
+    }
+
+    .status-rejected {
+        background-color: #FDF3F2;
+        color: #7B2218;
+    }
+
+    /* ── Wave page ── */
+    #uploadResult:not(:empty) { margin-top: 1rem; }
+    .totals-reload { color: var(--monte-blue); font-size: inherit; }
+    .totals-reload:hover { color: var(--monte-navy); }
+    .alert ul { margin: .4rem 0 0; padding-left: 1.1rem; }
+    .result-facts {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: .35rem 1rem;
+        margin: 0;
+        font-size: .85rem;
+    }
+    .result-facts dt { color: var(--text-muted); font-weight: 600; }
+    .result-facts dd { margin: 0; word-break: break-word; }
+    .result-facts .status-badge { margin: 0 .3rem .3rem 0; }
+    .change-up { color: var(--success-color); font-weight: 600; }
+    .change-down { color: var(--danger-color); font-weight: 600; }
+    .history-file { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-upload"></i> Wave File Refresh</h2>
+            <p class="text-muted">Upload the weekly Wave export to refresh the operating savings behind the SCS Savings dashboard.
+               The file is checked first; if anything looks wrong, nothing is loaded.</p>
+        </div>
+    </div>
+
+    <!-- Upload -->
+    <div class="filter-section">
+        <form id="waveForm" class="row g-3" onsubmit="return false;">
+            <div class="col-md-6">
+                <label for="waveFile" class="form-label"><i class="fas fa-file-excel"></i> Wave Export (.xlsx)</label>
+                <input id="waveFile" name="file" type="file" class="form-control"
+                       accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button id="validateButton" type="button" class="btn btn-outline-primary flex-fill" disabled onclick="submitWaveFile('validate')">
+                    <i class="fas fa-clipboard-check"></i> Check File Only
+                </button>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button id="refreshButton" type="button" class="btn btn-primary flex-fill" disabled onclick="requestRefresh()">
+                    <i class="fas fa-rotate"></i> Upload &amp; Refresh
+                </button>
+            </div>
+        </form>
+        <small class="text-muted d-block mt-2">
+            Use the weekly full export from Wave (for example <em>Weekly Full Export_MMDDYYYY.xlsx</em>).
+            It must include the <strong>initiative</strong> tab and be no more than {{ max_age_days }} days old.
+            Loads into <strong>{{ target }}</strong>.
+        </small>
+        <div id="uploadResult"></div>
+    </div>
+
+    <!-- Dashboard Savings -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+        <small class="text-muted fw-semibold" id="totalsTitle">DASHBOARD SAVINGS</small>
+        <small class="text-muted">
+            <span id="totalsMeta"></span>
+            <button type="button" class="btn btn-link totals-reload p-0 ms-2 align-baseline text-decoration-none" onclick="loadWaveStatus()" title="Re-read the totals">
+                <i class="fas fa-sync-alt"></i> Reload
+            </button>
+        </small>
+    </div>
+    <div id="totalsCards" class="row mb-2 row-cols-1 row-cols-md-3 g-2">
+        <div class="col-12"><div class="text-center text-muted py-4">
+            <span class="spinner-border spinner-border-sm me-2"></span>Reading current totals...
+        </div></div>
+    </div>
+    <p class="text-muted small mb-3">
+        Totals come from the dashboard view for the current realization year,
+        with Supplemental Staffing initiatives excluded. Rebate Savings come from this tracker, not the Wave file.
+    </p>
+
+    <!-- Power BI -->
+    <div class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <i class="fas fa-clock me-1"></i><span id="pbiEta">New loads appear in Power BI after its next scheduled refresh.</span>
+            <div class="small mt-1">{{ pbi_schedule_text }}</div>
+        </div>
+        <a class="btn btn-sm btn-outline-primary" href="{{ pbi_report_url }}" target="_blank" rel="noopener">
+            <i class="fas fa-arrow-up-right-from-square me-1"></i>Open Power BI Dashboard
+        </a>
+    </div>
+
+    <!-- Recent Refreshes -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-clock-rotate-left"></i> Recent Refreshes
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr><th>When</th><th>By</th><th>File</th><th class="text-end">Initiatives</th><th>Result</th></tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <tr><td colspan="5" class="text-center text-muted py-4">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload & Refresh Confirmation Modal -->
+<div class="modal fade" id="refreshConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Load Wave File</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-2">Load <strong id="confirmFileName"></strong> into the dashboard tables?</p>
+                <p class="text-muted mb-0">This replaces the current Wave data.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="confirmRefresh()">
+                    <i class="fas fa-rotate"></i> Upload &amp; Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const WAVE_STATUS_URL = "{{ url_for('wave_refresh.refresh_status') }}";
+    const WAVE_UPLOAD_URL = "{{ url_for('wave_refresh.upload_export') }}";
+    const WAVE_CSRF_TOKEN = "{{ csrf_token }}";
+    const exactCurrency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+        ));
+    }
+
+    // Whole dollars, as in the dashboard table.
+    function money(value) {
+        return '$' + Math.round(Number(value) || 0).toLocaleString('en-US');
+    }
+
+    // Same abbreviation as the dashboard summary cards.
+    function abbrevMoney(value) {
+        const amount = Number(value) || 0;
+        if (Math.abs(amount) >= 1_000_000) return '$' + (amount / 1_000_000).toFixed(2) + 'M';
+        if (Math.abs(amount) >= 1_000) return '$' + (amount / 1_000).toFixed(2) + 'K';
+        return money(amount);
+    }
+
+    function signedMoney(value) {
+        const amount = Math.round(Number(value) || 0);
+        if (amount === 0) return 'No change';
+        const css = amount > 0 ? 'change-up' : 'change-down';
+        return `<span class="${css}">${amount > 0 ? '+' : '−'}${money(Math.abs(amount))}</span>`;
+    }
+
+    function formatDate(isoDate) {
+        if (!isoDate) return '—';
+        const [year, month, day] = isoDate.slice(0, 10).split('-');
+        return `${month}/${day}/${year}`;
+    }
+
+    function formatDateTime(isoDateTime) {
+        if (!isoDateTime) return '—';
+        const parsed = new Date(isoDateTime);
+        return isNaN(parsed) ? isoDateTime : parsed.toLocaleString('en-US', {
+            month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit'
+        });
+    }
+
+    function channelTone(channel) {
+        const name = String(channel || '').toLowerCase();
+        if (name.includes('rebate')) return 'rebate';
+        if (name.includes('avoid')) return 'avoidance';
+        return 'savings';
+    }
+
+    function statCard(label, amount, tone, footnote) {
+        return `<div class="col">
+            <div class="card stats-card ${tone} h-100">
+                <div class="card-body d-flex flex-column justify-content-between text-center">
+                    <h5 class="text-muted mb-2">${escapeHtml(label)}</h5>
+                    <strong class="stat-value" title="${exactCurrency.format(Number(amount) || 0)}">${abbrevMoney(amount)}</strong>
+                    <small class="text-muted d-block mt-2">${footnote}</small>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function renderTotals(totals, comparison) {
+        const cards = document.getElementById('totalsCards');
+        document.getElementById('totalsTitle').textContent = `DASHBOARD SAVINGS · ${totals.realization_year}`;
+        const rows = comparison
+            ? comparison.map(row => ({ channel: row.channel, amount: row.after, before: row.before, change: row.change }))
+            : (totals.savings || []).map(row => ({ channel: row.channel, amount: row.total_savings }));
+
+        const loadedRows = totals.staging_rows ?? totals.rows;
+        const loadedDate = totals.staging_date ?? totals.workbook_date;
+        document.getElementById('totalsMeta').innerHTML =
+            `Last Wave load <strong>${formatDate(loadedDate)}</strong> · ${escapeHtml(loadedRows ?? '—')} initiatives
+             · read ${formatDateTime(totals.queried_at)}`;
+
+        if (!rows.length) {
+            cards.innerHTML = `<div class="col-12"><div class="text-center text-muted py-4">
+                No included savings found for ${escapeHtml(totals.realization_year)}.</div></div>`;
+            return;
+        }
+        const sum = key => rows.reduce((total, row) => total + (Number(row[key]) || 0), 0);
+        const footnote = row => comparison
+            ? `Was ${money(row.before)} · ${signedMoney(row.change)}`
+            : money(row.amount);
+        cards.innerHTML = rows.map(row => statCard(row.channel, row.amount, channelTone(row.channel), footnote(row))).join('')
+            + statCard('Total', sum('amount'), '', footnote({ amount: sum('amount'), before: sum('before'), change: sum('change') }));
+    }
+
+    function formatWhen(isoDateTime) {
+        const when = new Date(isoDateTime);
+        const time = when.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        if (when.toDateString() === new Date().toDateString()) return time;
+        return `${when.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' })}, ${time}`;
+    }
+
+    function renderPowerBiEta({ load = null, ifLoadedNow = null, justLoaded = false } = {}) {
+        const lines = [];
+        const pending = Boolean(load) && new Date(load.visible_at) > new Date();
+        if (load) {
+            const finished = `${justLoaded ? 'This load' : 'Last load'} finished ${formatWhen(load.finished_at)}`
+                + (!justLoaded && load.started_by ? ` by ${escapeHtml(load.started_by)}` : '');
+            lines.push(pending
+                ? `${finished}. Expected in Power BI after <strong>${formatWhen(load.visible_at)}</strong>
+                   (${formatWhen(load.refresh_at)} refresh).`
+                : `${finished} and should already be in Power BI.`);
+        }
+        if (ifLoadedNow && !pending) {
+            lines.push(`A file loaded now is expected in Power BI after <strong>${formatWhen(ifLoadedNow.visible_at)}</strong>.`);
+        }
+        document.getElementById('pbiEta').innerHTML =
+            lines.join('<br>') || 'New loads appear in Power BI after its next scheduled refresh.';
+    }
+
+    function renderHistory(history) {
+        const body = document.getElementById('historyBody');
+        if (!history.length) {
+            body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No refreshes have been run from this page yet.</td></tr>';
+            return;
+        }
+        body.innerHTML = history.map(item => {
+            const ok = item.status === 'success';
+            const badge = ok
+                ? '<span class="status-badge status-approved">Loaded</span>'
+                : `<span class="status-badge status-rejected" title="${escapeHtml(item.message)}">Failed</span>`;
+            return `<tr>
+                <td class="text-nowrap">${formatDateTime(item.started_at)}</td>
+                <td>${escapeHtml(item.started_by)}</td>
+                <td class="history-file" title="${escapeHtml(item.file_name)}">${escapeHtml(item.file_name || '—')}</td>
+                <td class="text-end">${escapeHtml(item.rows ?? '—')}</td>
+                <td>${badge}${ok ? '' : ` <span class="text-muted small">${escapeHtml(item.message)}</span>`}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function renderResult(data) {
+        const tone = data.status === 'refreshed' ? 'success' : data.status === 'validated' ? 'info' : 'danger';
+        const icon = { success: 'fa-circle-check', info: 'fa-clipboard-check', danger: 'fa-triangle-exclamation' }[tone];
+        const details = (data.details || []).map(item => `<li>${escapeHtml(item)}</li>`).join('');
+        let html = `<div class="alert alert-${tone} mb-2">
+            <i class="fas ${icon} me-1"></i><strong>${escapeHtml(data.message || data.error || 'Unexpected response.')}</strong>
+            ${details ? `<ul>${details}</ul>` : ''}
+        </div>`;
+
+        if (data.rows !== undefined) {
+            const stages = Object.entries(data.stage_counts || {})
+                .map(([stage, count]) => `<span class="status-badge status-submitted">${escapeHtml(stage)} · ${escapeHtml(count)}</span>`).join('');
+            const previous = data.previous_staging_date
+                ? `${formatDate(data.previous_staging_date)} · ${escapeHtml(data.previous_staging_rows)} initiatives`
+                : '—';
+            html += `<dl class="result-facts">
+                <dt>File</dt><dd>${escapeHtml(data.file_name)}</dd>
+                <dt>Export created</dt><dd>${formatDate(data.workbook_date)}</dd>
+                <dt>Initiatives</dt><dd>${escapeHtml(data.rows)} (L3–L5)</dd>
+                <dt>By stage</dt><dd>${stages}</dd>
+                <dt>${data.status === 'refreshed' ? 'Replaced load' : 'Current load'}</dt><dd>${previous}</dd>
+            </dl>`;
+        }
+        if ((data.warnings || []).length) {
+            html += `<div class="alert alert-warning mt-3 mb-0"><strong>Please review:</strong>
+                <ul>${data.warnings.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div>`;
+        }
+        document.getElementById('uploadResult').innerHTML = html;
+    }
+
+    async function loadWaveStatus({ keepTotals = false } = {}) {
+        try {
+            const response = await fetch(WAVE_STATUS_URL, { credentials: 'same-origin' });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || `Status ${response.status}`);
+            if (keepTotals) {
+                // Leave the before/after comparison and its Power BI estimate on screen.
+            } else {
+                renderPowerBiEta({ load: data.last_refresh, ifLoadedNow: data.if_loaded_now });
+                if (data.totals) {
+                    renderTotals(data.totals);
+                } else {
+                    document.getElementById('totalsCards').innerHTML =
+                        `<div class="col-12"><div class="alert alert-warning mb-0">${escapeHtml(data.totals_error)}</div></div>`;
+                }
+            }
+            renderHistory(data.history || []);
+        } catch (error) {
+            document.getElementById('totalsCards').innerHTML =
+                `<div class="col-12"><div class="alert alert-danger mb-0">Could not load the current totals: ${escapeHtml(error.message)}</div></div>`;
+        }
+    }
+
+    function setBusy(busy, mode) {
+        const hasFile = document.getElementById('waveFile').files.length > 0;
+        const buttons = { validate: document.getElementById('validateButton'), refresh: document.getElementById('refreshButton') };
+        Object.entries(buttons).forEach(([key, button]) => {
+            button.disabled = busy || !hasFile;
+            if (!button.dataset.label) button.dataset.label = button.innerHTML;
+            button.innerHTML = busy && key === mode
+                ? `<span class="spinner-border spinner-border-sm me-1"></span>${key === 'refresh' ? 'Refreshing...' : 'Checking...'}`
+                : button.dataset.label;
+        });
+        document.getElementById('waveFile').disabled = busy;
+    }
+
+    function requestRefresh() {
+        const file = document.getElementById('waveFile').files[0];
+        if (!file) return;
+        document.getElementById('confirmFileName').textContent = file.name;
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('refreshConfirmModal')).show();
+    }
+
+    function confirmRefresh() {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('refreshConfirmModal')).hide();
+        submitWaveFile('refresh');
+    }
+
+    async function submitWaveFile(mode) {
+        const file = document.getElementById('waveFile').files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('mode', mode);
+        formData.append('csrf_token', WAVE_CSRF_TOKEN);
+
+        setBusy(true, mode);
+        document.getElementById('uploadResult').innerHTML = '';
+        try {
+            const response = await fetch(WAVE_UPLOAD_URL, { method: 'POST', body: formData, credentials: 'same-origin' });
+            let data;
+            try {
+                data = await response.json();
+            } catch (parseError) {
+                data = { status: 'failed', message: `The server returned an unexpected response (status ${response.status}).` };
+            }
+            renderResult(data);
+            if (data.status === 'refreshed') {
+                renderTotals(data, data.savings);
+                renderPowerBiEta({ load: data.power_bi, justLoaded: true });
+            }
+            if (mode === 'refresh') {
+                loadWaveStatus({ keepTotals: data.status === 'refreshed' });
+            }
+        } catch (error) {
+            renderResult({ status: 'failed', message: `Upload failed: ${error.message}` });
+        } finally {
+            setBusy(false, mode);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('waveFile').addEventListener('change', function () {
+            document.getElementById('uploadResult').innerHTML = '';
+            setBusy(false);
+        });
+        loadWaveStatus();
+    });
+</script>
+{% endblock %}

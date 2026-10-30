@@ -10,6 +10,7 @@ rebate_bp = Blueprint('rebate', __name__)
 cost_avoidance_bp = Blueprint('cost_avoidance', __name__)
 auth_bp = Blueprint('auth', __name__)
 analytics_bp = Blueprint('analytics', __name__)
+wave_refresh_bp = Blueprint('wave_refresh', __name__)
 
 
 def enforce_viewer_read_access():
@@ -29,4 +30,4 @@ for blueprint in (initiatives_bp, cost_savings_bp, rebate_bp, cost_avoidance_bp)
     blueprint.before_request(enforce_viewer_read_access)
 
 # Import routes (import after blueprint creation to avoid circular imports)
-from app.api import initiatives, cost_savings, rebate, cost_avoidance, auth, analytics
+from app.api import initiatives, cost_savings, rebate, cost_avoidance, auth, analytics, wave_refresh
