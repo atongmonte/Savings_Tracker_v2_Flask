@@ -376,7 +376,7 @@
             html += `<dl class="result-facts">
                 <dt>File</dt><dd>${escapeHtml(data.file_name)}</dd>
                 <dt>Export created</dt><dd>${formatDate(data.workbook_date)}</dd>
-                <dt>Initiatives</dt><dd>${escapeHtml(data.rows)} (L3–L5)</dd>
+                <dt>Initiatives</dt><dd>${escapeHtml(data.rows)} (L0–L5)</dd>
                 <dt>By stage</dt><dd>${stages}</dd>
                 <dt>${data.status === 'refreshed' ? 'Replaced load' : 'Current load'}</dt><dd>${previous}</dd>
             </dl>`;

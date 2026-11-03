@@ -204,8 +204,10 @@ initiatives) lets users load the weekly Wave export themselves instead of
 sending it to the data team. It ports the WaveL5 `fileprocess.ipynb`
 transformation and `refresh_wave.py` guards into `app/utils/wave_refresh.py`:
 
-1. Validates the workbook: `initiative` tab, required columns, L3/L4/L5 rows,
-   unique whole-number IDs, staging column lengths, and an export date that is
+1. Validates the workbook: `initiative` tab, required columns (including the
+   L0 actual and L1/L2 actual and submitted dates), L0–L5 rows (with submitted
+   L1–L5 stages mapped to `SL1`–`SL5`), unique whole-number IDs, staging
+   column lengths, and an export date that is
    not in the future, not older than `WAVE_MAX_EXPORT_AGE_DAYS` (default 10),
    and not older than the data already loaded.
 2. Archives the exact upload to `<file storage path>\Wave_Exports`.

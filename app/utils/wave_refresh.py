@@ -8,8 +8,9 @@ procedure and read back the dashboard savings totals.
 
 The transformation uses openpyxl rather than pandas so the IIS deployment
 needs no new dependencies. Business rules must stay in lockstep with
-fileprocess.ipynb: L3/L4/L5 stage filter, stage mapping, the $M -> $
-conversion and the workbook creation date as the loaded stamp.
+fileprocess.ipynb: L0-L5 stage filter, stage mapping, the L0-L5 stage
+dates, the $M -> $ conversion and the workbook creation date as the
+loaded stamp.
 """
 import hashlib
 import io
@@ -51,19 +52,30 @@ SOURCE_TO_STAGING = [
     ('Sub. for L3 approv. date', 'SL3 Date'),
     ('Net recurring benefits (latest estimate, annualized)', 'Net Recurring Benefits Annualized'),
     ('One-time benefits (latest estimate, annualized)', 'Onetime Benefits Annualized'),
+    ('L2 actual date', 'L2 Date'),
+    ('Sub. for L2 approv. date', 'SL2 Date'),
+    ('L1 actual date', 'L1 Date'),
+    ('Sub. for L1 approv. date', 'SL1 Date'),
+    ('L0 actual date', 'L0 Date'),
 ]
 OPTIONAL_SOURCE_COLUMNS = {'Weekly status'}  # Defaults to 'Active' when the column is absent.
 STAGING_COLUMNS = [column for _, column in SOURCE_TO_STAGING] + ['loaded stamp']
 
-STAGE_LEVELS = ('l5', 'l4', 'l3')
+# Case-insensitive substring match on Stage, as the notebook's str.contains masks.
+STAGE_LEVELS = ('l5', 'l4', 'l3', 'l2', 'l1', 'l0')
 STAGE_MAP = {
     'Submitted for L5 approval': 'SL5',
     'Submitted for L4 approval': 'SL4',
     'Submitted for L3 approval': 'SL3',
+    'Submitted for L2 approval': 'SL2',
+    'Submitted for L1 approval': 'SL1',
 }
-STAGE_ORDER = ['L5', 'SL5', 'L4', 'SL4', 'L3', 'SL3']
+STAGE_ORDER = ['L5', 'SL5', 'L4', 'SL4', 'L3', 'SL3', 'L2', 'SL2', 'L1', 'SL1', 'L0']
 
-DATE_COLUMNS = {'L5 Date', 'SL5 Date', 'L4 Date', 'SL4 Date', 'L3 Date', 'SL3 Date'}
+DATE_COLUMNS = {
+    'L5 Date', 'SL5 Date', 'L4 Date', 'SL4 Date', 'L3 Date', 'SL3 Date',
+    'L2 Date', 'SL2 Date', 'L1 Date', 'SL1 Date', 'L0 Date',
+}
 MONEY_COLUMNS = {'Net Recurring Benefits Annualized', 'Onetime Benefits Annualized'}
 REQUIRED_TEXT_COLUMNS = ('Accountable Workstream', 'Initiative Name', 'Weekly Status')
 # varchar limits on SCSSaving.Initiatives_stg; checked up front for a readable error.
@@ -72,7 +84,12 @@ MONEY_MULTIPLIER = Decimal(1000000)  # Wave exports benefits in millions.
 MONEY_SCALE = Decimal('0.0001')      # SQL Server money precision.
 INT32_RANGE = (-2147483648, 2147483647)
 
-FILENAME_DATE = re.compile(r'_(\d{8})(?:\s*\(\d+\))?\.xlsx$', re.IGNORECASE)
+# "Weekly Full Export_MMDDYYYY.xlsx" and Wave's native
+# "Full export (for admin use only) - Wave - YYYYMMDD (HHhMMm).xlsx" (refresh_wave.py patterns).
+FILENAME_DATES = (
+    (re.compile(r'_(\d{8})(?:\s*\(\d+\))?\.xlsx$', re.IGNORECASE), '%m%d%Y'),
+    (re.compile(r' - Wave - (\d{8}) \(\d{2}h\d{2}m\)(?:\s*\(\d+\))?\.xlsx$', re.IGNORECASE), '%Y%m%d'),
+)
 
 _STAGING_TABLE = '[SCSSaving].[Initiatives_stg]'
 _INSERT_SQL = 'INSERT INTO {} ({}) VALUES ({})'.format(
@@ -171,7 +188,7 @@ def parse_export(file_name, content, today=None, max_age_days=DEFAULT_MAX_EXPORT
 
     rows, warnings = _transform(records, has_weekly_status)
     if not rows:
-        raise WaveRefreshError(f"No L3/L4/L5 initiatives were found on the '{sheet_name}' tab.")
+        raise WaveRefreshError(f"No L0-L5 initiatives were found on the '{sheet_name}' tab.")
     _check_rows(rows)
 
     stage_counts = Counter(row[STAGING_COLUMNS.index('Stage')] for row in rows)
@@ -327,13 +344,15 @@ def check_not_older(export, previous_stamp):
 
 
 def _filename_date(file_name):
-    match = FILENAME_DATE.search(os.path.basename(file_name or ''))
-    if not match:
-        return None
-    try:
-        return datetime.strptime(match[1], '%m%d%Y').date()
-    except ValueError:
-        return None
+    base_name = os.path.basename(file_name or '')
+    for pattern, date_format in FILENAME_DATES:
+        match = pattern.search(base_name)
+        if match:
+            try:
+                return datetime.strptime(match[1], date_format).date()
+            except ValueError:
+                return None
+    return None
 
 
 def _created_date(created):
