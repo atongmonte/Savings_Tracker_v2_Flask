@@ -140,7 +140,8 @@
         </form>
         <small class="text-muted d-block mt-2">
             Use the weekly full export from Wave (for example <em>Weekly Full Export_MMDDYYYY.xlsx</em>).
-            It must include the <strong>initiative</strong> tab and be no more than {{ max_age_days }} days old.
+            It must include the <strong>initiative</strong> tab and have been created in the last {{ max_age_days }} days.
+            The date comes from inside the file, not its name.
             Loads into <strong>{{ target }}</strong>.
         </small>
         <div id="uploadResult"></div>
@@ -375,7 +376,7 @@
                 : '—';
             html += `<dl class="result-facts">
                 <dt>File</dt><dd>${escapeHtml(data.file_name)}</dd>
-                <dt>Export created</dt><dd>${formatDate(data.workbook_date)}</dd>
+                <dt>Export created</dt><dd>${formatDateTime(data.created_at)}</dd>
                 <dt>Initiatives</dt><dd>${escapeHtml(data.rows)} (L0–L5)</dd>
                 <dt>By stage</dt><dd>${stages}</dd>
                 <dt>${data.status === 'refreshed' ? 'Replaced load' : 'Current load'}</dt><dd>${previous}</dd>

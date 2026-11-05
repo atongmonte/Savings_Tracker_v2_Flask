@@ -207,10 +207,11 @@ transformation and `refresh_wave.py` guards into `app/utils/wave_refresh.py`:
 1. Validates the workbook: `initiative` tab, required columns (including the
    L0 actual and L1/L2 actual and submitted dates), L0–L5 rows (with submitted
    L1–L5 stages mapped to `SL1`–`SL5`), unique whole-number IDs, staging
-   column lengths, and an export date that is
+   column lengths, and a creation date that is
    not in the future, not older than `WAVE_MAX_EXPORT_AGE_DAYS` (default 10),
    and not older than the data already loaded.
-2. Archives the exact upload to `<file storage path>\Wave_Exports`.
+2. Archives the exact upload to `<file storage path>\Wave_Exports` as
+   `<upload time>_created_<native creation time>_<original name>`, both in Eastern time.
 3. In one transaction on `PBI`: clears and reloads `SCSSaving.Initiatives_stg`,
    runs `SCSSaving.sp_MergeInitiativesFromStage`, and reads savings by channel
    from `SCSSaving.vw_MainSavings` before and after. Any failure rolls back.
@@ -225,7 +226,22 @@ transformation and `refresh_wave.py` guards into `app/utils/wave_refresh.py`:
    Example with the defaults: a load finishing at 10:20 AM misses the 10:00 AM
    refresh, so the 11:00 AM refresh picks it up and Power BI shows it after 11:15 AM.
 
-Business rules must stay in step with `fileprocess.ipynb`. Configure the
+Every date check uses the file's native creation time, read from inside the
+file. The date in the filename is only a label and is never read, so renaming a
+file changes nothing.
+
+| Export | Where the creation time comes from |
+| --- | --- |
+| Saved by Excel (`Weekly Full Export_*`) | The `dcterms:created` property |
+| Wave's own download (`Full export ... - Wave - *`) | Its zip entry times, which Wave stamps in UTC. It has no `created` property |
+
+A file with neither is refused. The date, in Eastern time, is also written as
+`loaded stamp`, which the dashboard views report as `Last Update Date`.
+
+Business rules must stay in step with `fileprocess.ipynb`, where
+`native_created_at` is the source of the date rule. The A16 File Upload app
+carries an identical copy of `app/utils/wave_refresh.py`. Keep the two identical
+until one of the apps is retired. Configure the
 target with `WAVE_DB_SERVER` / `WAVE_DB_NAME` (defaults: the production `PBI`
 database). The IIS app pool identity needs, on `PBI`: `SELECT, INSERT, DELETE`
 on `SCSSaving.Initiatives_stg`, `EXECUTE` on

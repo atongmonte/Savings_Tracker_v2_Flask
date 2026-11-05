@@ -9,14 +9,18 @@ procedure and read back the dashboard savings totals.
 The transformation uses openpyxl rather than pandas so the IIS deployment
 needs no new dependencies. Business rules must stay in lockstep with
 fileprocess.ipynb: L0-L5 stage filter, stage mapping, the L0-L5 stage
-dates, the $M -> $ conversion and the workbook creation date as the
-loaded stamp.
+dates, the $M -> $ conversion and the file's native creation date as the
+loaded stamp and the basis of every date check.
+
+The Savings Tracker and the A16 File Upload app each carry this module. Keep
+the two copies identical until one of them is retired.
 """
 import hashlib
 import io
 import math
 import os
-import re
+import xml.etree.ElementTree as ET
+import zipfile
 from collections import Counter
 from contextlib import closing
 from dataclasses import dataclass, field
@@ -84,13 +88,6 @@ MONEY_MULTIPLIER = Decimal(1000000)  # Wave exports benefits in millions.
 MONEY_SCALE = Decimal('0.0001')      # SQL Server money precision.
 INT32_RANGE = (-2147483648, 2147483647)
 
-# "Weekly Full Export_MMDDYYYY.xlsx" and Wave's native
-# "Full export (for admin use only) - Wave - YYYYMMDD (HHhMMm).xlsx" (refresh_wave.py patterns).
-FILENAME_DATES = (
-    (re.compile(r'_(\d{8})(?:\s*\(\d+\))?\.xlsx$', re.IGNORECASE), '%m%d%Y'),
-    (re.compile(r' - Wave - (\d{8}) \(\d{2}h\d{2}m\)(?:\s*\(\d+\))?\.xlsx$', re.IGNORECASE), '%Y%m%d'),
-)
-
 _STAGING_TABLE = '[SCSSaving].[Initiatives_stg]'
 _INSERT_SQL = 'INSERT INTO {} ({}) VALUES ({})'.format(
     _STAGING_TABLE,
@@ -133,21 +130,24 @@ class WaveExport:
     file_name: str
     content: bytes
     sha256: str
-    export_date: date | None
-    workbook_date: date
+    created_at: datetime  # Native creation time, Eastern. See native_created_at.
     rows: list
     stage_counts: dict
     warnings: list = field(default_factory=list)
 
+    @property
+    def workbook_date(self):
+        return self.created_at.date()
+
     def staging_rows(self):
-        """Rows in STAGING_COLUMNS order, with the workbook date as the loaded stamp."""
+        """Rows in STAGING_COLUMNS order, with the native creation date as the loaded stamp."""
         return [row + (self.workbook_date,) for row in self.rows]
 
     def summary(self):
         return {
             'file_name': self.file_name,
             'sha256': self.sha256,
-            'export_date': _iso(self.export_date),
+            'created_at': self.created_at.isoformat(),
             'workbook_date': _iso(self.workbook_date),
             'rows': len(self.rows),
             'stage_counts': self.stage_counts,
@@ -175,16 +175,17 @@ def parse_export(file_name, content, today=None, max_age_days=DEFAULT_MAX_EXPORT
     except Exception as exc:
         raise WaveRefreshError('The file could not be opened as an Excel workbook.') from exc
     try:
-        created = getattr(workbook.properties, 'created', None)
         sheet_name, records, has_weekly_status = _read_initiative_sheet(workbook)
     finally:
         workbook.close()
 
-    export_date = _filename_date(file_name)
-    workbook_date = _created_date(created) or export_date
-    if workbook_date is None:
-        raise WaveRefreshError('Could not determine when this export was created. Upload the original Wave export.')
-    _check_dates(export_date, workbook_date, today, max_age_days)
+    created_at = native_created_at(content)
+    if created_at is None:
+        raise WaveRefreshError(
+            'Could not determine when this export was created. Saving a Wave download in Excel can '
+            'remove that date, so download the original export from Wave again.'
+        )
+    _check_dates(created_at.date(), today, max_age_days)
 
     rows, warnings = _transform(records, has_weekly_status)
     if not rows:
@@ -197,8 +198,7 @@ def parse_export(file_name, content, today=None, max_age_days=DEFAULT_MAX_EXPORT
         file_name=file_name,
         content=content,
         sha256=hashlib.sha256(content).hexdigest(),
-        export_date=export_date,
-        workbook_date=workbook_date,
+        created_at=created_at,
         rows=rows,
         stage_counts={stage: stage_counts[stage] for stage in ordered_stages if stage_counts[stage]},
         warnings=warnings,
@@ -316,52 +316,60 @@ def _check_rows(rows):
         raise WaveRefreshError('The export has rows the dashboard tables cannot accept.', details=problems)
 
 
-def _check_dates(export_date, workbook_date, today, max_age_days):
-    labels = (('File name date', export_date), ('Workbook creation date', workbook_date))
-    for label, value in labels:
-        if value is None:
-            continue
-        if value > today:
-            raise WaveRefreshError(f'{label} {value:%m/%d/%Y} is in the future. Check that this is the right file.')
-        age = (today - value).days
-        if age > max_age_days:
-            raise WaveRefreshError(
-                f'{label} {value:%m/%d/%Y} is {age} days old (limit {max_age_days}). '
-                'Download the latest export from Wave.'
-            )
+def _check_dates(created_date, today, max_age_days):
+    if created_date > today:
+        raise WaveRefreshError(
+            f'Export creation date {created_date:%m/%d/%Y} is in the future. Check that this is the right file.'
+        )
+    age = (today - created_date).days
+    if age > max_age_days:
+        raise WaveRefreshError(
+            f'Export creation date {created_date:%m/%d/%Y} is {age} days old (limit {max_age_days}). '
+            'Download the latest export from Wave.'
+        )
 
 
 def check_not_older(export, previous_stamp):
     """Never replace the dashboard data with an export older than the current load."""
-    if not previous_stamp:
-        return
-    for value in (export.export_date, export.workbook_date):
-        if value and value < previous_stamp:
-            raise WaveRefreshError(
-                f'This export ({value:%m/%d/%Y}) is older than the data already loaded '
-                f'({previous_stamp:%m/%d/%Y}). Upload the newer export.'
-            )
+    if previous_stamp and export.workbook_date < previous_stamp:
+        raise WaveRefreshError(
+            f'This export ({export.workbook_date:%m/%d/%Y}) is older than the data already loaded '
+            f'({previous_stamp:%m/%d/%Y}). Upload the newer export.'
+        )
 
 
-def _filename_date(file_name):
-    base_name = os.path.basename(file_name or '')
-    for pattern, date_format in FILENAME_DATES:
-        match = pattern.search(base_name)
-        if match:
-            try:
-                return datetime.strptime(match[1], date_format).date()
-            except ValueError:
-                return None
-    return None
-
-
-def _created_date(created):
-    """Workbook core 'created' is naive UTC; report the New York calendar date."""
-    if not isinstance(created, datetime):
+def _core_created(package):
+    """The dcterms:created property, if the file has a readable one."""
+    try:
+        core = ET.fromstring(package.read('docProps/core.xml'))
+        created = datetime.fromisoformat(core.findtext('{http://purl.org/dc/terms/}created', '').strip())
+    except (KeyError, ET.ParseError, ValueError):
         return None
-    if created.tzinfo is None:
-        created = created.replace(tzinfo=timezone.utc)
-    return created.astimezone(now_eastern().tzinfo).date()
+    return created if created.tzinfo else created.replace(tzinfo=timezone.utc)
+
+
+def _newest_zip_entry(package):
+    """The latest zip entry time, which is UTC in Wave's own downloads. 1980 is a placeholder."""
+    stamps = [info.date_time for info in package.infolist() if info.date_time[0] > 1980]
+    try:
+        return datetime(*max(stamps), tzinfo=timezone.utc) if stamps else None
+    except ValueError:
+        return None
+
+
+def native_created_at(content):
+    """
+    When the export was really created, in Eastern time, read from inside the file.
+
+    Must match native_created_at in fileprocess.ipynb. Excel-saved exports carry
+    the dcterms:created property. Wave's own download has no such property, so
+    the time it built the file comes from its zip entries. The filename is only
+    a label and is never read. openpyxl's workbook.properties.created must not
+    be used: it substitutes the current time when the property is missing.
+    """
+    with zipfile.ZipFile(io.BytesIO(content)) as package:
+        created = _core_created(package) or _newest_zip_entry(package)
+    return created.astimezone(now_eastern().tzinfo) if created else None
 
 
 def _is_blank(value):
@@ -435,10 +443,10 @@ def _iso(value):
 # ---------------------------------------------------------------------------
 
 def archive_export(folder, export, timestamp):
-    """Keep the exact uploaded bytes next to the app's other stored files."""
+    """Keep the exact bytes as <upload time>_created_<native creation time>_<name>, both Eastern."""
     os.makedirs(folder, exist_ok=True)
     safe_name = secure_filename(export.file_name) or 'wave_export.xlsx'
-    path = os.path.join(folder, f'{timestamp:%Y%m%d_%H%M%S_%f}_{safe_name}')
+    path = os.path.join(folder, f'{timestamp:%Y%m%d_%H%M%S_%f}_created_{export.created_at:%Y%m%d_%H%M%S}_{safe_name}')
     with open(path, 'xb') as handle:
         handle.write(export.content)
     with open(path, 'rb') as handle:
